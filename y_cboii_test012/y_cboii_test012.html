@@ -1,0 +1,82 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>Y_CBOII_TEST012</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: Y_CBOII_TEST012</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  BDC test</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  Y_CBOII_TEST012</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&参考 《从实例学SAP ABAP编程(1-19章)》第5章</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  Y_CBOII_TEST012.
+TABLES: SPFLI,SFLIGHT.
+SKIP.
+
+FORMAT COLOR COL_HEADING.
+ULINE AT /(91).
+WRITE:/ SY-VLINE,(15) '航线承运人',sy-VLINE,(15) '航线连接',sy-VLINE,
+        (15) '国家代码',sy-VLINE,(15) '起飞城市',sy-VLINE,
+         (15) '起飞机场',sy-VLINE.
+ULINE AT /(91).
+FORMAT COLOR OFF.
+
+SELECT * FROM SPFLI.
+  IF SPFLI-CARRID = 'LH'.
+    FORMAT COLOR COL_NEGATIVE.
+  else.
+    FORMat color off.
+  endif.
+WRITE:/ SY-VLINE,(15) SPFLI-CARRID,SY-VLINE,(15) SPFLI-CONNID,
+SY-VLINE,(15) SPFLI-COUNTRYTO,SY-VLINE,(15) SPFLI-CITYFROM,
+SY-VLINE,(15) SPFLI-AIRPFROM,SY-VLINE.
+
+HIDE:SPFLI-CARRID,SPFLI-CONNID.
+ULINE AT /(91).
+ENDSELECT.
+
+
+START-OF-SELECTION.
+<font color ="#0000FF">*  seT PF-STATUS 'STA1'.</font>
+<font color ="#0000FF">*  WRITE '测试工具条按钮'.</font>
+<font color ="#0000FF">*  WRITE:'初入列表,SY-LSIND =', SY-LSIND.</font>
+
+
+
+
+AT LINE-SELECTION.
+  IF SY-LSIND = 1.
+    SELECT * FROM SFLIGHT
+      WHERE CARRID = SPFLI-CARRID AND CONNID = SPFLI-CONNID.
+      WRITE: / SFLIGHT-CARRID,SY-VLINE,SFLIGHT-CONNID,SY-VLINE,
+      SFLIGHT-FLDATE,SY-VLINE,SFLIGHT-PRICE.
+    ENDSELECT.
+<font color ="#0000FF">*    WRITE:'第二列表,SY-LSIND =', SY-LSIND.</font>
+  ENDIF.
+
+
+<font color ="#0000FF">*at USER-COMMAND.</font>
+<font color ="#0000FF">*  case sy-UCOMM.</font>
+<font color ="#0000FF">*    when 'OWNSEL'.</font>
+<font color ="#0000FF">*      IF sy-LSIND = 1.</font>
+<font color ="#0000FF">*        set PF-STATUS 'STA6'.</font>
+<font color ="#0000FF">*        WINDOW STARTING AT 10 10 ENDING AT 30 20.</font>
+<font color ="#0000FF">*        WRITE '在子窗口输出！'.</font>
+<font color ="#0000FF">*        WRITE '请注意！'.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">**      WRITE '已选择'.</font>
+<font color ="#0000FF">*  ENDCASE.</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

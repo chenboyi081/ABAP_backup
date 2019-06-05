@@ -1,0 +1,233 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZYC030_PAI</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZYC030_PAI</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZYC030_PAI</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZYC030_PAI</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&SPWIZARD: INPUT MODULE FOR TC 'TAB1'. DO NOT CHANGE THIS LINE!</font>
+<font color ="#0000FF">*&SPWIZARD: MODIFY TABLE</font>
+MODULE tab1_modify INPUT.
+  MODIFY gt_jm1
+    FROM w_jm1
+    INDEX tab1-current_line.
+ENDMODULE.                    "TAB1_MODIFY INPUT
+
+<font color ="#0000FF">*&SPWIZARD: INPUT MODULE FOR TC 'TAB2'. DO NOT CHANGE THIS LINE!</font>
+<font color ="#0000FF">*&SPWIZARD: MODIFY TABLE</font>
+MODULE tab2_modify INPUT.
+  MODIFY gt_jm2
+    FROM w_jm2
+    INDEX tab2-current_line.
+ENDMODULE.                    "TAB2_MODIFY INPUT
+
+<font color ="#0000FF">*&SPWIZARD: INPUT MODULE FOR TC 'TAB3'. DO NOT CHANGE THIS LINE!</font>
+<font color ="#0000FF">*&SPWIZARD: MODIFY TABLE</font>
+MODULE tab3_modify INPUT.
+  MODIFY gt_jm3
+    FROM w_jm3
+    INDEX tab3-current_line.
+ENDMODULE.                    "TAB3_MODIFY INPUT
+
+<font color ="#0000FF">*&SPWIZARD: INPUT MODULE FOR TC 'TAB4'. DO NOT CHANGE THIS LINE!</font>
+<font color ="#0000FF">*&SPWIZARD: MODIFY TABLE</font>
+MODULE TAB4_MODIFY INPUT.
+  MODIFY GT_JM4
+    FROM W_JM4
+    INDEX TAB4-CURRENT_LINE.
+ENDMODULE.                    "TAB4_MODIFY INPUT
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  MODULE process_exit INPUT</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*设置9001屏幕的退出按钮</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE process_exit_9001 INPUT.
+  save_code = ok_code.
+  CLEAR:ok_code.
+
+  CASE save_code.
+    WHEN 'BACK'.
+      PERFORM back_comm.
+    WHEN 'EXIT'.
+      PERFORM exit_comm.
+    WHEN 'CLOSE'.
+      PERFORM close_comm.
+  ENDCASE.
+
+ENDMODULE.                    "process_exit INPUT
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  MODULE user_command_9001 INPUT</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  设置9001屏幕的按钮</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE user_command_9001 INPUT.
+  save_code = ok_code.
+  CLEAR ok_code.
+  CASE save_code.
+    WHEN 'QUERY'.
+      PERFORM query_data.
+    WHEN 'SJ'.
+      PERFORM show_cl_data.
+    when 'F_NO_CL'.
+      PERFORM SHOW_JM4.
+  ENDCASE.
+ENDMODULE.                    "user_command_9001 INPUT
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  MODULE process_exit_9002 INPUT</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* 9002屏幕的退出按钮设置</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE process_exit_9002 INPUT.
+  CLEAR: save_code.
+  save_code = ok_code.
+  CLEAR:ok_code.
+
+  CASE save_code.
+    WHEN 'BACK'.
+      PERFORM back_comm.
+    WHEN 'EXIT'.
+      PERFORM exit_comm.
+    WHEN 'CLOSE'.
+      PERFORM close_comm.
+  ENDCASE.
+
+ENDMODULE.                    "process_exit_9002 INPUT
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  USER_COMMAND_9002  INPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       9002屏幕的输入命令</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE user_command_9002 INPUT.
+  save_code = ok_code.
+  CLEAR ok_code.
+  CASE save_code.
+    WHEN 'B1'.
+      PERFORM calculate.
+  ENDCASE.
+ENDMODULE.                 " USER_COMMAND_9002  INPUT
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  MODULE process_9003 INPUT</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       9003屏幕的退出按钮设置</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE process_9003 INPUT.
+  CLEAR: save_code.
+  save_code = ok_code.
+  CLEAR:ok_code.
+
+  CASE save_code.
+    WHEN 'BACK'.
+      PERFORM back_comm.
+    WHEN 'EXIT'.
+      PERFORM exit_comm.
+    WHEN 'CLOSE'.
+      PERFORM close_comm.
+  ENDCASE.
+ENDMODULE.                    "process_9003 INPUT
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  MODULE user_command_9003 INPUT</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*    9003屏幕按钮命令</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE user_command_9003 INPUT.
+  CLEAR save_code.
+  save_code = ok_code.
+  CLEAR ok_code.
+
+  CASE save_code.
+    WHEN 'B2'.
+      PERFORM calucate_xhyc.
+    WHEN 'B3'.
+      PERFORM update_pric.
+<font color ="#0000FF">*******add by yetp 20150423******start</font>
+      PERFORM del_jg.  "清空除联动外物料商业价格2
+<font color ="#0000FF">*******add by yetp 20150423******end</font>
+    WHEN 'BTN_LOOKUP'.
+      PERFORM LOOKUP_LINE.
+  ENDCASE.
+ENDMODULE.                    "user_command_9003 INPUT
+
+<font color ="#0000FF">*{   INSERT         DEVK903944                                        1</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  PROCESS_9004  INPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       9004屏幕的退出按钮设置</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE PROCESS_9004 INPUT.
+  CLEAR: save_code.
+  save_code = ok_code.
+  CLEAR:ok_code.
+
+  CASE save_code.
+    WHEN 'BACK'.
+      PERFORM back_comm.
+    WHEN 'EXIT'.
+      PERFORM exit_comm.
+    WHEN 'CLOSE'.
+      PERFORM close_comm.
+  ENDCASE.
+ENDMODULE.                 " PROCESS_9004  INPUT
+
+<font color ="#0000FF">*}   INSERT</font>
+
+<font color ="#0000FF">*{   INSERT         DEVK903944                                        2</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  USER_COMMAND_9004  INPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE USER_COMMAND_9004 INPUT.
+  CLEAR save_code.
+  save_code = ok_code.
+  CLEAR ok_code.
+
+  CASE save_code.
+    WHEN 'B2'.
+      PERFORM calucate_JSJ. "计算结算价
+    WHEN 'B3'.
+      PERFORM update_jsj.   "更新结算价到物料主数据商业价格3
+    WHEN 'BTN_LOOKUP'.
+      PERFORM LOOKUP_LINE.
+  ENDCASE.
+ENDMODULE.                 " USER_COMMAND_9004  INPUT
+
+<font color ="#0000FF">*}   INSERT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  USER_COMMAND_9005  INPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE USER_COMMAND_9005 INPUT.
+  CLEAR SAVE_code.
+  SAVE_code = OK_CODE.
+  CLEAR OK_CODE.
+
+  CASE SAVE_code.
+    WHEN 'CLOSE'.
+      LEAVE TO SCREEN 0.
+    WHEN 'BTN_CANCEL'.
+      LEAVE TO SCREEN 0.
+    WHEN 'BTN_OK'.
+      PERFORM CHECK_INPUT.
+      PERFORM FIND_FIRST_LINE.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.                 " USER_COMMAND_9005  INPUT
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

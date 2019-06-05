@@ -1,0 +1,1117 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZFI001</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZFI001</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  会计凭证打印</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& 程序名称       : ZFI001</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 作者           : 陈星烨（人民）</font>
+<font color ="#0000FF">*& 开发日期       : 2012-06-25</font>
+<font color ="#0000FF">*& 请求号         :</font>
+<font color ="#0000FF">*& 申请者         : 陈星烨（人民）</font>
+<font color ="#0000FF">*& 描述           : 会计凭证打印</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 变更记录 20180704 代码优化 by yetp</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">** 修改日期 开发人员  请求号 描述</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  ZFI001 MESSAGE-ID ZPEOPLE.
+
+include <a href ="zfi001_define.html">ZFI001_DEFINE</a>.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 定义选择屏幕参数</font>
+<font color ="#0000FF">************************************************************************</font>
+SELECTION-SCREEN BEGIN OF BLOCK BLK1 WITH FRAME TITLE TEXT-001.
+SELECT-OPTIONS:S_GSDM FOR BKPF-BUKRS OBLIGATORY,                                    "公司代码
+               S_GJAHR FOR BKPF-GJAHR OBLIGATORY NO-EXTENSION NO INTERVALS DEFAULT SY-DATUM+0(4),       "会计年度
+               S_PZBH FOR BKPF-BELNR.                                       "凭证编号
+PARAMETERS:
+<font color ="#0000FF">*** begin by huangcz 2012-8-8</font>
+<font color ="#0000FF">*p_flz type BKPF-RLDNR DEFAULT '0L',                              "分类账</font>
+           KTOPL TYPE SKA1-KTOPL DEFAULT '1000' NO-DISPLAY,
+<font color ="#0000FF">*** end by huangcz 2012-8-8</font>
+           P_ZYPZ AS CHECKBOX.                                              "自有凭证
+SELECTION-SCREEN END OF BLOCK BLK1.
+
+SELECTION-SCREEN BEGIN OF BLOCK BLK2 WITH FRAME TITLE TEXT-002.
+SELECT-OPTIONS:S_PZLX FOR BKPF-BLART,                                    "凭证类型
+                  S_GZRQ FOR BKPF-BUDAT,                                    "过账日期
+                  S_PZRQ FOR BKPF-CPUDT,                                    "输入日期
+                  S_BB FOR BKPF-WAERS,                                      "币别
+                  S_ZDNM FOR BKPF-PPNAM,                                    "制单人
+                  S_JE FOR BSEG-WRBTR,                                      "金额
+                  S_KM FOR SKA1-SAKNR.                                      "科目
+SELECTION-SCREEN END OF BLOCK BLK2.
+
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">* START-OF-SELECTION.                                                 *                                                                    *</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+START-OF-SELECTION.
+  PERFORM GET_DATA.
+  PERFORM INIT_LAYOUT.
+  PERFORM INIT_FIELDCAT.
+  PERFORM SHOW_ALV.
+<font color ="#0000FF">*  PERFORM display_by_smart.</font>
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA.
+  TYPES:BEGIN OF TY_TFKBT,
+        FKBER TYPE TFKBT-FKBER,
+        FKBTX TYPE TFKBT-FKBTX,
+        END OF TY_TFKBT,
+
+        BEGIN OF TY_CSKT,
+        KOKRS TYPE CSKT-KOKRS,
+        KOSTL TYPE CSKT-KOSTL,
+        MCTXT TYPE CSKT-MCTXT,
+        END OF TY_CSKT,
+
+        BEGIN OF TY_ANLA,
+        BUKRS TYPE ANLA-BUKRS,
+        ANLN1 TYPE ANLA-ANLN1,
+        ANLN2 TYPE ANLA-ANLN2,
+        TXT50 TYPE ANLA-TXT50,
+        END OF TY_ANLA,
+
+        BEGIN OF TY_AUFK,
+        AUFNR TYPE AUFK-AUFNR,
+        KTEXT TYPE AUFK-KTEXT,
+        END OF TY_AUFK.
+
+<font color ="#0000FF">*** add by yetp 20180705*****start</font>
+  TYPES:BEGIN OF TY_BSEC_TMP,
+        BUKRS TYPE BSEC-BUKRS,
+        BELNR TYPE BSEC-BELNR,
+        GJAHR TYPE BSEC-GJAHR,
+        BUZEI TYPE BSEC-BUZEI,
+        END OF TY_BSEC_TMP,
+
+        BEGIN OF TY_BSEC,
+        BUKRS TYPE BSEC-BUKRS,
+        BELNR TYPE BSEC-BELNR,
+        GJAHR TYPE BSEC-GJAHR,
+        BUZEI TYPE BSEC-BUZEI,
+        NAME1 TYPE BSEC-NAME1,
+        END OF  TY_BSEC,
+
+        BEGIN OF TY_SKAT_TMP,
+          HKONT TYPE BSEG-HKONT,
+        END OF TY_SKAT_TMP,
+
+        BEGIN OF TY_ANLA_TMP,
+         BUKRS TYPE ANLA-BUKRS,
+         ANLN1 TYPE ANLA-ANLN1,
+         ANLN2 TYPE ANLA-ANLN2,
+        END OF TY_ANLA_TMP,
+
+        BEGIN OF TY_CSKT_TMP,
+         KOKRS TYPE CSKT-KOKRS,                                                            "控制范围
+         KOSTL TYPE CSKT-KOSTL,                                                           "成本中心
+        END OF TY_CSKT_TMP,
+
+         BEGIN OF TY_LFA1_TMP,
+           LIFNR TYPE LFA1-LIFNR,
+         END OF TY_LFA1_TMP,
+
+         BEGIN OF TY_AUFK_TMP,
+           AUFNR TYPE AUFK-AUFNR,
+         END OF TY_AUFK_TMP.
+
+  DATA:LT_AUFK_TMP TYPE STANDARD TABLE OF TY_AUFK_TMP,
+       LW_AUFK_TMP TYPE TY_AUFK_TMP.
+
+  DATA:LT_LFA1_TMP TYPE STANDARD TABLE OF TY_LFA1_TMP,
+       LW_LFA1_TMP TYPE TY_LFA1_TMP.
+
+  DATA:LT_CSKT_TMP TYPE STANDARD TABLE OF TY_CSKT_TMP,
+       LW_CSKT_TMP TYPE TY_CSKT_TMP.
+
+  DATA:LT_ANLA_TMP TYPE STANDARD TABLE OF TY_ANLA_TMP,
+       LW_ANLA_TMP TYPE TY_ANLA_TMP.
+
+  DATA:LT_BSEC_TMP TYPE STANDARD TABLE OF TY_BSEC_TMP,
+        LW_BSEC_TMP TYPE TY_BSEC_TMP.
+
+  DATA:LT_BSEC TYPE STANDARD TABLE OF TY_BSEC,
+       LW_BSEC TYPE TY_BSEC.
+
+  DATA:LT_SKAT_TMP TYPE STANDARD TABLE OF TY_SKAT_TMP,
+       LW_SKAT_TMP TYPE TY_SKAT_TMP.
+<font color ="#0000FF">*** add by yetp 20180705*****end</font>
+
+  DATA:LT_TFKBT TYPE STANDARD TABLE OF TY_TFKBT,
+       LW_TFKBT TYPE TY_TFKBT,
+       LT_CSKT TYPE STANDARD TABLE OF TY_CSKT,
+       LW_CSKT TYPE TY_CSKT,
+       LT_ANLA TYPE STANDARD TABLE OF TY_ANLA,
+       LW_ANLA TYPE TY_ANLA,
+       LT_AUFK TYPE STANDARD TABLE OF TY_AUFK,
+       LW_AUFK TYPE TY_AUFK.
+
+<font color ="#0000FF">*** add by yetp 20180705*****start</font>
+  FIELD-SYMBOLS:&lt;LFS_BSEC&gt; TYPE TY_BSEC.
+<font color ="#0000FF">*** add by yetp 20180705*****end</font>
+
+
+  SELECT BUKRS                                                         "公司代码
+         BELNR                                                         "凭证编号
+         GJAHR                                                         "会计年度
+         BLART                                                         "凭证类型
+         NUMPG                                                         "原始单据页码
+         BLDAT                                                         "凭证日期
+         BUDAT                                                         "过账日期
+         WAERS                                                         "币别
+         STBLG                                                         "冲销由
+         XBLNR                                                         "参考
+         KURSF                                                         "汇率
+         USNAM                                                         "审核人
+         BKTXT                                                         "摘要
+         PPNAM                                                         "制单人
+        XBLNR_ALT     " 备选参考编号
+    INTO CORRESPONDING FIELDS OF TABLE GT_DATA
+    FROM BKPF
+  WHERE BUKRS IN S_GSDM
+    AND BLART IN S_PZLX
+    AND BELNR IN S_PZBH
+    AND BLDAT IN S_PZRQ
+    AND BUDAT IN S_GZRQ
+    AND WAERS IN S_BB
+    AND GJAHR IN S_GJAHR
+    AND ( PPNAM IN S_ZDNM OR ( PPNAM = SPACE AND USNAM IN S_ZDNM ) )
+<font color ="#0000FF">*    and RLDNR = p_flz</font>
+    AND BSTAT &lt;&gt; 'V'
+    AND BSTAT &lt;&gt; 'S'.   " 取消注释项目
+
+
+  LOOP AT GT_DATA ASSIGNING &lt;FS_DATA&gt; WHERE PPNAM IS INITIAL.
+    &lt;FS_DATA&gt;-PPNAM = &lt;FS_DATA&gt;-USNAM.
+  ENDLOOP.
+
+  IF P_ZYPZ = 'X'.                                            "如果是自有凭证，排除制单人不是当前用户的记录
+    LOOP AT GT_DATA INTO W_DATA.
+      IF W_DATA-PPNAM &lt;&gt; SY-UNAME.
+        DELETE GT_DATA.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+
+  IF GT_DATA IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+
+  SELECT BUKRS                                                         "公司代码
+         BELNR                                                         "凭证编号
+         GJAHR                                                         "会计年度
+         BUZEI                                                         "项目
+         WRBTR                                                         "凭证金额
+         DMBTR                                                         "本位币金额
+         HKONT                                                          "总账科目
+         KUNNR
+         ANLN1                                                          "主资产号
+         ANLN2                                                          "资产次级编号
+         LIFNR                                                          "供应商编码
+         SAKNR
+         XNEGP                                                          "反记账标识
+         SHKZG                                                          "借贷方标示
+         KOART                                                          "科目类型
+         FKBER                                                          "功能范围
+         KOKRS                                                          "控制范围
+         KOSTL                                                          "成本中心
+         AUFNR                                                          "订单号
+         SGTXT " 行项目文本
+    INTO CORRESPONDING FIELDS OF TABLE GT_BSEG
+    FROM BSEG
+    FOR ALL ENTRIES IN GT_DATA
+  WHERE BUKRS = GT_DATA-BUKRS
+    AND BELNR = GT_DATA-BELNR
+    AND GJAHR = GT_DATA-GJAHR
+    AND DMBTR IN S_JE
+    AND HKONT IN S_KM.
+
+<font color ="#0000FF">**************   b 2012-8-8 by huangcz</font>
+  " 根据gt_bseg 过滤掉gt_data数据
+  IF S_JE IS NOT INITIAL
+    OR S_KM IS NOT INITIAL.
+    SORT GT_BSEG BY BELNR.
+    LOOP AT GT_DATA ASSIGNING &lt;FS_DATA&gt;.
+      READ TABLE GT_BSEG INTO W_BSEG WITH KEY BELNR = &lt;FS_DATA&gt;-BELNR BINARY SEARCH.
+      IF SY-SUBRC &lt;&gt; 0.
+        DELETE GT_DATA.
+      ENDIF.
+    ENDLOOP.
+
+    IF GT_DATA IS INITIAL.
+      MESSAGE S050 DISPLAY LIKE 'E'.
+      STOP.
+    ENDIF.
+
+    " 重新获取所有行项目
+    CLEAR GT_BSEG.
+    SELECT BUKRS                                                         "公司代码
+         BELNR                                                         "凭证编号
+         GJAHR                                                         "会计年度
+         BUZEI                                                         "项目
+         WRBTR                                                         "凭证金额
+         DMBTR                                                         "本位币金额
+         HKONT                                                          "总账科目
+         KUNNR
+         ANLN1                                                          "主资产号
+         ANLN2                                                          "资产次级编号
+         LIFNR                                                          "供应商编码
+         SAKNR
+         XNEGP                                                          "反记账标识
+         SHKZG                                                          "借贷方标示
+         KOART                                                          "科目类型
+         FKBER                                                          "功能范围
+         KOKRS                                                          "控制范围
+         KOSTL                                                          "成本中心
+         AUFNR                                                          "订单号
+          SGTXT " 行项目文本
+    INTO CORRESPONDING FIELDS OF TABLE GT_BSEG
+    FROM BSEG
+    FOR ALL ENTRIES IN GT_DATA
+  WHERE BUKRS = GT_DATA-BUKRS
+    AND BELNR = GT_DATA-BELNR
+    AND GJAHR = GT_DATA-GJAHR.
+  ENDIF.
+
+<font color ="#0000FF">**************    e 2012-8-8</font>
+
+<font color ="#0000FF">*****del by yetp 20180704**start</font>
+<font color ="#0000FF">*  SELECT txt20</font>
+<font color ="#0000FF">*         saknr</font>
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE gt_skat</font>
+<font color ="#0000FF">*    FROM skat</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN gt_bseg</font>
+<font color ="#0000FF">*  WHERE saknr = gt_bseg-hkont</font>
+<font color ="#0000FF">*    AND spras = '1'.</font>
+
+<font color ="#0000FF">*  SELECT bukrs</font>
+<font color ="#0000FF">*         anln1</font>
+<font color ="#0000FF">*         anln2</font>
+<font color ="#0000FF">*         txt50</font>
+<font color ="#0000FF">*   INTO CORRESPONDING FIELDS OF TABLE lt_anla</font>
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE lt_anla "</font>
+<font color ="#0000FF">*    FROM anla</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN gt_bseg</font>
+<font color ="#0000FF">*  WHERE bukrs = gt_bseg-bukrs</font>
+<font color ="#0000FF">*    AND anln1 = gt_bseg-anln1</font>
+<font color ="#0000FF">*    AND anln2 = gt_bseg-anln2.</font>
+
+<font color ="#0000FF">*  SELECT kokrs                                                            "控制范围</font>
+<font color ="#0000FF">*         kostl                                                            "成本中心</font>
+<font color ="#0000FF">*         mctxt                                                            "成本中心描述</font>
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE lt_cskt</font>
+<font color ="#0000FF">*    FROM cskt</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN gt_bseg</font>
+<font color ="#0000FF">*  WHERE kokrs = gt_bseg-kokrs</font>
+<font color ="#0000FF">*    AND kostl = gt_bseg-kostl.</font>
+
+<font color ="#0000FF">*  SELECT KUNNR</font>
+<font color ="#0000FF">*         NAME1</font>
+<font color ="#0000FF">*         XCPDK  " 一次性科目</font>
+<font color ="#0000FF">*    INTO TABLE GT_KNA1</font>
+<font color ="#0000FF">*    FROM KNA1</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN GT_BSEG</font>
+<font color ="#0000FF">*  WHERE KUNNR = GT_BSEG-KUNNR.</font>
+
+<font color ="#0000FF">* SELECT LIFNR</font>
+<font color ="#0000FF">*    NAME1</font>
+<font color ="#0000FF">*        XCPDK   " 一次性科目</font>
+<font color ="#0000FF">*    INTO TABLE GT_LFA1</font>
+<font color ="#0000FF">*    FROM LFA1</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN GT_BSEG</font>
+<font color ="#0000FF">*  WHERE LIFNR = GT_BSEG-LIFNR.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  SELECT BUKRS</font>
+<font color ="#0000FF">*         BUTXT</font>
+<font color ="#0000FF">*    INTO TABLE GT_T001</font>
+<font color ="#0000FF">*    FROM T001</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN GT_DATA</font>
+<font color ="#0000FF">*  WHERE BUKRS = GT_DATA-BUKRS.</font>
+
+
+<font color ="#0000FF">*  SELECT BLART                                                  "凭证日期</font>
+<font color ="#0000FF">*         SPRAS</font>
+<font color ="#0000FF">*         LTEXT                                                  "凭证日期描述</font>
+<font color ="#0000FF">*    INTO TABLE GT_T003T</font>
+<font color ="#0000FF">*    FROM T003T</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN GT_DATA</font>
+<font color ="#0000FF">*  WHERE BLART = GT_DATA-BLART</font>
+<font color ="#0000FF">*    AND SPRAS = '1'.</font>
+
+<font color ="#0000FF">*  SELECT ktext</font>
+<font color ="#0000FF">*         aufnr</font>
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE lt_aufk</font>
+<font color ="#0000FF">*    FROM aufk</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN gt_bseg</font>
+<font color ="#0000FF">*  WHERE aufnr = gt_bseg-aufnr.</font>
+
+<font color ="#0000FF">*****del by yetp 20180704**end</font>
+
+  "add by yetp 20180705***start
+  IF GT_BSEG IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+
+  CLEAR:GT_KNA1.
+  SELECT KUNNR
+         NAME1
+         XCPDK  " 一次性科目
+    INTO TABLE GT_KNA1
+    FROM KNA1.
+  SORT GT_KNA1 BY KUNNR.
+  "add byetyp  20180708***end
+
+  LOOP AT GT_BSEG ASSIGNING &lt;FS_BSEG&gt;.
+
+    READ TABLE GT_KNA1 INTO W_KNA1 WITH KEY KUNNR = &lt;FS_BSEG&gt;-KUNNR BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_BSEG&gt;-ZKHNM = W_KNA1-NAME1.  "add by yetp 20180705
+      " 如果是一次性客户，重新取数
+      IF W_KNA1-XCPDK = 'X'.
+        "del by yetp 20180705***start
+<font color ="#0000FF">*        SELECT SINGLE NAME1</font>
+<font color ="#0000FF">*          INTO &lt;FS_BSEG&gt;-ZKHNM</font>
+<font color ="#0000FF">*          FROM BSEC</font>
+<font color ="#0000FF">*        WHERE BUKRS = &lt;FS_BSEG&gt;-BUKRS</font>
+<font color ="#0000FF">*          AND BELNR = &lt;FS_BSEG&gt;-BELNR</font>
+<font color ="#0000FF">*          AND GJAHR = &lt;FS_BSEG&gt;-GJAHR</font>
+<font color ="#0000FF">*          AND BUZEI = &lt;FS_BSEG&gt;-BUZEI.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*        IF SY-SUBRC &lt;&gt; 0.</font>
+<font color ="#0000FF">*          &lt;FS_BSEG&gt;-ZKHNM = W_KNA1-NAME1.</font>
+<font color ="#0000FF">*        ENDIF.</font>
+        "del by yetp 20180705***end
+
+"add by yetp 20180705****start
+        "保存需要重新取数的客户的信息
+        CLEAR:LW_BSEC_TMP.
+        LW_BSEC_TMP-BUKRS = &lt;FS_BSEG&gt;-BUKRS.
+        LW_BSEC_TMP-BELNR = &lt;FS_BSEG&gt;-BELNR.
+        LW_BSEC_TMP-GJAHR = &lt;FS_BSEG&gt;-GJAHR.
+        LW_BSEC_TMP-BUZEI = &lt;FS_BSEG&gt;-BUZEI.
+        APPEND LW_BSEC_TMP TO LT_BSEC_TMP.
+"add by yetp 20180705****end
+      ELSE.
+<font color ="#0000FF">*        &lt;FS_BSEG&gt;-ZKHNM = W_KNA1-NAME1.     "del by yetp   20180706</font>
+      ENDIF.
+    ENDIF.
+
+    "add by yetp 20180705****start 需要获取名称的数据
+    CLEAR:LW_SKAT_TMP.
+    LW_SKAT_TMP-HKONT = &lt;FS_BSEG&gt;-HKONT.
+    COLLECT LW_SKAT_TMP INTO LT_SKAT_TMP.
+
+    CLEAR:LW_ANLA_TMP.
+    LW_ANLA_TMP-BUKRS = &lt;FS_BSEG&gt;-BUKRS.
+    LW_ANLA_TMP-ANLN1 = &lt;FS_BSEG&gt;-ANLN1.
+    LW_ANLA_TMP-ANLN2 = &lt;FS_BSEG&gt;-ANLN2.
+    COLLECT LW_ANLA_TMP INTO LT_ANLA_TMP.
+
+    CLEAR:LW_CSKT_TMP.
+    LW_CSKT_TMP-KOKRS = &lt;FS_BSEG&gt;-KOKRS.                                                            "控制范围
+    LW_CSKT_TMP-KOSTL = &lt;FS_BSEG&gt;-KOSTL.
+    COLLECT LW_CSKT_TMP INTO LT_CSKT_TMP.
+
+    CLEAR:LW_LFA1_TMP.
+    LW_LFA1_TMP-LIFNR = &lt;FS_BSEG&gt;-LIFNR.
+    COLLECT LW_LFA1_TMP INTO LT_LFA1_TMP.
+
+    CLEAR:LW_AUFK_TMP.
+    LW_AUFK_TMP-AUFNR = &lt;FS_BSEG&gt;-AUFNR.
+    COLLECT LW_AUFK_TMP INTO LT_AUFK_TMP.
+    "add by yetp 20180705****end
+
+    "del by yetp 20180705****start
+<font color ="#0000FF">*    READ TABLE GT_LFA1 INTO W_LFA1 WITH KEY LIFNR = &lt;FS_BSEG&gt;-LIFNR BINARY SEARCH.</font>
+<font color ="#0000FF">*    IF SY-SUBRC = 0.</font>
+<font color ="#0000FF">*      &lt;FS_BSEG&gt;-ZGYNM = W_LFA1-NAME1.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    READ TABLE LT_ANLA INTO LW_ANLA WITH KEY BUKRS = &lt;FS_BSEG&gt;-BUKRS</font>
+<font color ="#0000FF">*                                             ANLN1 = &lt;FS_BSEG&gt;-ANLN1</font>
+<font color ="#0000FF">*                                             ANLN2 = &lt;FS_BSEG&gt;-ANLN2 BINARY SEARCH.</font>
+<font color ="#0000FF">*    IF SY-SUBRC = 0.</font>
+<font color ="#0000FF">*      &lt;FS_BSEG&gt;-TXT50 = LW_ANLA-TXT50.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+    "del by yetp 20180705****end
+
+  ENDLOOP.
+
+
+<font color ="#0000FF">********add by yetp 20180704****start</font>
+  "获取需要重新取数的客户名称信息
+  IF LT_BSEC_TMP IS NOT INITIAL.
+    CLEAR:LT_BSEC.
+    SELECT BUKRS
+      BELNR
+      GJAHR
+      BUZEI
+      NAME1
+      INTO  TABLE LT_BSEC
+      FROM BSEC
+      FOR ALL ENTRIES IN LT_BSEC_TMP
+    WHERE BUKRS = LT_BSEC_TMP-BUKRS
+      AND BELNR = LT_BSEC_TMP-BELNR
+      AND GJAHR = LT_BSEC_TMP-GJAHR
+      AND BUZEI = LT_BSEC_TMP-BUZEI.
+
+    SORT LT_BSEC_TMP BY BUKRS BELNR GJAHR BUZEI.
+  ENDIF.
+
+
+"获取总账科目名称
+  IF LT_SKAT_TMP IS NOT INITIAL.
+    CLEAR:GT_SKAT.
+    SELECT SAKNR
+      TXT20
+      INTO  TABLE GT_SKAT
+      FROM SKAT
+      FOR ALL ENTRIES IN LT_SKAT_TMP
+    WHERE SAKNR = LT_SKAT_TMP-HKONT
+      AND SPRAS = '1'.
+    SORT GT_SKAT BY SAKNR.
+  ENDIF.
+
+
+"获取资产记录名称
+  IF LT_ANLA_TMP IS NOT INITIAL.
+    CLEAR:LT_ANLA.
+    SELECT BUKRS
+       ANLN1
+       ANLN2
+       TXT50
+      INTO TABLE LT_ANLA "
+      FROM ANLA
+      FOR ALL ENTRIES IN LT_ANLA_TMP
+    WHERE  BUKRS = LT_ANLA_TMP-BUKRS
+      AND ANLN1 = LT_ANLA_TMP-ANLN1
+      AND ANLN2 = LT_ANLA_TMP-ANLN2.
+    SORT LT_ANLA BY BUKRS ANLN1 ANLN2.
+  ENDIF.
+
+
+"获取成本中心说明
+  IF LT_CSKT_TMP IS NOT INITIAL.
+    CLEAR:LT_CSKT.
+    SELECT KOKRS                                                            "控制范围
+           KOSTL                                                            "成本中心
+           MCTXT                                                            "成本中心描述
+      INTO TABLE LT_CSKT
+      FROM CSKT
+      FOR ALL ENTRIES IN LT_CSKT_TMP
+    WHERE KOKRS = LT_CSKT_TMP-KOKRS
+      AND KOSTL = LT_CSKT_TMP-KOSTL
+      AND SPRAS = '1'.
+    SORT LT_CSKT BY KOKRS KOSTL.
+  ENDIF.
+
+
+"获取供应商名称
+  IF LT_LFA1_TMP IS NOT INITIAL .
+    CLEAR:GT_LFA1.
+    SELECT LIFNR
+       NAME1
+           XCPDK   " 一次性科目
+       INTO TABLE GT_LFA1
+       FROM LFA1
+       FOR ALL ENTRIES IN LT_LFA1_TMP
+      WHERE LIFNR = LT_LFA1_TMP-LIFNR
+      .
+    SORT GT_LFA1 BY LIFNR.
+  ENDIF.
+
+
+"获取公司名称
+  CLEAR:GT_T001.
+  SELECT BUKRS
+         BUTXT
+    INTO TABLE GT_T001
+    FROM T001
+    WHERE BUKRS IN S_GSDM.
+  SORT  GT_T001 BY BUKRS.
+
+
+"获取凭证类型文本
+  CLEAR:GT_T003T.
+  SELECT BLART                                                  "凭证日期
+         SPRAS
+         LTEXT                                                  "凭证日期描述
+    INTO TABLE GT_T003T
+    FROM T003T
+  WHERE  SPRAS = '1'.
+  SORT GT_T003T BY BLART.
+
+
+"获取员工姓名
+  CLEAR:GT_USERNAME.
+  SELECT USR21~BNAME
+    NAME_TEXT
+    INTO TABLE GT_USERNAME
+    FROM ADRP INNER JOIN USR21
+    ON  ADRP~PERSNUMBER = USR21~PERSNUMBER.
+  SORT GT_USERNAME BY BNAME.
+
+
+"获取生产订单号
+  IF LT_AUFK_TMP IS NOT INITIAL.
+    SELECT AUFNR
+      KTEXT
+      INTO  TABLE LT_AUFK
+      FROM AUFK
+      FOR ALL ENTRIES IN LT_AUFK_TMP
+    WHERE AUFNR = LT_AUFK_TMP-AUFNR.
+    SORT LT_AUFK BY AUFNR.
+  ENDIF.
+<font color ="#0000FF">********add by yetp 20180704****end</font>
+
+  SELECT FKBER                                                          "功能范围
+         FKBTX                                                          "功能范围的名称
+    INTO TABLE LT_TFKBT          "modify by yetp 20180705
+    FROM TFKBT
+  WHERE SPRAS = '1'.
+  SORT LT_TFKBT BY FKBER .   "add by yetp 20180705
+
+
+  LOOP AT GT_DATA ASSIGNING &lt;FS_DATA&gt;.
+    READ TABLE GT_T001 INTO W_T001 WITH KEY BUKRS = &lt;FS_DATA&gt;-BUKRS BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_DATA&gt;-BUTXT = W_T001-BUTXT.
+    ENDIF.
+
+    READ TABLE GT_T003T INTO W_T003T WITH KEY BLART = &lt;FS_DATA&gt;-BLART BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_DATA&gt;-LTEXT = W_T003T-LTEXT.
+    ENDIF.
+
+    IF &lt;FS_DATA&gt;-KURSF IS INITIAL.
+      &lt;FS_DATA&gt;-KURSF = 1.
+    ENDIF.
+
+    IF &lt;FS_DATA&gt;-PPNAM IS INITIAL.
+      &lt;FS_DATA&gt;-PPNAM = &lt;FS_DATA&gt;-USNAM.
+    ENDIF.
+
+
+<font color ="#0000FF">**********del by yetp 20180705*******start</font>
+<font color ="#0000FF">*    CALL FUNCTION 'ZGET_USER_NAME'</font>
+<font color ="#0000FF">*      EXPORTING</font>
+<font color ="#0000FF">*        SYSNAME         = &lt;FS_DATA&gt;-PPNAM</font>
+<font color ="#0000FF">*     IMPORTING</font>
+<font color ="#0000FF">*       USERNAME        = &lt;FS_DATA&gt;-ZZDNM</font>
+<font color ="#0000FF">**       EXCEPTIONS</font>
+<font color ="#0000FF">**         NOT_FOUND       = 1</font>
+<font color ="#0000FF">**         OTHERS          = 2</font>
+<font color ="#0000FF">*              .</font>
+<font color ="#0000FF">*    IF SY-SUBRC &lt;&gt; 0.</font>
+<font color ="#0000FF">** Implement suitable error handling here</font>
+<font color ="#0000FF">*    ENDIF.</font>
+
+
+<font color ="#0000FF">*    IF &lt;FS_DATA&gt;-USNAM IS NOT INITIAL.</font>
+<font color ="#0000FF">*      CALL FUNCTION 'ZGET_USER_NAME'</font>
+<font color ="#0000FF">*        EXPORTING</font>
+<font color ="#0000FF">*          SYSNAME         = &lt;FS_DATA&gt;-USNAM</font>
+<font color ="#0000FF">*       IMPORTING</font>
+<font color ="#0000FF">*         USERNAME        = &lt;FS_DATA&gt;-ZSHNM</font>
+<font color ="#0000FF">**       EXCEPTIONS</font>
+<font color ="#0000FF">**         NOT_FOUND       = 1</font>
+<font color ="#0000FF">**         OTHERS          = 2</font>
+<font color ="#0000FF">*                .</font>
+<font color ="#0000FF">*      IF SY-SUBRC &lt;&gt; 0.</font>
+<font color ="#0000FF">** Implement suitable error handling here</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">**********del by yetp 20180705*******end</font>
+
+<font color ="#0000FF">**********add by yetp 20180705*******start</font>
+
+    READ TABLE GT_USERNAME ASSIGNING &lt;FS_USERNAME&gt; WITH KEY BNAME = &lt;FS_DATA&gt;-PPNAM BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_DATA&gt;-ZZDNM = &lt;FS_USERNAME&gt;-NAME_TEXT.
+    ENDIF.
+
+
+    IF &lt;FS_DATA&gt;-USNAM IS NOT INITIAL.
+      READ TABLE GT_USERNAME ASSIGNING &lt;FS_USERNAME&gt; WITH KEY BNAME = &lt;FS_DATA&gt;-USNAM BINARY SEARCH.
+      IF SY-SUBRC = 0.
+        &lt;FS_DATA&gt;-ZSHNM = &lt;FS_USERNAME&gt;-NAME_TEXT.
+      ENDIF.
+    ENDIF.
+<font color ="#0000FF">**********add by yetp 20180705*******end</font>
+
+  ENDLOOP.
+
+<font color ="#0000FF">**********del by yetp 20180705*******start</font>
+<font color ="#0000FF">*  LOOP AT GT_DATA ASSIGNING &lt;FS_DATA&gt;.</font>
+<font color ="#0000FF">*    LOOP AT GT_BSEG ASSIGNING &lt;FS_BSEG&gt; WHERE BUKRS = &lt;FS_DATA&gt;-BUKRS</font>
+<font color ="#0000FF">*                                           AND BELNR = &lt;FS_DATA&gt;-BELNR</font>
+<font color ="#0000FF">*                                           AND GJAHR = &lt;FS_DATA&gt;-GJAHR.</font>
+<font color ="#0000FF">*      &lt;FS_BSEG&gt;-BKTXT = &lt;FS_DATA&gt;-BKTXT.</font>
+<font color ="#0000FF">*    ENDLOOP.</font>
+<font color ="#0000FF">*  ENDLOOP.</font>
+<font color ="#0000FF">**********del by yetp 20180705*******end</font>
+
+  SORT GT_DATA BY BUKRS GJAHR BELNR.
+
+  LOOP AT GT_BSEG ASSIGNING &lt;FS_BSEG&gt;.
+
+<font color ="#0000FF">**********add by yetp 20180705*******start</font>
+    "获取会计凭证的摘要
+    READ TABLE GT_DATA ASSIGNING &lt;FS_DATA&gt; WITH KEY BUKRS = &lt;FS_BSEG&gt;-BUKRS
+                                                    GJAHR = &lt;FS_BSEG&gt;-GJAHR
+                                                    BELNR = &lt;FS_BSEG&gt;-BELNR BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_BSEG&gt;-BKTXT = &lt;FS_DATA&gt;-BKTXT.
+    ENDIF.
+
+    READ TABLE GT_LFA1 INTO W_LFA1 WITH KEY LIFNR = &lt;FS_BSEG&gt;-LIFNR BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_BSEG&gt;-ZGYNM = W_LFA1-NAME1.
+    ENDIF.
+
+
+    READ TABLE LT_ANLA INTO LW_ANLA WITH KEY BUKRS = &lt;FS_BSEG&gt;-BUKRS
+                                             ANLN1 = &lt;FS_BSEG&gt;-ANLN1
+                                             ANLN2 = &lt;FS_BSEG&gt;-ANLN2 BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_BSEG&gt;-TXT50 = LW_ANLA-TXT50.
+    ENDIF.
+
+    "获取需要重新取数的客户名称
+    READ TABLE LT_BSEC ASSIGNING &lt;LFS_BSEC&gt; WITH KEY BUKRS = &lt;FS_BSEG&gt;-BUKRS
+                                                     BELNR = &lt;FS_BSEG&gt;-BELNR
+                                                     GJAHR = &lt;FS_BSEG&gt;-GJAHR
+                                                     BUZEI = &lt;FS_BSEG&gt;-BUZEI BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_BSEG&gt;-ZKHNM = &lt;LFS_BSEC&gt;-NAME1.
+    ENDIF.
+<font color ="#0000FF">**********add by yetp 20180705*******end</font>
+
+
+    READ TABLE GT_SKAT ASSIGNING &lt;FS_SKAT&gt; WITH KEY SAKNR = &lt;FS_BSEG&gt;-HKONT BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_BSEG&gt;-TXT20 = &lt;FS_SKAT&gt;-TXT20.
+    ENDIF.
+
+
+    IF &lt;FS_BSEG&gt;-HKONT+0(1) = '8'.
+
+
+      PERFORM DELE_ZERO CHANGING &lt;FS_BSEG&gt;-FKBER.
+
+
+      READ TABLE LT_TFKBT INTO LW_TFKBT WITH KEY FKBER = &lt;FS_BSEG&gt;-FKBER BINARY SEARCH.
+      IF SY-SUBRC = 0.
+        &lt;FS_BSEG&gt;-FKBTX = LW_TFKBT-FKBTX.
+      ENDIF.
+
+
+      READ TABLE LT_CSKT INTO LW_CSKT WITH KEY KOKRS = &lt;FS_BSEG&gt;-KOKRS
+                                               KOSTL = &lt;FS_BSEG&gt;-KOSTL BINARY SEARCH.
+      IF SY-SUBRC = 0.
+        &lt;FS_BSEG&gt;-MCTXT = LW_CSKT-MCTXT.
+      ENDIF.
+
+
+      READ TABLE LT_AUFK INTO LW_AUFK WITH KEY AUFNR = &lt;FS_BSEG&gt;-AUFNR BINARY SEARCH.
+      IF SY-SUBRC = 0.
+        &lt;FS_BSEG&gt;-KTEXT = LW_AUFK-KTEXT.
+      ENDIF.
+
+    ENDIF.
+  ENDLOOP.
+
+  SORT GT_DATA BY BLDAT.
+
+<font color ="#0000FF">********************* add by huangcz 20121215 begin ***********************</font>
+  " 获取需要汇总的总账科目
+  IF GT_ZZKM IS INITIAL.
+    SELECT *
+      INTO TABLE GT_ZZKM
+      FROM ZZTZZKM.
+    SORT GT_ZZKM BY SAKNR.
+  ENDIF.
+<font color ="#0000FF">********************* add by huangcz 20121215 end ***********************</font>
+ENDFORM.                    "get_data
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  display_by_smart</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_BY_SMART USING P_FLAG.
+  DATA: LT_BSEG TYPE STANDARD TABLE OF TY_BSEG,
+        LT_BSEG_T TYPE STANDARD TABLE OF TY_BSEG,
+        LW_BSEG TYPE TY_BSEG.
+
+<font color ="#0000FF">*  EXPORT gt_bseg TO MEMORY ID 'ZITEM'.</font>
+  CLEAR GT_HEAD.
+  " 将选中的抬头跟行项目加入的打印队列中
+  LOOP AT GT_DATA ASSIGNING &lt;FS_DATA&gt; WHERE SEL = 'X'.
+    CLEAR W_HEAD.
+    MOVE-CORRESPONDING &lt;FS_DATA&gt; TO W_HEAD.
+    APPEND W_HEAD TO GT_HEAD.
+
+<font color ="#0000FF">************************** modify by huangcz 20121214 begin ******************</font>
+    CLEAR LT_BSEG_T[].
+    LOOP AT GT_BSEG INTO W_BSEG WHERE BELNR = &lt;FS_DATA&gt;-BELNR.
+      APPEND W_BSEG TO LT_BSEG_T.
+    ENDLOOP.
+
+    " 合并打印
+    IF P_FLAG = '1'.
+      SORT LT_BSEG_T BY HKONT SHKZG BUZEI.    " 根据科目编号、借贷项标识排序
+      CLEAR W_BSEG.
+      LOOP AT LT_BSEG_T INTO LW_BSEG.
+        IF W_BSEG-HKONT = LW_BSEG-HKONT.
+          " 相同的借贷项累加
+          IF LW_BSEG-SHKZG = W_BSEG-SHKZG.
+            W_BSEG-WRBTR = W_BSEG-WRBTR + LW_BSEG-WRBTR.
+          ELSE.
+            APPEND W_BSEG TO LT_BSEG.
+            MOVE LW_BSEG TO W_BSEG.
+            CLEAR W_BSEG-SGTXT.
+          ENDIF.
+        ELSE.
+          IF W_BSEG IS NOT INITIAL.
+            APPEND W_BSEG TO LT_BSEG.
+            CLEAR W_BSEG.
+          ENDIF.
+
+          " 查找科目是否需要合并
+          READ TABLE GT_ZZKM INTO W_ZZKM WITH KEY SAKNR = LW_BSEG-HKONT BINARY SEARCH.
+          IF SY-SUBRC = 0.
+            MOVE LW_BSEG TO W_BSEG.
+            CLEAR W_BSEG-SGTXT.
+          ELSE.
+            APPEND LW_BSEG TO LT_BSEG.
+          ENDIF.
+        ENDIF.
+
+        CLEAR LW_BSEG.
+      ENDLOOP.
+
+      IF W_BSEG IS NOT INITIAL.
+        APPEND W_BSEG TO LT_BSEG.
+        CLEAR W_BSEG.
+      ENDIF.
+      SORT LT_BSEG BY BUZEI.
+    ELSE.
+      APPEND LINES OF LT_BSEG_T TO LT_BSEG.
+    ENDIF.
+
+<font color ="#0000FF">************************** modify by huangcz 20121214 end ******************</font>
+  ENDLOOP.
+  " 如果没有数据被选中，则提示并返回
+  IF GT_HEAD IS INITIAL.
+    MESSAGE E030.
+  ENDIF.
+
+  EXPORT LT_BSEG TO MEMORY ID 'ZITEM'.
+
+  CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+    EXPORTING
+      FORMNAME           = 'ZFI001'
+<font color ="#0000FF">*     VARIANT            = ' '</font>
+<font color ="#0000FF">*     DIRECT_CALL        = ' '</font>
+    IMPORTING
+      FM_NAME            = FM_NAME
+    EXCEPTIONS
+      NO_FORM            = 1
+      NO_FUNCTION_MODULE = 2
+      OTHERS             = 3.
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+                WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+  CALL FUNCTION FM_NAME
+    TABLES
+      IT_HEAD          = GT_HEAD
+<font color ="#0000FF">*     it_item          = gt_item</font>
+    EXCEPTIONS
+      FORMATTING_ERROR = 1
+      INTERNAL_ERROR   = 2
+      SEND_ERROR       = 3
+      USER_CANCELED    = 4
+      OTHERS           = 5.
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+             WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+ENDFORM.                    "display_by_smart
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  dele_zero</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;FU_ID      text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DELE_ZERO CHANGING FU_ID.
+  CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+    EXPORTING
+      INPUT  = FU_ID
+    IMPORTING
+      OUTPUT = FU_ID.
+
+ENDFORM.                    "dele_zero
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  INIT_LAYOUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       初始化alv显示模式结构</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_LAYOUT .
+  CLEAR W_LAYOUT.
+
+  W_LAYOUT-ZEBRA = 'X'.
+  W_LAYOUT-COLWIDTH_OPTIMIZE = 'X'.
+ENDFORM.                    " INIT_LAYOUT
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      DEFINE MACRO_FILL_FIELDCAT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       填充结构宏定义</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+DEFINE MACRO_FILL_FIELDCAT.
+  CLEAR W_FIELDCAT.
+  &1 = &1 + 1.
+  W_FIELDCAT-COL_POS    = &1.
+  W_FIELDCAT-FIELDNAME  = &2.
+  W_FIELDCAT-SELTEXT_L     = &3.
+  W_FIELDCAT-SELTEXT_M     = &3.
+  W_FIELDCAT-SELTEXT_S     = &3.
+  W_FIELDCAT-HOTSPOT       = &4.
+  W_FIELDCAT-NO_ZERO       = &5.
+  W_FIELDCAT-OUTPUTLEN     = &6.
+  W_FIELDCAT-KEY           = &7.
+  W_FIELDCAT-FIX_COLUMN    = &8.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+END-OF-DEFINITION.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  INIT_FIELDCAT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       初始化alv字段</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_FIELDCAT .
+  DATA: L_COLPOS TYPE LVC_S_FCAT-COL_POS VALUE 0.
+
+  IF GT_FIELDCAT IS INITIAL.
+    L_COLPOS = L_COLPOS + 1.
+    W_FIELDCAT-COL_POS    = L_COLPOS.
+    W_FIELDCAT-FIELDNAME  = 'SEL'.
+    W_FIELDCAT-CHECKBOX = 'X'.
+    W_FIELDCAT-EDIT = 'X'.
+    APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+    MACRO_FILL_FIELDCAT:
+      L_COLPOS 'BUKRS' '公司代码' '' '' 4 '' '',
+      L_COLPOS 'BELNR' '凭证编号' '' '' 10 '' '',
+      L_COLPOS 'GJAHR' '会计年度' '' '' 4 '' '',
+      L_COLPOS 'BLART' '类型' '' 'X' 2 '' '',
+      L_COLPOS 'BLDAT' '凭证日期' '' '' 8 '' '',
+      L_COLPOS 'BUDAT' '过账日期' '' '' 8 '' '',
+      L_COLPOS 'USNAM' '用户' '' '' 12 '' '',
+      L_COLPOS 'XBLNR' '参考' '' '' 10 '' ''.
+
+  ENDIF.
+ENDFORM.                    " INIT_FIELDCAT
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SHOW_ALV</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       显示alv</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_ALV .
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+<font color ="#0000FF">*     I_INTERFACE_CHECK                 = ' '</font>
+<font color ="#0000FF">*     I_BYPASSING_BUFFER                = ' '</font>
+<font color ="#0000FF">*     I_BUFFER_ACTIVE                   = ' '</font>
+     I_CALLBACK_PROGRAM                = SY-REPID
+     I_CALLBACK_PF_STATUS_SET          = 'SET_PF_STATUS'
+     I_CALLBACK_USER_COMMAND           = 'ALV_USER_COMMAND'
+<font color ="#0000FF">*     I_CALLBACK_TOP_OF_PAGE            = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE       = 'ALV_TOP_OF_PAGE'</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_END_OF_LIST       = ' '</font>
+     IS_LAYOUT                         = W_LAYOUT
+     IT_FIELDCAT                       = GT_FIELDCAT
+     I_SAVE                            = 'A'
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">*     ES_EXIT_CAUSED_BY_USER            =</font>
+    TABLES
+      T_OUTTAB                          = GT_DATA
+   EXCEPTIONS
+     PROGRAM_ERROR                     = 1
+     OTHERS                            = 2
+            .
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+ENDFORM.                    " SHOW_ALV
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_PF_STATUS</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       设置GUI状态</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SET_PF_STATUS USING RT_EXTAB TYPE SLIS_T_EXTAB.
+  DATA: L_CODE TYPE SLIS_EXTAB.
+  L_CODE-FCODE = '&RNT_PREV'.
+  APPEND L_CODE TO RT_EXTAB.
+  SET PF-STATUS 'STANDARD_FULLSCREEN' EXCLUDING RT_EXTAB.
+ENDFORM.                    "SET_PF_STATUS
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  ALV_USER_COMMAND</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       alv的处理事件</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;R_UCOMM      text</font>
+<font color ="#0000FF">*      --&gt;RS_SELFIELD  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM ALV_USER_COMMAND USING R_UCOMM     LIKE SY-UCOMM
+                        RS_SELFIELD TYPE SLIS_SELFIELD.
+  CASE R_UCOMM.
+      " 双击
+    WHEN '&IC1'.
+      READ TABLE GT_DATA ASSIGNING &lt;FS_DATA&gt; INDEX RS_SELFIELD-TABINDEX.
+      IF SY-SUBRC = 0.
+        SET PARAMETER ID 'BLN' FIELD &lt;FS_DATA&gt;-BELNR.
+        SET PARAMETER ID 'BUK' FIELD &lt;FS_DATA&gt;-BUKRS.
+        SET PARAMETER ID 'GJR' FIELD &lt;FS_DATA&gt;-GJAHR.
+        CALL TRANSACTION 'FB03' AND SKIP FIRST SCREEN.
+      ENDIF.
+<font color ="#0000FF">*********************** modify by huangcz 20121214 begin *****************</font>
+<font color ="#0000FF">*    WHEN '&DATA_SAVE'.</font>
+<font color ="#0000FF">*      PERFORM display_by_smart.</font>
+
+    WHEN '&PRINT1'.         " 普通打印
+      R_UCOMM = '&DATA_SAVE'.
+      G_UCOMM = '&PRINT1'.
+    WHEN '&PRINT2'.         " 合并打印
+      R_UCOMM = '&DATA_SAVE'.
+      G_UCOMM = '&PRINT2'.
+    WHEN '&DATA_SAVE'.
+      CASE G_UCOMM.
+        WHEN '&PRINT1'.         " 普通打印
+          PERFORM DISPLAY_BY_SMART USING '0'.
+        WHEN '&PRINT2'.         " 合并打印
+          PERFORM DISPLAY_BY_SMART USING '1'.
+      ENDCASE.
+<font color ="#0000FF">*********************** modify by huangcz 20121214 end *****************</font>
+    WHEN '&S_ALL'.
+      PERFORM SEL_ITEM USING '1'.
+    WHEN '&S_SAL'.
+      PERFORM SEL_ITEM USING '2'.
+  ENDCASE.
+ENDFORM.                    "ALV_USER_COMMAND
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SEL_ITEM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_0848   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SEL_ITEM  USING   P_FLAG.
+  DATA LS_STABLE TYPE LVC_S_STBL.
+  LS_STABLE-ROW = 'X'.
+  LS_STABLE-COL = 'X'.
+
+  IF P_FLAG = '1'.
+    LOOP AT GT_DATA ASSIGNING &lt;FS_DATA&gt; WHERE SEL = SPACE.
+      &lt;FS_DATA&gt;-SEL = 'X'.
+    ENDLOOP.
+  ELSEIF P_FLAG = '2'.
+    LOOP AT GT_DATA ASSIGNING &lt;FS_DATA&gt; WHERE SEL = 'X'.
+      &lt;FS_DATA&gt;-SEL = SPACE.
+    ENDLOOP.
+  ENDIF.
+
+  IF G_ALV_GRID IS INITIAL.
+    CALL FUNCTION 'GET_GLOBALS_FROM_SLVC_FULLSCR'
+      IMPORTING
+        E_GRID = G_ALV_GRID.
+  ENDIF.
+
+  CALL METHOD G_ALV_GRID-&gt;REFRESH_TABLE_DISPLAY
+    EXPORTING
+      IS_STABLE      =  LS_STABLE
+<font color ="#0000FF">*          I_SOFT_REFRESH =</font>
+<font color ="#0000FF">*        EXCEPTIONS</font>
+<font color ="#0000FF">*          FINISHED       = 1</font>
+<font color ="#0000FF">*          others         = 2</font>
+          .
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">*       MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO</font>
+<font color ="#0000FF">*                  WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.</font>
+  ENDIF.
+ENDFORM.                    " SEL_ITEM
+
+<font color ="#0000FF">*Text elements</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* 002 一般选择</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* P_ZYPZ         自有凭证</font>
+<font color ="#0000FF">* S_BB         币别</font>
+<font color ="#0000FF">* S_GJAHR         会计年度</font>
+<font color ="#0000FF">* S_GSDM         公司代码</font>
+<font color ="#0000FF">* S_GZRQ         过账日期</font>
+<font color ="#0000FF">* S_JE         金额</font>
+<font color ="#0000FF">* S_KM         总账科目编号</font>
+<font color ="#0000FF">* S_PZBH         凭证编号</font>
+<font color ="#0000FF">* S_PZLX         凭证类型</font>
+<font color ="#0000FF">* S_PZRQ         输入日期</font>
+<font color ="#0000FF">* S_ZDNM         制单人</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPEOPLE</font>
+<font color ="#0000FF">*030   请至少选择一条记录!</font>
+<font color ="#0000FF">*050   没有满足查询条件的数据!</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

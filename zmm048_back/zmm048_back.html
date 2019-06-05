@@ -1,0 +1,599 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZMM048_BACK</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZMM048_BACK</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  zmm48库存补充计划表-后台运行</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  ZMM048_BACK</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  ZMM048_BACK.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 类型字段</font>
+<font color ="#0000FF">************************************************************************</font>
+
+TYPES:BEGIN OF TY_MATER,
+      MATNR TYPE MARA-MATNR,
+    WERKS  TYPE MARC-WERKS,
+    MAKTX TYPE MAKT-MAKTX,
+    MATKL type MARA-MATKL,
+    EKGRP TYPE MARC-EKGRP,
+    PRDHA type MARA-PRDHA,
+    CARN TYPE MARM-UMREN,
+    BOXN TYPE  MARM-UMREN,
+    lgort  TYPE MARD-lgort,
+ END OF TY_MATER.
+
+
+
+TYPES:  BEGIN OF TY_ZCKXQ,
+            MATNR TYPE MATNR,
+           WERKS TYPE WERKS_D,
+           MAKTX TYPE MAKTX,
+           KCJY TYPE MENGV13,
+           TEXT TYPE TEXT40,   "订单行项目的生产说明
+           EXTRA TYPE TEXT17,
+        END OF TY_ZCKXQ.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*内表&工作区</font>
+<font color ="#0000FF">************************************************************************</font>
+DATA: GT_MATER TYPE STANDARD TABLE OF TY_MATER,
+     W_MATER TYPE TY_MATER.
+DATA:  GT_ZCKXQ TYPE STANDARD TABLE OF TY_ZCKXQ,
+       W_ZCKXQ TYPE TY_ZCKXQ.
+DATA: GT_MM TYPE STANDARD TABLE OF ZZTMM48,
+     W_MM TYPE ZZTMM48.
+RANGES:R_XSWERKS  FOR T001W-WERKS.    "工厂range
+
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 字段符声明</font>
+<font color ="#0000FF">************************************************************************</font>
+FIELD-SYMBOLS:&lt;FS_ZCKXQ&gt; TYPE TY_ZCKXQ,
+               &lt;FS_MM&gt; TYPE ZZTMM48,
+               &lt;FS_MATER&gt; TYPE TY_MATER.
+
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 选择屏幕</font>
+<font color ="#0000FF">************************************************************************</font>
+SELECTION-SCREEN BEGIN OF BLOCK BLK WITH FRAME TITLE TEXT-001.
+PARAMETER: P_WERKS TYPE MARC-WERKS. " 物流工厂
+
+SELECTION-SCREEN END OF BLOCK BLK.
+
+
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*& start-of-selection</font>
+<font color ="#0000FF">************************************************************************</font>
+START-OF-SELECTION.
+    perform deleteData.
+<font color ="#0000FF">*跑后台代码</font>
+    PERFORM CREATEDATA.
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DELETEDATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DELETEDATA .
+  DELETE FROM ZZTMM48 where ZSTAT = 1.
+ENDFORM.                    " DELETEDATA
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  CREATEDATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CREATEDATA .
+
+  PERFORM GET_HT_XSWERKS. "获取销售工厂
+
+  IF R_XSWERKS[] IS INITIAL.
+    EXIT.
+  ENDIF.
+
+  PERFORM GET_HT_XSMATER.  "获取物料数据
+
+  PERFORM GET_HT_XSXQ.    "获取库存需求值，以及生产说明文本
+
+  PERFORM CRETE_ZJB.
+
+ENDFORM.                    " CREATEDATA
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_HT_XSWERKS</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       获取销售工厂</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_HT_XSWERKS .
+  TYPES:BEGIN OF TY_BWKEY,
+        BWKEY TYPE T001K-BWKEY,
+        END OF TY_BWKEY.
+
+  DATA:LT_BWKEY TYPE STANDARD TABLE OF TY_BWKEY.
+
+  DATA:BEGIN OF LT_WERKS OCCURS 0,
+     WERKS TYPE T001W-WERKS,
+     END OF LT_WERKS.
+
+  "取评估类型
+  SELECT  BWKEY
+    FROM T001K
+    INTO   TABLE LT_BWKEY
+   WHERE BUKRS = 1000.
+
+  IF LT_BWKEY IS INITIAL .
+    EXIT.
+  ENDIF.
+
+  "根据评估类型取工厂
+  SELECT WERKS
+    FROM T001W
+    INTO TABLE LT_WERKS
+    FOR ALL ENTRIES IN LT_BWKEY
+   WHERE BWKEY = LT_BWKEY-BWKEY AND WERKS &lt;&gt; '1000' AND WERKS = 'L001'.
+
+  LOOP AT LT_WERKS.
+    R_XSWERKS-SIGN    = 'I'.
+    R_XSWERKS-OPTION  = 'EQ'.
+    R_XSWERKS-LOW     = LT_WERKS-WERKS.
+    APPEND R_XSWERKS.
+  ENDLOOP.
+ENDFORM.                    " GET_HT_XSWERKS
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_HT_XSMATER</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       获取物料数据</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_HT_XSMATER .
+ TYPES:  BEGIN OF TY_MAKTX,     " 物料描述
+           MATNR TYPE MARA-MATNR,  " 物料编号
+           MAKTX TYPE MAKT-MAKTX,  " 物料描述
+          END OF TY_MAKTX.
+
+  TYPES: BEGIN OF TY_PRDHA, " 产品层次描述
+            PRODH TYPE MARA-PRDHA,  " 产品层次
+            VTEXT TYPE T179T-VTEXT, " 产品层次描述
+           END OF TY_PRDHA.
+
+  TYPES:   BEGIN OF TY_BOXKAR,
+             MATNR TYPE MARM-MATNR,
+             UMREZ TYPE MARM-UMREZ,   "基本计量单位转换分子
+             UMREN TYPE MARM-UMREN,   "转换为基本计量单位的分母
+             MEINH TYPE MARM-MEINH,   "帐面库存单位的可选计量单位
+           END OF TY_BOXKAR.
+
+  DATA:   LT_PRDHA TYPE STANDARD TABLE OF TY_PRDHA,
+          LW_PRDHA TYPE TY_PRDHA.
+  DATA: LT_MAKTX TYPE STANDARD TABLE OF TY_MAKTX,
+       LW_MAKTX TYPE TY_MAKTX.
+  DATA: LT_BOXKAR TYPE STANDARD TABLE OF TY_BOXKAR,
+     LW_BOXKAR TYPE TY_BOXKAR.
+
+
+  DATA:L_INDEX TYPE I,
+  L_DATUM TYPE SY-DATUM,
+  L_GSMNG TYPE PLAF-GSMNG.
+
+  CLEAR:GT_MATER.
+  " 首先获取销售工厂的数据
+  SELECT MARA~MATNR
+      MARC~WERKS
+      MARA~PRDHA    "产品层次
+      MARC~EKGRP    " 采购组
+      MARC~lgfsb as lgort    "库存地点
+      mara~MATKL    "物料组
+      INTO CORRESPONDING FIELDS OF TABLE GT_MATER
+      FROM MARA INNER JOIN MARC
+      ON MARA~MATNR = MARC~MATNR
+    WHERE  WERKS IN R_XSWERKS[]
+      AND MARA~MSTAV = SPACE
+      AND MARA~LVORM = SPACE  " 标记要删除的物料
+      AND MARC~LVORM = SPACE.
+
+  IF GT_MATER IS INITIAL.
+    LEAVE PROGRAM.
+  ENDIF.
+
+  SORT GT_MATER BY MATNR.
+
+  " 获取物料描述
+  SELECT MATNR
+    MAKTX
+    INTO TABLE LT_MAKTX
+    FROM MAKT
+    FOR ALL ENTRIES IN GT_MATER
+  WHERE MAKT~MATNR = GT_MATER-MATNR
+    AND SPRAS = '1'.
+  SORT LT_MAKTX BY MATNR.
+
+<font color ="#0000FF">* 获取物料的箱只数和盒只数</font>
+  SELECT MATNR MEINH UMREZ UMREN
+    INTO CORRESPONDING FIELDS OF TABLE LT_BOXKAR
+    FROM MARM
+    FOR ALL ENTRIES IN GT_MATER
+  WHERE MARM~MATNR = GT_MATER-MATNR AND MARM~MEINH IN ('KAR','BOX').
+  SORT LT_BOXKAR BY MATNR MEINH.
+
+
+  LOOP AT GT_MATER ASSIGNING &lt;FS_MATER&gt;.
+    " 设置物料描述
+    READ TABLE LT_MAKTX INTO LW_MAKTX WITH KEY MATNR = &lt;FS_MATER&gt;-MATNR BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_MATER&gt;-MAKTX = LW_MAKTX-MAKTX.
+    ENDIF.
+
+
+    READ TABLE LT_BOXKAR INTO  LW_BOXKAR WITH KEY MATNR = &lt;FS_MATER&gt;-MATNR MEINH = 'KAR' BINARY SEARCH.
+    IF  SY-SUBRC = 0 AND LW_BOXKAR-UMREN &lt;&gt; 0.
+      &lt;FS_MATER&gt;-CARN = LW_BOXKAR-UMREZ / LW_BOXKAR-UMREN.
+    ENDIF.
+
+    READ TABLE LT_BOXKAR INTO  LW_BOXKAR WITH KEY MATNR = &lt;FS_MATER&gt;-MATNR MEINH = 'BOX' BINARY SEARCH.
+    IF  SY-SUBRC = 0 AND LW_BOXKAR-UMREN &lt;&gt; 0.
+      &lt;FS_MATER&gt;-BOXN = LW_BOXKAR-UMREZ / LW_BOXKAR-UMREN.
+    ENDIF.
+
+<font color ="#0000FF">*    &lt;FS_ZZTMM48&gt;-ZSTAT = '1'.  "自建状态</font>
+  ENDLOOP.
+ENDFORM.                    " GET_HT_XSMATER
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_HT_XSXQ</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      获取库存需求值，以及生产说明文本</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_HT_XSXQ .
+TYPES:  BEGIN OF TY_ZXQGG,
+              MATNR TYPE MATNR,
+             WERKS TYPE WERKS_D,
+             MAKTX TYPE MAKTX,
+             ZAQKC TYPE ZAQKC,   "安全库存
+             ZXSDD TYPE ZXSDD,   "销售订单
+             ZJHJH TYPE ZJHJH,   "交货计划
+             ZWQCG TYPE ZWQCG,   "未清采购--采购订单(PO项目)
+             ZWQSQ TYPE ZWQSQ,   "未清申请--采购申(PurRqs)
+             ZGCKC TYPE ZGCKC,   "工厂库存
+             TEXT TYPE TEXT40,   "订单行项目的生产说明
+          END OF TY_ZXQGG.
+
+
+
+  TYPES:  BEGIN OF TY_MARD,
+              MATNR TYPE MATNR,
+             WERKS TYPE WERKS_D,
+             LGORT TYPE LGORT_D,  "库存地点
+             LABST TYPE LABST,   "非限制使用的估价的库存
+          END OF TY_MARD.
+
+
+  DATA: LW_MT61D TYPE MT61D,  " 返回的物料信息
+        LT_MDPSX TYPE STANDARD TABLE OF MDPS,  "MRP凭证中的项目
+        LW_MDPSX TYPE MDPS,
+        LT_MDEZX TYPE STANDARD TABLE OF MDEZ,  "MRP要素的个别行
+        LW_MDEZX TYPE MDEZ,
+        LT_ZXQGG TYPE STANDARD TABLE OF TY_ZXQGG,
+        LW_ZXQGG TYPE TY_ZXQGG,
+        LT_MARD TYPE STANDARD TABLE OF TY_MARD,  "物料的仓储位置数据
+        LW_MARD TYPE TY_MARD.
+
+  DATA:L_MNG01 LIKE MDPS-MNG01,
+       L_MATNR LIKE MARC-MATNR,
+       L_WERKS LIKE MARC-WERKS,
+       L_ZLABST LIKE MARD-LABST,
+       L_VBELN  TYPE VBAP-VBELN,    " 订单号
+       L_POSNR TYPE VBAP-POSNR,  " 行项目
+       L_EXTRA TYPE TEXT17,
+       IS_SPECIALORDER TYPE C,
+       IS_HAVEPUTONGORDER TYPE C,
+       L_TSXQ TYPE MENGV13,    "特殊订单的需求值总和
+       L_PTXQ TYPE MENGV13,    "普通订单的需求值总和
+       L_CARN TYPE MARM-UMREN, "箱只数。
+       L_TEMP TYPE MENGV13,
+       L_KCJY TYPE MENGV13.    "库存需求建议值
+
+  FIELD-SYMBOLS: &lt;FS_MDPSX&gt; TYPE MDPS,
+                   &lt;FS_MDEZX&gt; TYPE MDEZ,
+                   &lt;FS_MARD&gt; TYPE TY_MARD.
+
+  SORT GT_MATER BY MATNR WERKS.
+  LOOP AT  GT_MATER ASSIGNING &lt;FS_MATER&gt;.
+
+    L_MATNR = &lt;FS_MATER&gt;-MATNR.
+    L_WERKS = &lt;FS_MATER&gt;-WERKS.
+
+    CALL FUNCTION 'MD_STOCK_REQUIREMENTS_LIST_API'
+      EXPORTING
+<font color ="#0000FF">*       PLSCN   =</font>
+        MATNR   = L_MATNR
+        WERKS   = L_WERKS
+      IMPORTING
+        E_MT61D = LW_MT61D
+      TABLES
+        MDPSX   = LT_MDPSX
+        MDEZX   = LT_MDEZX.
+<font color ="#0000FF">*     MDSUX                          =</font>
+<font color ="#0000FF">*   EXCEPTIONS</font>
+<font color ="#0000FF">*     MATERIAL_PLANT_NOT_FOUND       = 1</font>
+<font color ="#0000FF">*     PLANT_NOT_FOUND                = 2</font>
+<font color ="#0000FF">*     OTHERS                         = 3</font>
+
+    IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+<font color ="#0000FF">* TODO:错误处理</font>
+<font color ="#0000FF">*    RETURN.</font>
+    ENDIF.
+
+    SELECT MARD~MATNR
+        MARD~WERKS
+        MARD~LGORT
+        MARD~LABST
+        INTO CORRESPONDING FIELDS OF TABLE LT_MARD
+        FROM MARD
+<font color ="#0000FF">*    WHERE  WERKS in R_XSWERKS[]</font>
+      WHERE MARD~WERKS = L_WERKS
+        AND MARD~MATNR = L_MATNR
+        AND MARD~LGORT &lt; 'L030'.
+
+    CLEAR L_ZLABST.
+    LOOP AT LT_MARD ASSIGNING &lt;FS_MARD&gt;.
+      L_ZLABST = L_ZLABST + &lt;FS_MARD&gt;-LABST.
+    ENDLOOP.
+
+    CLEAR LW_ZXQGG.
+    CLEAR L_TSXQ.
+    CLEAR L_PTXQ.
+    CLEAR L_TEMP.
+    CLEAR IS_HAVEPUTONGORDER.
+    LW_ZXQGG-MATNR = L_MATNR.
+    LW_ZXQGG-WERKS = L_WERKS.
+    LW_ZXQGG-MAKTX = LW_MT61D-MAKTX.
+    LW_ZXQGG-ZGCKC = L_ZLABST.
+
+
+    READ TABLE GT_MATER INTO  W_MATER  WITH KEY MATNR = LW_ZXQGG-MATNR WERKS = LW_ZXQGG-WERKS  BINARY SEARCH.
+    IF  SY-SUBRC = 0.
+      L_CARN = W_MATER-CARN.
+    ENDIF.
+
+
+    LOOP AT LT_MDEZX ASSIGNING &lt;FS_MDEZX&gt;.
+
+      L_MNG01 = ABS( &lt;FS_MDEZX&gt;-MNG01 ).
+
+      CASE &lt;FS_MDEZX&gt;-DELKZ.
+        WHEN 'VC'.  "CusOrd（订单）
+          LW_ZXQGG-ZXSDD = L_MNG01.
+<font color ="#0000FF">*         如果是特殊订单设置标记为1</font>
+          L_VBELN = &lt;FS_MDEZX&gt;-EXTRA+0(10).
+          L_POSNR = &lt;FS_MDEZX&gt;-EXTRA+11(6).
+          L_EXTRA = &lt;FS_MDEZX&gt;-EXTRA+0(17).
+
+          CLEAR LW_ZXQGG-TEXT.
+          IF L_VBELN IS NOT INITIAL  AND L_POSNR IS NOT INITIAL.
+            PERFORM GET_TEXT USING L_VBELN L_POSNR CHANGING LW_ZXQGG-TEXT.    "获取生产说明文本
+          ENDIF.
+
+          CLEAR IS_SPECIALORDER.
+          IF LW_ZXQGG-TEXT IS NOT INITIAL.
+            IS_SPECIALORDER = 'X'.   "标记为特殊订单
+           L_TSXQ = L_TSXQ + LW_ZXQGG-ZXSDD.
+          ELSE.
+             IS_HAVEPUTONGORDER = 'X'.    "存在普通订单
+             L_PTXQ = L_PTXQ + LW_ZXQGG-ZXSDD.
+          ENDIF.
+
+      ENDCASE.
+
+      CASE &lt;FS_MDEZX&gt;-DELKZ.
+        WHEN 'SH'.  " 安全库存
+          LW_ZXQGG-ZAQKC = LW_ZXQGG-ZAQKC + L_MNG01.
+        WHEN 'VJ'.    "交货
+          LW_ZXQGG-ZJHJH = LW_ZXQGG-ZJHJH + L_MNG01.
+        WHEN 'BE'.  " 采购订单 (PO项目)
+          LW_ZXQGG-ZWQCG = LW_ZXQGG-ZWQCG + L_MNG01.
+        WHEN 'BA'.  " 采购申请(PurRqs)
+          LW_ZXQGG-ZWQSQ = LW_ZXQGG-ZWQSQ + L_MNG01.
+      ENDCASE.
+
+
+      CLEAR W_ZCKXQ.
+      IF IS_SPECIALORDER = 'X' AND &lt;FS_MDEZX&gt;-DELKZ = 'VC'.
+        IF LW_ZXQGG-ZXSDD &gt; 0.
+          W_ZCKXQ-MATNR = LW_ZXQGG-MATNR.
+          W_ZCKXQ-WERKS = LW_ZXQGG-WERKS.
+          W_ZCKXQ-MAKTX = LW_ZXQGG-MAKTX.
+          W_ZCKXQ-TEXT = LW_ZXQGG-TEXT.
+          W_ZCKXQ-KCJY = LW_ZXQGG-ZXSDD.
+          PERform GET_RVOD USING  L_CARN CHANGING W_ZCKXQ-KCJY.
+          W_ZCKXQ-EXTRA = L_EXTRA.
+          APPEND W_ZCKXQ TO GT_ZCKXQ.
+        ENDIF.
+      ENDIF.
+    ENDLOOP.
+
+    CLEAR W_ZCKXQ.
+
+    L_TEMP = L_PTXQ + LW_ZXQGG-ZAQKC + LW_ZXQGG-ZJHJH - LW_ZXQGG-ZGCKC - LW_ZXQGG-ZWQCG - LW_ZXQGG-ZWQSQ - L_TSXQ.
+    IF IS_HAVEPUTONGORDER = 'X' and L_TEMP &gt; 0.      "普通订单
+        W_ZCKXQ-MATNR = LW_ZXQGG-MATNR.
+        W_ZCKXQ-WERKS = LW_ZXQGG-WERKS.
+        W_ZCKXQ-MAKTX = LW_ZXQGG-MAKTX.
+        W_ZCKXQ-TEXT = LW_ZXQGG-TEXT.
+        W_ZCKXQ-KCJY = L_TEMP.
+        W_ZCKXQ-EXTRA = ''.
+
+        PERform GET_RVOD USING  L_CARN CHANGING W_ZCKXQ-KCJY.
+
+        APPEND W_ZCKXQ TO GT_ZCKXQ.
+
+    ENDIF.
+
+  ENDLOOP.
+ENDFORM.                    " GET_HT_XSXQ
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  CRETE_ZJB</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       创建自建表</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CRETE_ZJB .
+ SORT GT_ZCKXQ BY MATNR WERKS.
+  SORT GT_MATER BY MATNR WERKS.
+
+  LOOP AT GT_ZCKXQ ASSIGNING &lt;FS_ZCKXQ&gt;.
+    CLEAR W_MM.
+    CLEAR W_MATER.
+    W_MM-MATNR = &lt;FS_ZCKXQ&gt;-MATNR.
+    W_MM-WERKS = &lt;FS_ZCKXQ&gt;-WERKS.
+    W_MM-MAKTX = &lt;FS_ZCKXQ&gt;-MAKTX.
+    W_MM-RVOD = &lt;FS_ZCKXQ&gt;-KCJY.  "库存建议值
+
+    IF &lt;FS_ZCKXQ&gt;-EXTRA IS NOT INITIAL.
+      W_MM-EXTRA = &lt;FS_ZCKXQ&gt;-EXTRA.
+    ENDIF.
+
+    IF &lt;FS_ZCKXQ&gt;-TEXT IS NOT INITIAL.
+      W_MM-TEXT = &lt;FS_ZCKXQ&gt;-TEXT.
+    ENDIF.
+
+
+    READ TABLE GT_MATER INTO  W_MATER  WITH KEY MATNR = &lt;FS_ZCKXQ&gt;-MATNR WERKS = &lt;FS_ZCKXQ&gt;-WERKS  BINARY SEARCH.
+    IF  SY-SUBRC = 0.
+      W_MM-BOXN = W_MATER-BOXN.
+      W_MM-CARN = W_MATER-CARN.
+      W_MM-EKGRP = W_MATER-EKGRP.
+      W_MM-lgort = W_MATER-lgort.
+      W_MM-PRDHA = W_MATER-PRDHA.
+      W_MM-MATKL = W_MATER-MATKL.
+      W_MM-ZSTAT = '1'.   "创建
+      W_MM-CRTED = SY-DATUM.
+      W_MM-CRTET = SY-UZEIT.
+    ENDIF.
+
+    APPEND W_MM TO GT_MM.
+  ENDLOOP.
+
+
+ INSERT ZZTMM48 FROM TABLE GT_MM.
+  IF SY-SUBRC = 0.
+    COMMIT WORK AND WAIT.
+  ELSE.
+    ROLLBACK WORK .
+  ENDIF.
+
+ENDFORM.                    " CRETE_ZJB
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_RVOD</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       根据装箱数获取库存需求值</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_L_CARN  text</font>
+<font color ="#0000FF">*      &lt;--P_W_ZCKXQ_KCJY  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_RVOD  USING    L_CARN
+               CHANGING P_KCJY.
+
+
+data:  L_DIVISOR TYPE MARM-UMREN, "除数
+       L_MOD TYPE MARM-UMREN. "L_CARN
+
+        IF L_CARN &lt;&gt; 0.
+          L_DIVISOR = ABS( P_KCJY )  DIV L_CARN.
+          L_MOD = ABS( P_KCJY ) MOD L_CARN.
+          IF L_MOD &lt;&gt; 0.
+            P_KCJY = ( L_DIVISOR + 1 ) * L_CARN.
+          ENDIF.
+        ENDIF.
+
+ENDFORM.                    " GET_RVOD
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_TEXT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       获取订单行项目的生产说明文本</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_L_VBELN  text</font>
+<font color ="#0000FF">*      --&gt;P_L_POSNR  text</font>
+<font color ="#0000FF">*      &lt;--P_LW_ZXQGG_TEXT  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_TEXT  USING    L_VBELN
+                        L_POSNR
+               CHANGING TEXT.
+
+  DATA: L_NAME TYPE THEAD-TDNAME.
+  DATA: GT_TLINE TYPE STANDARD TABLE OF TLINE,
+        W_TLINE TYPE TLINE.
+
+  CONCATENATE L_VBELN L_POSNR INTO L_NAME.
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      CLIENT    = SY-MANDT
+      ID        = 'Z001'
+      LANGUAGE  = '1'
+      NAME      = L_NAME
+      OBJECT    = 'VBBP'
+    TABLES
+      LINES     = GT_TLINE
+    EXCEPTIONS
+      NOT_FOUND = 4.
+  IF SY-SUBRC &lt;&gt; 0.
+    TEXT = ''.
+  ELSE.
+    LOOP AT GT_TLINE INTO W_TLINE.
+      CONCATENATE TEXT W_TLINE-TDLINE INTO TEXT.
+    ENDLOOP.
+  ENDIF.
+
+  CLEAR: GT_TLINE.
+
+ENDFORM.                    " GET_TEXT
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>Y_CBOII_TEST002</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: Y_CBOII_TEST002</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  OPEN SQL  练习</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  Y_CBOII_TEST002</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& OPEN Sql练习</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  Y_CBOII_TEST002.
+
+<font color ="#0000FF">** 1.SELECT语法结构</font>
+<font color ="#0000FF">**      SELECT 语句用于实现对数据的查询，其语法结构如下：</font>
+<font color ="#0000FF">**      SELECT &lt;result&gt; FROM &lt;dbtab&gt;</font>
+<font color ="#0000FF">**      INTO &lt;target&gt;</font>
+<font color ="#0000FF">**      WHERE &lt;condition&gt;</font>
+<font color ="#0000FF">**      GROUP BY &lt;fields&gt; ORDER BY &lt;fields&gt;</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**      其中各关键字的属性描述如下：</font>
+<font color ="#0000FF">**      SELECT &lt;result&gt;：具体的查询字段。</font>
+<font color ="#0000FF">**      SELECT SINGLE：定义单行查询。</font>
+<font color ="#0000FF">**      FROM &lt;dbtab&gt;：所查询的透明表。</font>
+<font color ="#0000FF">**      INTO &lt;target&gt;：查询结果赋值对象，赋值到具体表或结构体。</font>
+<font color ="#0000FF">**      INTO (&lt;f1&gt;...&lt;fn&gt;)：将查询结果赋值到具体字段。</font>
+<font color ="#0000FF">**      INTO CORRESPONDING FILES OF &lt;itab&gt;：将查询结果按字段匹配赋值给具体的表或者结构体。</font>
+<font color ="#0000FF">**      WHERE &lt;condition&gt;：查询条件。</font>
+<font color ="#0000FF">**      GROUP BY &lt;fileds&gt;：分组查询条件。</font>
+<font color ="#0000FF">**      ORDER BY &lt;fields&gt;：排序条件。</font>
+
+     TABLES:SPFLI.
+      DATA sitab LIKE TABLE OF SPFLI WITH HEADER LINE.
+      SELECT SINGLE CarrId ConnId Airpfrom Airpto FROM SPFLI INTO CORRESPONDING FIELDS OF sitab.
+      WRITE: / 'sitab-CarrId=',sitab-CarrId,
+             / 'sitab-ConnId=',sitab-ConnId,
+             / 'sitab-Airpfrom=',sitab-Airpfrom,
+              / 'siab-Airpto=',sitab-Airpto.
+
+<font color ="#0000FF">**    2.   使用SELECT...ENDSELECT语法能循环读取及操作查询，通过系统参数SY-DBCNT可以获取当前读取数据的行数，</font>
+<font color ="#0000FF">**       该语法中不能加入SINGLE、INTO CORRESPONDING FIELDS、TABLE等关键字，中间可以使用CHECK语法来判断查询值，如下：</font>
+<font color ="#0000FF">*</font>
+      TABLES:SBOOK.
+
+      DATA:COUNTS TYPE I,TOTAL TYPE P DECIMALS 2,AVERAGE TYPE F.
+      DATA:CONNID LIKE SBOOK-CONNID.
+
+<font color ="#0000FF">*     SELECT SINGLE LUGGWEIGHT FROM SBOOK INTO TOTAL.</font>
+<font color ="#0000FF">*     WRITE TOTAL.</font>
+
+      SELECT CONNID COUNT(*) SUM( LUGGWEIGHT ) AVG( LUGGWEIGHT )
+      INTO (CONNID,COUNTS,TOTAL,AVERAGE)
+      FROM SBOOK
+<font color ="#0000FF">*     WHERE CARRID = 'LH' AND FLDATE = '19950228'</font>
+      GROUP BY CONNID.
+      WRITE: / 'SY-DBCNT=',SY-DBCNT,
+             / 'CONNID=', CONNID,
+             / 'COUNTS=',COUNTS,
+             / 'TOTAL=',TOTAL,
+             / 'AVERAGE=',AVERAGE.
+
+      CHECK TOTAL &gt; 10.
+       WRITE: / 'THW SUM WEIGHT MORE THAN 10.'.
+     ENDSELECT.
+
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**    3.SELECT常用标准函数</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**  Open SQL 常用的标准函数如下：</font>
+<font color ="#0000FF">**  COUNT()：统计查询总数。</font>
+<font color ="#0000FF">**  SUM()：统计表中某个数值字段的总和。</font>
+<font color ="#0000FF">**  AVG()：统计表中某个数值字段的平均值。</font>
+<font color ="#0000FF">**  MAX()：统计表中某个字段的最大值。</font>
+<font color ="#0000FF">**  MIN() ：统计表中某个字段的最小值。</font>
+
+
+
+<font color ="#0000FF">** 4.多表连接查询</font>
+<font color ="#0000FF">**   ABAP中当需要同时查询多个表的相关字段时，需要使用到JOIN语句，跟平常数据库中用到的连接查询基本上相同。共包含三种：</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**      1）INNER JOIN：查询结果包含两个连接表中彼此相对应的数据记录。</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**      2）LEFT OUTER JOIN：查询结果集中包含左则表中的所有数据记录，右表中仅查询出包含相对应的匹配条件的数据。</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**      3）FULL OUTER JOIN：包含左右表所有的记录。</font>
+<font color ="#0000FF">*</font>
+TABLES:SPFLI,SFLIGHT.
+
+      DATA:BEGIN OF Xflight OCCURS 0,
+               airpfrom LIKE SPFLI-Airpfrom,
+               airpto LIKE SPFLI-Airpto,
+               fldate LIKE SFLIGHT-Fldate,
+              deptime LIKE SPFLI-Deptime,
+      END OF Xflight.
+
+     SELECT a~airpfrom a~airpto b~fldate a~deptime INTO CORRESPONDING FIELDS OF TABLE Xflight
+     FROM SPFLI AS a INNER JOIN SFLIGHT AS b
+     ON a~CARRID = b~CARRID AND a~CONNID = b~CONNID
+     ORDER BY a~airpfrom a~airpto b~fldate a~deptime.
+
+     LOOP AT Xflight.
+        WRITE: / 'Airpfrom=', Xflight-Airpfrom,
+                    / 'Airpto=', Xflight-Airpto.
+    ENDLOOP.
+
+
+
+<font color ="#0000FF">**  5.参照内表条件进行查询</font>
+<font color ="#0000FF">**内表可以用来临时存放多条数据，Open SQL允许以内表数据作为查询条件，相关语法如下：</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**     SELECT &lt;f1...fn&gt; FROM &lt;dbtab&gt; FOR ALL ENTRIED IN &lt;itab&gt; WHERE....。</font>
+<font color ="#0000FF">*</font>
+TABLES:SPFLI,SFLIGHT.
+
+   DATA:BEGIN OF xpfli OCCURS 0,
+        carrid LIKE SPFLI-CARRID,
+        connid LIKE SPFLI-CONNID,
+   END OF xpfli.
+
+   DATA:xxflight LIKE TABLE OF xpfli WITH HEADER LINE.
+
+   SELECT CARRID CONNID INTO CORRESPONDING FIELDS OF TABLE xpfli FROM SPFLI WHERE CARRID = 'LH'.
+
+   IF NOT xpfli[] IS INITIAL.  “检查是否为空
+ SELECT * FROM SFLIGHT INTO CORRESPONDING FIELDS OF TABLE xxflight FOR ALL ENTRIES IN xpfli WHERE CARRID = xpfli-CARRID AND CONNID = xpfli-CONNID.
+   ENDIF.
+
+
+   LOOP AT xxflight.
+     WRITE: / 'CARRID=',xxflight-carrid,
+            / 'CONNID=',xxflight-connid.
+   ENDLOOP.
+
+<font color ="#0000FF">** 5.2 查询表字段名转换.</font>
+<font color ="#0000FF">**在查询过程中我们通常会遇到这样的情况，将透明表查询值直接传递给内表，两表中字段结构一样，但字段名称却不同。</font>
+<font color ="#0000FF">**通常的情况下将字段名称设为一致的。除此之那还可以用AS关键字，就像SQL中的用法一样。</font>
+<font color ="#0000FF">*</font>
+TABLES:SPFLI.
+
+DATA:BEGIN OF xpfli OCCURS 0,
+     carrid LIKE SPFLI-CARRID,
+     connid2 LIKE SPFLI-CONNID,
+     END OF xpfli.
+
+SELECT CARRID CONNID AS CONNID2   "将字段用AS关键字重命名
+
+INTO CORRESPONDING FIELDS OF TABLE xpfli FROM SPFLI WHERE CARRID = 'LH'.
+
+LOOP AT xpfli.
+ WRITE: / 'CARRID=',xpfli-carrid,
+        / 'CONNID2=',xpfli-connid2.
+ENDLOOP.
+
+
+<font color ="#0000FF">**6.open sql 获取数据行限制</font>
+<font color ="#0000FF">**  在数据库SQL查询中当要获取前几条数据时会用到关键字TOP，在Open SQL中也有相类似的功能，可以使用 UP TO n ROWS语法来限制读取数据的条数，语法如下：</font>
+<font color ="#0000FF">**     SELECT * INTO ...... UP TO N ROWS.</font>
+TABLES:SPFLI.
+
+  DATA: P_SPFLI LIKE STANDARD TABLE OF SPFLI WITH HEADER LINE.
+  SELECT * FROM SPFLI INTO CORRESPONDING FIELDS OF TABLE P_SPFLI UP TO 5 ROWS.
+  LOOP AT P_SPFLI.
+    WRITE: / SY-TABIX, ':P_SPFLI-CARRID=',P_SPFLI-CARRID.
+  ENDLOOP.
+
+<font color ="#0000FF">*  6.2 使用PACKAGE SIZE N连续读取数据。</font>
+   TABLES:SPFLI.
+
+  DATA:T_SPFLI LIKE STANDARD TABLE OF SPFLI WITH HEADER LINE.
+  SELECT * FROM SPFLI
+  INTO CORRESPONDING FIELDS OF TABLE T_SPFLI
+  PACKAGE SIZE 5 UP TO 20 ROWS.  "UP TO 20 ROWS限制返回20行数据，否则返回所有的数据。
+  ULINE.
+   LOOP AT T_SPFLI.
+    WRITE: / SY-TABIX,':T_SPFLI-CARRID=',T_SPFLI-CARRID,
+           / SY-TABIX,':T_SPFLI-CONNID=',T_SPFLI-CONNID,
+           / SY-TABIX,':T_SPFLI-AIRPFROM=',T_SPFLI-AIRPFROM,
+           / SY-TABIX,':T_SPFLI-AIRPTO=',T_SPFLI-AIRPTO.
+   ENDLOOP.
+  ENDSELECT.
+
+
+<font color ="#0000FF">** 7.open sql CRUD(增删改查)</font>
+<font color ="#0000FF">** 7.1.UPDATE（修改操作）</font>
+<font color ="#0000FF">**    UPDATE实现对数据的更新操作，语法如下：</font>
+<font color ="#0000FF">**    UPDATE &lt;dbtab&gt; SET f1...fn (WHERE &lt;condition&gt;).</font>
+<font color ="#0000FF">**  UPDATE &lt;dbtab&gt; FROM TABLE &lt;itab&gt; (WHERE &lt;condition&gt;).</font>
+<font color ="#0000FF">**    [For Example]</font>
+<font color ="#0000FF">*</font>
+    UPDATE SPFLI SET:AIRPTO = 'MONTREAL-DO' WHERE CARRID = 'AC '.
+<font color ="#0000FF">*    UPDATE SCUSTOM SET:DISCOUNT = '003',LANGU = 'ENGLISH',REGION = 'SEATTLE',TELEPHONE = '888888' WHERE ID = 38.</font>
+    UPDATE SCUSTOM SET: TELEPHONE = '86111' NAME = 'TOM KIY' LANGU = 'ENGLISH' REGION = 'SEATTLE' WHERE
+ID = '12400177'.
+
+  TABLES SCUSTOM.
+  SCUSTOM-ID = '11279'.
+  SCUSTOM-NAME = 'JACK BLOGS'.
+  SCUSTOM-POSTCODE = '658896'.
+  SCUSTOM-CITY = 'SIGAPO'.
+  INSERT INTO SCUSTOM VALUES SCUSTOM.
+  WRITE SCUSTOM.
+
+<font color ="#0000FF">**    7.2.INSERT(插入数据)</font>
+<font color ="#0000FF">**   INSERT语句用于对数据的新增操作，语法如下：</font>
+<font color ="#0000FF">**    INSERT INTO &lt;dbtab&gt; VALUES &lt;conditin&gt;.</font>
+<font color ="#0000FF">**   INSERT &lt;dbtab&gt; FROM TABLE &lt;itab&gt;.</font>
+<font color ="#0000FF">**   [For Example]</font>
+  TABLES SCUSTOM.
+  SCUSTOM-ID = '11279'.
+  SCUSTOM-NAME = 'JACK BLOGS'.
+  SCUSTOM-POSTCODE = '658896'.
+  SCUSTOM-CITY = 'SIGAPO'.
+  INSERT INTO SCUSTOM VALUES SCUSTOM. "从某一结构体获取新增数据
+
+  DATA sitab LIKE TABLE OF SCUSTOM WITH HEADER LINE.
+  SELECT SINGLE ID NAME FROM SCUSTOM INTO CORRESPONDING FIELDS OF sitab WHERE ID = '11279'.
+  WRITE :/'id=',sitab-ID,
+        /'NAME=',sitab-NAME.
+<font color ="#0000FF">*  SELECT SINGLE id name from SCUSTOM.*  INSERT SCUSTOM.  "直接对表HEADER LINE赋值新增</font>
+
+  TABLES SAIRPORT.
+  SAIRPORT-ID = 'KIT'.
+  SAIRPORT-NAME = 'NEW ZLAND'.
+  INSERT SAIRPORT. "直接对表HEADER LINE赋值新增
+
+
+<font color ="#0000FF">**     7.3.DELETE(删除操作)</font>
+<font color ="#0000FF">**   DELETE 语句用于删除表中的数据，语法如下：</font>
+<font color ="#0000FF">**   DELETE FROM &lt;dbtab&gt; WHERE &lt;condition&gt;.</font>
+<font color ="#0000FF">**   DELETE FROM &lt;dbtab&gt;.</font>
+<font color ="#0000FF">**   DELETE &lt;dbtab&gt; FROM TABLE &lt;itab&gt;.</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**   [For Example]</font>
+  TABLES SCUSTOM.
+DELETE FROM SCUSTOM WHERE ID = '12400177' AND POSTCODE = '888888'.  "按条件删除数据
+
+SCUSTOM-ID = '11278'.
+SCUSTOM-NAME = 'BILL'.
+DELETE SCUSTOM.  "按结构体条件删除表数据，按内表数据进行删除基本类似
+
+<font color ="#0000FF">**  7.4.MODIFY操作</font>
+<font color ="#0000FF">**   MODIFY操作是用于修改数据库中的数据。与UPDATE操作不同的是，如何表中不存在符合条件的数据时会添加一样新数据。也就是说MODIFY拥有  INSERT 和 UPDATE的操作动作。不过通过MODIFY修改的数据效率比较低下，远不如UPDATE和INSERT操作。语法如下：</font>
+<font color ="#0000FF">**  MODIFY &lt;dbtab&gt;.</font>
+<font color ="#0000FF">**  MODIFY &lt;dbtab&gt; FROM TABLE &lt;itab&gt;.</font>
+
+<font color ="#0000FF">**7.5 （重点）工作区，内表，标题行的定义和区别：https://www.cnblogs.com/foxting/archive/2012/06/08/2541425.html</font>
+<font color ="#0000FF">*DATA  IT_EKBE  LIKE TABLE OF WA_EKBE.</font>
+<font color ="#0000FF">*DATA: WA_LFA1  TYPE  LFA1.</font>
+<font color ="#0000FF">*DATA  IT_LFA1        TYPE TABLE OF LFA1.</font>
+<font color ="#0000FF">*DATA  IT_LFA1        LIKE TABLE OF WA_LFA1.</font>
+
+<font color ="#0000FF">** 8. Open SQL能够动态定义WHERE条件。如下：</font>
+
+
+
+<font color ="#0000FF">**     [For Example]</font>
+ DATA: WHERE_TAB TYPE TABLE OF EDPLINE.
+   DATA: DT_SCUSTOM LIKE STANDARD TABLE OF SCUSTOM WITH HEADER LINE.
+
+   APPEND ' ID = 11279 ' TO WHERE_TAB.  "添加条件
+   APPEND ' OR ' TO WHERE_TAB.
+   APPEND ' ID = 36 ' TO WHERE_TAB.
+
+
+<font color ="#0000FF">*   DATA COND TYPE STRING.</font>
+<font color ="#0000FF">*   LOOP AT WHERE_TAB INTO COND.  "无HEADER LINE内表LOOP...INTO FIELD</font>
+     "WRITE: / COND.
+<font color ="#0000FF">*   ENDLOOP.</font>
+
+   SELECT ID NAME FROM SCUSTOM INTO CORRESPONDING FIELDS OF  DT_SCUSTOM WHERE (WHERE_TAB).
+     WRITE:/ DT_SCUSTOM.
+   ENDSELECT.
+
+    SELECT * FROM SCUSTOM INTO  DT_SCUSTOM WHERE (WHERE_TAB).
+     WRITE:/ DT_SCUSTOM.
+   ENDSELECT.
+
+
+
+
+      TABLES:MARA.
+      DATA:TOTAL TYPE P DECIMALS 2.
+      DATA:ERSDA LIKE MARA-ERSDA,MATNR like MARA-MATNR.
+
+     SELECT SINGLE LUGGWEIGHT FROM SBOOK INTO TOTAL.
+     WRITE TOTAL.
+
+      SELECT ERSDA MATNR
+      INTO (ERSDA,MATNR)
+      FROM MARA.
+<font color ="#0000FF">*     WHERE CARRID = 'LH' AND FLDATE = '19950228'</font>
+<font color ="#0000FF">*      GROUP BY MATNR.</font>
+      WRITE: / 'ERSDA=',ERSDA,
+             / 'MATNR=', MATNR.
+
+      CHECK TOTAL &gt; 10.
+       WRITE: / 'THW SUM WEIGHT MORE THAN 10.'.
+     ENDSELECT.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

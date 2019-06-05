@@ -1,0 +1,50 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZMM048_PBO_FORM</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZMM048_PBO_FORM</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZMM048_PBO_FORM</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZMM048_PBO_FORM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_INPUT_MODE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SET_INPUT_MODE .
+    IF W_ZZTMM48-ZSTAT = '1' OR W_ZZTMM48-ZSTAT = SPACE OR W_ZZTMM48-ZSTAT = '2'.
+    LOOP AT SCREEN.
+      IF SCREEN-NAME = 'W_ZZTMM48-LGORT' or screen-name = 'W_ZZTMM48-RVOD'.
+        SCREEN-INPUT = 1.
+        MODIFY SCREEN.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+
+<font color ="#0000FF">*    IF W_ZZTMM48-ZSTATUS = '2' .</font>
+<font color ="#0000FF">*    LOOP AT SCREEN.</font>
+<font color ="#0000FF">*      IF SCREEN-NAME = 'W_PM-YJRQ'  .</font>
+<font color ="#0000FF">*        SCREEN-INPUT = 1.</font>
+<font color ="#0000FF">*        MODIFY SCREEN.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">*    ENDLOOP.</font>
+<font color ="#0000FF">*  ENDIF.</font>
+
+
+  "插单检查权限
+ENDFORM.                    " SET_INPUT_MODE
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

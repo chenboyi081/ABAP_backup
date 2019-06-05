@@ -1,0 +1,55 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>Y_CBOII_TEST006</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: Y_CBOII_TEST006</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  调用smartforms</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  Y_CBOII_TEST006</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&调用smartforms</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  Y_CBOII_TEST006.
+
+DATA fm_name TYPE rs38l_fnam.
+CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+EXPORTING
+  FORMNAME ='Y_CBOII_FORM'
+  VARIANT = ''
+  DIRECT_CALL = ''
+IMPORTING
+  fm_name = fm_name
+ EXCEPTIONS
+   NO_FORM = 1
+   NO_FUNCTION_MODULE = 2
+   OTHERS = 3.
+IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">*错误处理</font>
+ ENDIF.
+ CALL FUNCTION fm_name
+ EXPORTING
+   TESTPARMS = 'MicroSoft'      "传入参数值
+ EXCEPTIONS
+   FORMATTIONG_ERROR = 1
+   INTERNAL_ERROR = 2
+   SEND_ERROR = 3
+   USER_CANCELED = 4
+   OTHERS = 5.
+ IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">*错误处理</font>
+ ENDIF.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

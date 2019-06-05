@@ -1,0 +1,1009 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZYC030_PAI_FORM</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZYC030_PAI_FORM</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZYC030_PAI_FORM</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZYC030_PAI_FORM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM QUERY_DATA.
+  DATA: LT_WHERE TYPE STANDARD TABLE OF STRING,
+        LW_WHERE TYPE STRING,
+<font color ="#0000FF">*        lw_jm1 like line of gt_jm1,</font>
+        L_POSN TYPE ZPOSN.
+  CLEAR L_POSN.
+  IF W_HEAD-ZJGYCD IS NOT INITIAL.
+    LW_WHERE = 'ZZTJGYC_I~ZJGYCD = W_HEAD-ZJGYCD'.
+    APPEND LW_WHERE TO LT_WHERE.
+    CLEAR LW_WHERE.
+  ENDIF.
+  IF G_ZSTAT IS NOT INITIAL AND G_ZSTAT &lt;&gt; 'E999'.
+    IF LT_WHERE IS NOT INITIAL.
+      LW_WHERE = 'AND ZSTAT = G_ZSTAT'.
+    ELSE.
+      LW_WHERE = 'ZSTAT = G_ZSTAT'.
+    ENDIF.
+    APPEND LW_WHERE TO LT_WHERE.
+    CLEAR LW_WHERE.
+  ENDIF.
+  IF G_ZTZJG IS NOT INITIAL.
+    IF LT_WHERE IS NOT INITIAL.
+      LW_WHERE = 'AND ZTZJG = G_ZTZJG'.
+    ELSE.
+      LW_WHERE = 'ZTZJG = G_ZTZJG'.
+    ENDIF.
+    APPEND LW_WHERE TO LT_WHERE.
+    CLEAR LW_WHERE.
+  ENDIF.
+
+  SELECT ZSTAT
+         ZZTJGYC_H~ZJGYCD
+         ZTZJG
+         ZZTJGYC_I~ZBEIZ
+         ERNAM
+         ERDAT
+         ZSPRQ
+         ZSPNM
+    INTO CORRESPONDING FIELDS OF TABLE GT_JM1
+    FROM ZZTJGYC_H INNER JOIN ZZTJGYC_I
+    ON ZZTJGYC_H~ZJGYCD = ZZTJGYC_I~ZJGYCD
+  WHERE ERDAT BETWEEN W_HEAD-ZBDAT AND W_HEAD-ZEDAT
+     AND ERNAM = W_HEAD-ERNAM
+     AND (LT_WHERE).
+
+  IF GT_JM1 IS INITIAL.
+    MESSAGE E050.
+  ENDIF.
+
+  IF GT_JM1 IS NOT INITIAL.
+    LOOP AT GT_JM1 INTO W_JM1.
+      PERFORM GET_DOMVALUE_TEXT USING C_ZSTAT W_JM1-ZSTAT W_JM1-ZTEXT1.
+      PERFORM GET_DOMVALUE_TEXT USING C_ZTZJG W_JM1-ZTZJG W_JM1-ZTEXT2.
+      SELECT SINGLE ZUNAM
+           ZUDAT
+       INTO CORRESPONDING FIELDS OF W_JM1
+       FROM ZZTZTJL
+       WHERE ZSTAT = W_JM1-ZSTAT
+        AND ZDJBH = W_JM1-ZJGYCD.
+      MODIFY GT_JM1 FROM W_JM1.
+    ENDLOOP.
+    DELETE ADJACENT DUPLICATES FROM GT_JM1 COMPARING ZJGYCD.
+    LOOP AT GT_JM1 INTO W_JM1.
+      L_POSN = L_POSN + C_POS_GAP.
+      W_JM1-ZPOSN = L_POSN.
+      MODIFY GT_JM1 FROM W_JM1.
+    ENDLOOP.
+  ENDIF.
+
+ENDFORM.                    "query_data
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  show_cl_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       双击调用9002的屏幕</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_CL_DATA.
+  DATA:L_LINE TYPE I,
+        L_AREA TYPE DD04L-ROLLNAME.
+  CLEAR:L_LINE,
+        L_AREA.
+
+  G_CX_FLAG = 'X'. "设置查询标识为预测价格物料查询
+  CLEAR:SCR_CONTENT.
+
+  "l_line: 光标在表格控制器的当前行
+  "l_area: 光标所在的表格控制器
+  GET CURSOR LINE L_LINE AREA L_AREA.
+  IF L_AREA &lt;&gt; 'TAB1'.
+    EXIT.
+  ENDIF.
+  "计算双击行对应内表的第N行
+  G_DOU_LINE = TAB1-TOP_LINE + L_LINE  - 1.
+  READ TABLE GT_JM1 ASSIGNING &lt;FS_JM1&gt; INDEX G_DOU_LINE.
+  IF SY-SUBRC = 0.
+
+    IF &lt;FS_JM1&gt;-ZSTAT &lt;&gt; 'E006'.
+      MESSAGE E455.
+    ENDIF.
+
+    SELECT SINGLE ZJGYCD
+                  ZSTAT
+                  ZTZJG
+      INTO CORRESPONDING FIELDS OF W_HEAD2
+      FROM ZZTJGYC_H
+     WHERE ZJGYCD = &lt;FS_JM1&gt;-ZJGYCD.
+    PERFORM GET_DOMVALUE_TEXT USING C_ZSTAT W_HEAD2-ZSTAT W_HEAD2-ZTEXT1.
+    IF W_HEAD2-ZTZJG = '1'.
+      G_YCJG1 = 'X'.
+      CLEAR:G_YCJG2,
+            G_YCJG3.
+    ENDIF.
+    IF W_HEAD2-ZTZJG = '2'.
+      G_YCJG2 = 'X'.
+      CLEAR:G_YCJG1,
+            G_YCJG3.
+    ENDIF.
+    IF W_HEAD2-ZTZJG = '3'.
+      G_YCJG3 = 'X'.
+      CLEAR:G_YCJG1,
+            G_YCJG2.
+    ENDIF.
+    SELECT *
+      INTO CORRESPONDING FIELDS OF TABLE GT_JM2
+      FROM ZZTJGYC_I
+    WHERE ZJGYCD = &lt;FS_JM1&gt;-ZJGYCD.
+    CALL SCREEN 9002.
+  ENDIF.
+ENDFORM.                    "show_cl_data
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  calculate</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       从物料主数据表中取数</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CALCULATE.
+<font color ="#0000FF">*******************add by yetp 20121204***********start</font>
+<font color ="#0000FF">*******************add by yetp 20140702***********start</font>
+  TYPES:BEGIN OF  TY_EINA,
+     INFNR TYPE EINE-INFNR, "采购信息记录的编号
+     EKORG TYPE EINE-EKORG, "采购组织
+     ESOKZ TYPE EINE-ESOKZ, "采购信息记录分类
+     WERKS TYPE EINE-WERKS,"工厂
+     MATNR TYPE EINA-MATNR,"物料编码
+     LIFNR TYPE EINA-LIFNR,
+       END OF TY_EINA.
+
+  DATA:LT_EINA TYPE STANDARD TABLE OF TY_EINA,
+       LW_EINA TYPE TY_EINA.
+<font color ="#0000FF">*******************add by yetp 20140702***********end</font>
+
+  DATA:L_TMP TYPE STANDARD TABLE OF TY_MIDDLE.
+  DATA:L_NO TYPE I.
+  DATA:L_INDEX  TYPE I.
+  DATA:L_LIFNR TYPE LFA1-LIFNR.
+
+  FIELD-SYMBOLS:&lt;FS_TMP&gt; TYPE TY_MIDDLE,
+                 &lt;FS_EINA&gt; TYPE TY_EINA. "add by yetp 20140702
+
+  CLEAR:GT_JM3,
+      W_JM3,
+      GT_CLPH,
+      GT_DEHS,
+      GT_MARA,
+      GT_LFA1,
+      GT_MARC,
+      GT_ESOKZ,
+      GT_MBEW,
+      GT_TYJ,
+      GT_EORD,
+      GT_LBJ,
+      GT_MIDDLE.
+
+  "检查屏幕9002工厂字段
+  IF G_WERKS  IS INITIAL.
+    MESSAGE E452.
+  ENDIF.
+
+  SELECT MATNR
+     WERKS
+     LIFNR
+     EKORG
+     ZXCLJ
+     ZDESL
+     ZCLID
+     ZPHCD
+    INTO CORRESPONDING FIELDS OF TABLE GT_MIDDLE
+    FROM ZZTDEWH
+    FOR ALL ENTRIES IN GT_JM2
+  WHERE ZZTDEWH~ZCLID = GT_JM2-ZCLID
+    AND WERKS  = G_WERKS.
+
+  "如果数据为空
+  IF GT_MIDDLE IS INITIAL.
+    MESSAGE E050.
+  ENDIF.
+
+  "牌号信息
+  SELECT ZPHCD
+    ZBILU
+    ZHANL
+    INTO CORRESPONDING FIELDS OF TABLE GT_CLPH
+    FROM ZZTCLPH
+    FOR ALL ENTRIES IN GT_MIDDLE
+  WHERE ZPHCD = GT_MIDDLE-ZPHCD.
+
+  "取存在通用价的类别
+  SELECT ZCLID
+         ZZTYJ
+        INTO TABLE GT_TYJ
+        FROM ZZTCLPH
+    WHERE ZZTYJ = 'X'.
+
+  "核算类型表里获取核算类型和现基准价
+  SELECT MATNR
+    WERKS
+    LIFNR
+    EKORG
+    ZHSLX
+    ZXJZJ
+    INTO CORRESPONDING FIELDS OF TABLE GT_DEHS
+    FROM ZZTDEHS
+    FOR ALL ENTRIES IN GT_MIDDLE
+  WHERE MATNR = GT_MIDDLE-MATNR
+    AND WERKS = GT_MIDDLE-WERKS
+    AND EKORG = GT_MIDDLE-EKORG
+    AND LIFNR = GT_MIDDLE-LIFNR
+    AND ZHSLX &lt;&gt; SPACE
+    AND ZDEZT = 'A'.    "状态已激活
+
+  "物料表中相关信息
+  SELECT MARA~MATNR
+    ZEINR
+    MEINS
+    ZUNIT
+    MAKT~MAKTX
+    INTO CORRESPONDING FIELDS OF TABLE GT_MARA
+    FROM MARA
+    LEFT JOIN MAKT
+    ON MARA~MATNR = MAKT~MATNR
+    AND MAKT~SPRAS = '1'.
+
+  "从供应商表中取业务类型
+  SELECT LIFNR
+    J_1KFTBUS
+    INTO TABLE GT_LFA1
+    FROM LFA1
+    FOR ALL ENTRIES IN GT_MIDDLE
+  WHERE LIFNR = GT_MIDDLE-LIFNR.
+
+  " 获取物料采购类型
+  SELECT MATNR
+    WERKS
+    SOBSL   " 特殊采购类型
+    LVORM   " 在工厂级标记要删除的
+    MMSTA   " 工厂特定的物料状态
+    INTO TABLE GT_MARC
+    FROM MARC
+    FOR ALL ENTRIES IN GT_MIDDLE
+  WHERE MATNR = GT_MIDDLE-MATNR
+    AND WERKS = GT_MIDDLE-WERKS.
+
+  " 获取上次最近调价单的采购信息记录
+  SELECT ZZTLBJTJI1~ZDJBH
+         ZZTLBJTJI1~MATNR
+         ZZTLBJTJI1~WERKS
+         ZZTLBJTJI1~LIFNR
+         ZZTLBJTJI1~EKORG
+         ZZTLBJTJI1~ESOKZ
+    INTO TABLE GT_ESOKZ
+    FROM  ZZTLBJTJI1  INNER JOIN ZZTLBJTJH
+    ON ZZTLBJTJH~ZDJBH = ZZTLBJTJI1~ZDJBH
+    FOR ALL ENTRIES IN GT_MIDDLE
+  WHERE ZZHSP = 'X'
+    AND ZZTLBJTJH~ZDJLX = C_DJLX
+    AND MATNR = GT_MIDDLE-MATNR
+    AND WERKS = GT_MIDDLE-WERKS
+    AND LIFNR = GT_MIDDLE-LIFNR
+    AND EKORG = GT_MIDDLE-EKORG.
+
+  IF GT_ESOKZ IS NOT INITIAL.
+    SORT GT_ESOKZ BY MATNR WERKS LIFNR EKORG ZDJBH DESCENDING.
+    DELETE ADJACENT DUPLICATES FROM GT_ESOKZ COMPARING MATNR WERKS LIFNR EKORG.
+  ENDIF.
+
+  "取物料的商业价格
+  SELECT MATNR
+    BWKEY
+    BWPRH AS ZYCJG1
+    BWPH1 AS ZYCJG2
+    VJBWH AS ZYCJG3
+    BWPEI
+    BKLAS
+    INTO CORRESPONDING FIELDS OF TABLE GT_MBEW
+    FROM MBEW
+    FOR ALL ENTRIES IN GT_MIDDLE
+  WHERE MATNR = GT_MIDDLE-MATNR
+    AND BWKEY = GT_MIDDLE-WERKS.
+
+  "货源清单
+  SELECT EORD~MATNR
+    EORD~WERKS
+    EORD~LIFNR
+    EORD~EKORG
+    INTO TABLE GT_EORD
+    FROM EORD
+    FOR ALL ENTRIES IN GT_MIDDLE
+  WHERE MATNR = GT_MIDDLE-MATNR
+    AND WERKS = GT_MIDDLE-WERKS
+    AND LIFNR = GT_MIDDLE-LIFNR
+    AND EKORG = GT_MIDDLE-EKORG
+    AND VDATU &lt;= SY-DATUM
+    AND BDATU &gt;= SY-DATUM.
+
+  "排序
+  SORT GT_DEHS BY MATNR WERKS EKORG LIFNR.
+  SORT GT_CLPH BY ZPHCD.
+  SORT GT_MARA BY MATNR.
+  SORT GT_LFA1 BY LIFNR.
+  SORT GT_MARC BY MATNR WERKS.
+  SORT GT_JM2 BY ZCLID ZPHCD.
+  SORT GT_EORD BY MATNR WERKS LIFNR EKORG.
+
+<font color ="#0000FF">*******************add by yetp 20140702***********start</font>
+  CLEAR:GT_LIFNR.
+  "获取冻结的供应商记录
+  SELECT LIFNR
+    INTO CORRESPONDING FIELDS OF TABLE GT_LIFNR
+    FROM LFA1
+  WHERE SPERM = 'X'.
+  SORT GT_LIFNR BY LIFNR.
+
+  CLEAR:LT_EINA.
+  "获取采购信息记录
+  SELECT EINE~INFNR
+    MATNR
+    WERKS
+    EKORG
+    ESOKZ
+    LIFNR
+    INTO CORRESPONDING FIELDS OF TABLE LT_EINA
+    FROM EINE INNER JOIN EINA
+    ON EINE~INFNR = EINA~INFNR
+    FOR ALL ENTRIES IN GT_MIDDLE
+  WHERE  EINA~LOEKZ = SPACE
+    AND EINE~LOEKZ = SPACE
+    AND MATNR = GT_MIDDLE-MATNR
+    AND WERKS = GT_MIDDLE-WERKS
+    AND EKORG = GT_MIDDLE-EKORG
+    AND LIFNR = GT_MIDDLE-LIFNR.
+
+  SORT LT_EINA BY MATNR WERKS LIFNR EKORG ESOKZ.
+<font color ="#0000FF">*******************add by yetp 20140702***********end</font>
+
+  "回写gt_middle
+  LOOP AT GT_MIDDLE ASSIGNING &lt;FS_MIDDLE&gt;.
+    " 过滤被删除的物料
+    READ TABLE GT_MARC INTO W_MARC WITH KEY MATNR = &lt;FS_MIDDLE&gt;-MATNR
+                                             WERKS = &lt;FS_MIDDLE&gt;-WERKS BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      IF W_MARC-LVORM = 'X' OR W_MARC-MMSTA = '14' OR W_MARC-MMSTA = '15'.
+        DELETE GT_MIDDLE.
+        CONTINUE.
+      ENDIF.
+
+      IF W_MARC-SOBSL = '10'.
+        &lt;FS_MIDDLE&gt;-ESOKZ = '2'.     " 寄售
+      ELSEIF W_MARC-SOBSL = '30'.
+        &lt;FS_MIDDLE&gt;-ESOKZ = '3'.     " 分包合同
+      ELSE.
+        &lt;FS_MIDDLE&gt;-ESOKZ = '0'.     " 标准
+      ENDIF.
+    ELSE.
+      DELETE GT_MIDDLE.
+      CONTINUE.
+    ENDIF.
+
+    "删除没有牌号预测价格而且料别不存在通用价的物料的物料
+    READ TABLE GT_JM2 ASSIGNING &lt;FS_JM2&gt; WITH KEY ZCLID = &lt;FS_MIDDLE&gt;-ZCLID ZPHCD = &lt;FS_MIDDLE&gt;-ZPHCD BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_MIDDLE&gt;-ZYCJG = &lt;FS_JM2&gt;-ZYCJG.
+    ELSE.
+      READ TABLE  GT_TYJ ASSIGNING &lt;FS_TYJ&gt; WITH  KEY ZZTYJ = 'X'.
+      IF SY-SUBRC = 0.
+        READ TABLE GT_JM2 ASSIGNING &lt;FS_JM2&gt; WITH  KEY ZCLID = &lt;FS_MIDDLE&gt;-ZCLID.
+        IF SY-SUBRC = 0.
+          &lt;FS_MIDDLE&gt;-ZYCJG = &lt;FS_JM2&gt;-ZYCJG..
+        ENDIF.
+      ELSE.
+        DELETE GT_MIDDLE.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+
+    "排除供应商
+    L_LIFNR = &lt;FS_MIDDLE&gt;-LIFNR.
+    SHIFT L_LIFNR LEFT DELETING LEADING '0'.
+    IF L_LIFNR+0(1) = '5'
+      OR L_LIFNR+0(1) = '7'
+      OR L_LIFNR+0(1) = '8'
+      OR L_LIFNR+0(1) = '9'.
+      DELETE GT_MIDDLE.
+      CONTINUE.
+    ENDIF.
+
+<font color ="#0000FF">*******************add by yetp2016011*************start</font>
+    "排除供应商为0000111000的数据
+    IF &lt;FS_MIDDLE&gt;-LIFNR = '0000111000'.
+      DELETE GT_MIDDLE.
+      CONTINUE.
+    ENDIF.
+<font color ="#0000FF">*******************add by yetp2016011*************end</font>
+
+<font color ="#0000FF">*******************add by yetp 20140702***********start</font>
+    "删除供应商
+    READ TABLE GT_LIFNR ASSIGNING &lt;FS_LIFNR&gt; WITH KEY LIFNR = &lt;FS_MIDDLE&gt;-LIFNR BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      DELETE GT_MIDDLE.
+      CONTINUE.
+    ENDIF.
+
+<font color ="#0000FF">*******************add by yetp 20140702***********end</font>
+
+    "从货源清单排除
+    READ TABLE GT_EORD ASSIGNING &lt;FS_EORD&gt; WITH KEY MATNR = &lt;FS_MIDDLE&gt;-MATNR
+                                             WERKS = &lt;FS_MIDDLE&gt;-WERKS
+                                             LIFNR = &lt;FS_MIDDLE&gt;-LIFNR
+                                             EKORG = &lt;FS_MIDDLE&gt;-EKORG BINARY SEARCH.
+    IF SY-SUBRC &lt;&gt; 0.
+      DELETE GT_MIDDLE.
+      CONTINUE.
+    ENDIF.
+    " 设置采购信息类型，先查看是否存在最近调价单上的采购记录，不存在再取物料主数据信息
+    READ TABLE GT_ESOKZ INTO W_ESOKZ WITH KEY MATNR = &lt;FS_MIDDLE&gt;-MATNR
+                                               WERKS = &lt;FS_MIDDLE&gt;-WERKS
+                                               LIFNR = &lt;FS_MIDDLE&gt;-LIFNR
+                                               EKORG = &lt;FS_MIDDLE&gt;-EKORG BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_MIDDLE&gt;-ESOKZ = W_ESOKZ-ESOKZ.
+    ENDIF.
+
+<font color ="#0000FF">*******************add by yetp 20140702***********start</font>
+    "删除没有采购信息记录供应商和采购信息记录标识下标识删除的物料
+    READ TABLE LT_EINA ASSIGNING &lt;FS_EINA&gt; WITH  KEY MATNR = &lt;FS_MIDDLE&gt;-MATNR
+                                              WERKS = &lt;FS_MIDDLE&gt;-WERKS
+                                              LIFNR = &lt;FS_MIDDLE&gt;-LIFNR
+                                              EKORG = &lt;FS_MIDDLE&gt;-EKORG
+                                              ESOKZ = &lt;FS_MIDDLE&gt;-ESOKZ BINARY SEARCH.
+    IF SY-SUBRC &lt;&gt; 0.
+      " 删除没有采购信息记录供应商
+      DELETE GT_MIDDLE.
+      CONTINUE.
+    ENDIF.
+<font color ="#0000FF">*******************add by yetp 20140702***********end</font>
+    "核算类型和现基准价
+    READ TABLE GT_DEHS ASSIGNING &lt;FS_DEHS&gt; WITH KEY MATNR = &lt;FS_MIDDLE&gt;-MATNR
+                                                    WERKS = &lt;FS_MIDDLE&gt;-WERKS
+                                                    EKORG = &lt;FS_MIDDLE&gt;-EKORG
+                                                    LIFNR = &lt;FS_MIDDLE&gt;-LIFNR BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_MIDDLE&gt;-ZHSLX = &lt;FS_DEHS&gt;-ZHSLX.
+      &lt;FS_MIDDLE&gt;-ZXJZJ = &lt;FS_DEHS&gt;-ZXJZJ.
+    ELSE.
+      "删除有定额没有核算方式的物料
+      DELETE GT_MIDDLE.
+      CONTINUE.
+    ENDIF.
+
+    "获取比率，含量
+    READ TABLE GT_CLPH ASSIGNING &lt;FS_CLPH&gt; WITH KEY ZPHCD = &lt;FS_MIDDLE&gt;-ZPHCD BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_MIDDLE&gt;-ZBILU = &lt;FS_CLPH&gt;-ZBILU.
+      &lt;FS_MIDDLE&gt;-ZHANL = &lt;FS_CLPH&gt;-ZHANL.
+    ENDIF.
+
+    "物料描述，图号，单位
+    READ TABLE GT_MARA ASSIGNING &lt;FS_MARA&gt; WITH KEY MATNR = &lt;FS_MIDDLE&gt;-MATNR BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_MIDDLE&gt;-MAKTX = &lt;FS_MARA&gt;-MAKTX.
+      &lt;FS_MIDDLE&gt;-ZEINR = &lt;FS_MARA&gt;-ZEINR.
+      &lt;FS_MIDDLE&gt;-MEINS = &lt;FS_MARA&gt;-MEINS.
+      &lt;FS_MIDDLE&gt;-ZUNIT = &lt;FS_MARA&gt;-ZUNIT.
+    ENDIF.
+
+    "回写税代码
+    READ TABLE GT_LFA1 ASSIGNING &lt;FS_LFA1&gt; WITH KEY LIFNR = &lt;FS_MIDDLE&gt;-LIFNR.
+    IF SY-SUBRC = 0.
+      WRITE &lt;FS_LFA1&gt;-J_1KFTBUS TO &lt;FS_MIDDLE&gt;-MWSKZ.
+    ENDIF.
+
+    "单位显示转换
+    PERFORM CONVER_UNIT CHANGING &lt;FS_MIDDLE&gt;-MEINS.
+    PERFORM CONVER_UNIT CHANGING &lt;FS_MIDDLE&gt;-ZUNIT.
+
+    CLEAR:W_LBJ.
+
+    W_LBJ-MATNR = &lt;FS_MIDDLE&gt;-MATNR.
+    W_LBJ-LIFNR = &lt;FS_MIDDLE&gt;-LIFNR.
+    W_LBJ-ZHSLX = &lt;FS_MIDDLE&gt;-ZHSLX.
+    W_LBJ-EKORG = &lt;FS_MIDDLE&gt;-EKORG.
+    W_LBJ-MWSKZ = &lt;FS_MIDDLE&gt;-MWSKZ.
+    W_LBJ-ZXHYC = 0.
+
+    COLLECT W_LBJ INTO GT_LBJ.
+  ENDLOOP.
+
+  IF GT_MIDDLE IS NOT INITIAL.
+    "取零部件现价
+    PERFORM GET_LBJ_XJ.
+  ENDIF.
+
+  "取每个零部件价格
+  SORT GT_MIDDLE BY MATNR LIFNR EKORG ZHSLX.
+
+  LOOP AT GT_LBJ ASSIGNING &lt;FS_LBJ&gt;.
+
+    READ TABLE GT_MIDDLE ASSIGNING &lt;FS_MIDDLE&gt; WITH  KEY  MATNR = &lt;FS_LBJ&gt;-MATNR  LIFNR = &lt;FS_LBJ&gt;-LIFNR
+                                                          EKORG = &lt;FS_LBJ&gt;-EKORG  ZHSLX = &lt;FS_LBJ&gt;-ZHSLX BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_LBJ&gt;-ZLBJJ = &lt;FS_MIDDLE&gt;-ZLBJJ.
+    ENDIF.
+  ENDLOOP.
+
+<font color ="#0000FF">***设置界面3显示数据</font>
+  SORT GT_MIDDLE BY MATNR ZPHCD WERKS LIFNR EKORG.
+  L_TMP = GT_MIDDLE.
+  SORT L_TMP BY MATNR WERKS EKORG.
+  DELETE ADJACENT DUPLICATES FROM L_TMP COMPARING MATNR WERKS EKORG.
+
+  SORT GT_MBEW BY MATNR BWKEY.
+
+  LOOP AT L_TMP ASSIGNING &lt;FS_TMP&gt;.
+    CLEAR:W_JM3.
+    W_JM3-MATNR = &lt;FS_TMP&gt;-MATNR. "物料号
+    W_JM3-MAKTX = &lt;FS_TMP&gt;-MAKTX. "物料描述
+    W_JM3-ZEINR = &lt;FS_TMP&gt;-ZEINR. "图号
+    W_JM3-MEINS = &lt;FS_TMP&gt;-MEINS."基本单位
+    W_JM3-WERKS = &lt;FS_TMP&gt;-WERKS."工厂
+    W_JM3-EKORG = &lt;FS_TMP&gt;-EKORG.
+    W_JM3-ESOKZ = &lt;FS_TMP&gt;-ESOKZ.
+
+    IF &lt;FS_TMP&gt;-ZUNIT IS INITIAL.
+      W_JM3-ZUNIT = &lt;FS_TMP&gt;-MEINS.
+    ELSE.
+      W_JM3-ZUNIT = &lt;FS_TMP&gt;-ZUNIT.
+    ENDIF.
+
+    "商业价格
+    READ TABLE GT_MBEW ASSIGNING &lt;FS_MBEW&gt; WITH  KEY MATNR = &lt;FS_TMP&gt;-MATNR BWKEY = &lt;FS_TMP&gt;-WERKS BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      W_JM3-ZYCJG1 = &lt;FS_MBEW&gt;-ZYCJG1.
+      W_JM3-ZYCJG2 = &lt;FS_MBEW&gt;-ZYCJG2.
+      W_JM3-ZYCJG3 = &lt;FS_MBEW&gt;-ZYCJG3.
+      W_JM3-BKLAS = &lt;FS_MBEW&gt;-BKLAS.  "评估类
+      IF &lt;FS_MBEW&gt;-BWPEI IS NOT INITIAL.
+        W_JM3-ZYCJG1 = W_JM3-ZYCJG1 / &lt;FS_MBEW&gt;-BWPEI.
+        W_JM3-ZYCJG2 = W_JM3-ZYCJG2 / &lt;FS_MBEW&gt;-BWPEI.
+        W_JM3-ZYCJG3 = W_JM3-ZYCJG3 / &lt;FS_MBEW&gt;-BWPEI.
+      ENDIF.
+    ENDIF.
+
+    APPEND W_JM3  TO GT_JM3.
+  ENDLOOP.
+
+  "同一物料存在不同的供应商，计算物料的平均价格
+  SORT GT_JM3 BY MATNR.
+  CLEAR:L_INDEX.
+  LOOP AT  GT_JM3 ASSIGNING &lt;FS_JM3&gt;.
+    CLEAR L_NO.
+    LOOP AT GT_LBJ ASSIGNING &lt;FS_LBJ&gt; WHERE MATNR = &lt;FS_JM3&gt;-MATNR AND ZLBJJ &lt;&gt; 0. "add by yetp 20150116 计算平均值时排除净值为0的时的供应商
+      &lt;FS_JM3&gt;-ZLBJJ = &lt;FS_LBJ&gt;-ZLBJJ + &lt;FS_JM3&gt;-ZLBJJ.
+      L_NO = L_NO + 1.
+    ENDLOOP.
+
+    &lt;FS_JM3&gt;-ZLBJJ = &lt;FS_JM3&gt;-ZLBJJ / L_NO.
+
+    L_INDEX = L_INDEX + 1.
+    &lt;FS_JM3&gt;-NO = L_INDEX.
+
+  ENDLOOP.
+<font color ="#0000FF">*******************add by yetp 20121204***********end</font>
+
+
+  CLEAR G_BTN_FLAG.  "add by yetp 20140705
+  CALL SCREEN '9003'.
+
+ENDFORM.                    "calculate
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  calucate_xhyc</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*     根据不同的核算类型计算新核预测价</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CALUCATE_XHYC.
+
+  TYPES:BEGIN OF  TY_EINA,
+       INFNR TYPE EINE-INFNR, "采购信息记录的编号
+       EKORG TYPE EINE-EKORG, "采购组织
+       ESOKZ TYPE EINE-ESOKZ, "采购信息记录分类
+       WERKS TYPE EINE-WERKS,"工厂
+       MATNR TYPE EINA-MATNR,"物料编码
+       BPUMZ TYPE EINE-BPUMZ,"订单价格单位转换为订单单位的分子
+       BPUMN TYPE EINE-BPUMN,  "订单价格单位转换为订单单位的分母
+         END OF TY_EINA.
+
+  DATA:  L_CJ2 TYPE ZZTLBJTJI1-ZZZCJ,
+         L_CJ3 TYPE ZZTLBJTJI1-ZZZCJ.
+  DATA:LT_EINA TYPE STANDARD TABLE OF TY_EINA,
+        LW_EINA TYPE TY_EINA.
+  DATA:LW_HSBT TYPE ZZTHSBT.
+  DATA:I_NO TYPE I.
+
+  FIELD-SYMBOLS:&lt;FS_EINA&gt; TYPE TY_EINA.
+
+  "取材料的税率
+  PERFORM GET_TAX.
+
+  LOOP AT GT_MIDDLE ASSIGNING &lt;FS_MIDDLE&gt;.                              "根据预测价计算新核预测价
+    CLEAR:L_CJ2,
+          L_CJ3.
+    "如果核算类型是核算表的
+    IF &lt;FS_MIDDLE&gt;-ZHSLX = '1'.
+      "获取零部件核算表抬头
+      SELECT SINGLE *
+        INTO LW_HSBT
+        FROM ZZTHSBT
+      WHERE MATNR = &lt;FS_MIDDLE&gt;-MATNR
+        AND LIFNR = &lt;FS_MIDDLE&gt;-LIFNR
+        AND WERKS = &lt;FS_MIDDLE&gt;-WERKS
+        AND EKORG = &lt;FS_MIDDLE&gt;-EKORG
+        AND ZPHCD = &lt;FS_MIDDLE&gt;-ZPHCD
+        AND BDATU &gt;= SY-DATUM.
+
+      IF LW_HSBT IS NOT INITIAL.                          "如果核算表不为空，计算新核预测价
+        call function <a href ="z_mm_cal_hsje/z_mm_cal_hsje.html">'Z_MM_CAL_HSJE'</a>
+          EXPORTING
+            IM_ZXZXJ = &lt;FS_MIDDLE&gt;-ZYCJG
+          IMPORTING
+            IE_HSBT  = LW_HSBT.
+
+        READ TABLE GT_KONP INTO W_KONP WITH KEY MWSKZ = &lt;FS_MIDDLE&gt;-MWSKZ BINARY SEARCH.
+        IF SY-SUBRC = 0.
+          &lt;FS_MIDDLE&gt;-ZXHYC = LW_HSBT-ZHSDJ2 * 1000 / ( 1000 + W_KONP-KBETR ).
+        ELSE.
+          LW_HSBT-ZQZJG = LW_HSBT-ZHSDJ2.
+        ENDIF.
+
+      ENDIF.
+      IF &lt;FS_MIDDLE&gt;-ZXHYC IS INITIAL.
+        MESSAGE S185 WITH &lt;FS_MIDDLE&gt;-MATNR DISPLAY LIKE 'E'.
+      ENDIF.
+    ELSE.
+      "如果核算类型是加工费类型
+      IF &lt;FS_MIDDLE&gt;-ZHSLX = '3'.
+        PERFORM GET_JGFYYC USING &lt;FS_MIDDLE&gt;.
+      ENDIF.
+
+      L_CJ2 = ( &lt;FS_MIDDLE&gt;-ZYCJG - &lt;FS_MIDDLE&gt;-ZXCLJ ).
+      L_CJ3 = ( &lt;FS_MIDDLE&gt;-ZZXJG - &lt;FS_MIDDLE&gt;-ZJZJG ).
+
+      "核算类型是基准价，加工费为0
+      IF &lt;FS_MIDDLE&gt;-ZHSLX = '2'.
+        L_CJ3 = 0.
+      ENDIF.
+
+      IF &lt;FS_MIDDLE&gt;-MEINS = &lt;FS_MIDDLE&gt;-ZUNIT.
+        &lt;FS_MIDDLE&gt;-ZZZCJ = ( L_CJ2 * &lt;FS_MIDDLE&gt;-ZHANL / 100 + L_CJ3 ) * &lt;FS_MIDDLE&gt;-ZDESL.
+        IF &lt;FS_MIDDLE&gt;-ZBILU &lt;&gt; 0.
+          &lt;FS_MIDDLE&gt;-ZZZCJ = &lt;FS_MIDDLE&gt;-ZZZCJ / &lt;FS_MIDDLE&gt;-ZBILU.
+        ENDIF.
+      ELSE.
+        CASE &lt;FS_MIDDLE&gt;-ZUNIT.
+          WHEN 'KG'.
+            &lt;FS_MIDDLE&gt;-ZZZCJ = ( L_CJ2 * &lt;FS_MIDDLE&gt;-ZHANL / 100 + L_CJ3 ).
+          WHEN 'G'.
+            &lt;FS_MIDDLE&gt;-ZZZCJ = ( L_CJ2 * &lt;FS_MIDDLE&gt;-ZHANL / 100 + L_CJ3 ) / 1000.
+          WHEN OTHERS.
+            &lt;FS_MIDDLE&gt;-ZZZCJ = ( L_CJ2 * &lt;FS_MIDDLE&gt;-ZHANL / 100 + L_CJ3 ) * &lt;FS_MIDDLE&gt;-ZDESL.
+            IF &lt;FS_MIDDLE&gt;-ZBILU &lt;&gt; 0.
+              &lt;FS_MIDDLE&gt;-ZZZCJ = &lt;FS_MIDDLE&gt;-ZZZCJ / &lt;FS_MIDDLE&gt;-ZBILU.
+            ENDIF.
+        ENDCASE.
+      ENDIF.
+    ENDIF.
+
+  ENDLOOP.
+
+  "计算物料的价格
+  SORT GT_MIDDLE BY MATNR LIFNR EKORG ZHSLX.
+
+  LOOP AT GT_LBJ ASSIGNING &lt;FS_LBJ&gt;.
+    IF &lt;FS_LBJ&gt;-ZHSLX = '1'.
+      "
+      LOOP AT GT_MIDDLE ASSIGNING &lt;FS_MIDDLE&gt; WHERE MATNR = &lt;FS_LBJ&gt;-MATNR AND LIFNR = &lt;FS_LBJ&gt;-LIFNR
+                                                 AND EKORG = &lt;FS_LBJ&gt;-EKORG AND ZHSLX = '1'.
+        &lt;FS_LBJ&gt;-ZXHYC = &lt;FS_MIDDLE&gt;-ZXHYC + &lt;FS_LBJ&gt;-ZXHYC.
+      ENDLOOP.
+
+    ELSE.
+      LOOP AT GT_MIDDLE ASSIGNING &lt;FS_MIDDLE&gt; WHERE MATNR = &lt;FS_LBJ&gt;-MATNR AND LIFNR = &lt;FS_LBJ&gt;-LIFNR
+                                               AND EKORG = &lt;FS_LBJ&gt;-EKORG AND ZHSLX = &lt;FS_LBJ&gt;-ZHSLX.
+        &lt;FS_LBJ&gt;-ZXHYC = &lt;FS_LBJ&gt;-ZXHYC + &lt;FS_MIDDLE&gt;-ZZZCJ.
+      ENDLOOP.
+
+      UNASSIGN &lt;FS_MIDDLE&gt;.
+      READ TABLE GT_MIDDLE ASSIGNING &lt;FS_MIDDLE&gt; WITH  KEY  MATNR = &lt;FS_LBJ&gt;-MATNR  LIFNR = &lt;FS_LBJ&gt;-LIFNR
+                                                            EKORG = &lt;FS_LBJ&gt;-EKORG  ZHSLX = &lt;FS_LBJ&gt;-ZHSLX BINARY SEARCH.
+      IF SY-SUBRC = 0.
+        &lt;FS_LBJ&gt;-ZXHYC = &lt;FS_MIDDLE&gt;-ZXJZJ + &lt;FS_LBJ&gt;-ZXHYC.
+      ENDIF.
+
+      " 获取税码
+      READ TABLE GT_KONP INTO W_KONP WITH KEY MWSKZ = &lt;FS_LBJ&gt;-MWSKZ BINARY SEARCH.
+      IF SY-SUBRC = 0.
+        &lt;FS_LBJ&gt;-ZXHYC = &lt;FS_LBJ&gt;-ZXHYC * 1000 / ( 1000 + W_KONP-KBETR ).
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+
+<font color ="#0000FF">***单位转换</font>
+  SELECT EINE~INFNR
+    MATNR
+    WERKS
+    EKORG
+    ESOKZ
+    BPUMZ
+    BPUMN
+    INTO CORRESPONDING FIELDS OF TABLE LT_EINA
+    FROM EINE INNER JOIN EINA
+    ON EINE~INFNR = EINA~INFNR
+    FOR ALL ENTRIES IN GT_JM3
+  WHERE EINE~LOEKZ = SPACE
+    AND EINA~LOEKZ = SPACE
+    AND EINE~BPRME &lt;&gt; 'EA'
+    AND MATNR = GT_JM3-MATNR
+    AND WERKS = GT_JM3-WERKS
+    AND EKORG = GT_JM3-EKORG
+    AND ESOKZ = GT_JM3-ESOKZ.
+
+<font color ="#0000FF">*  SORT GT_MARM BY MATNR MEINH.</font>
+  SORT LT_EINA BY MATNR WERKS EKORG ESOKZ.
+  "同一物料存在不同的供应商，计算物料的平均价格
+  LOOP AT  GT_JM3 ASSIGNING &lt;FS_JM3&gt;.
+    CLEAR I_NO.
+    LOOP AT GT_LBJ ASSIGNING &lt;FS_LBJ&gt; WHERE MATNR = &lt;FS_JM3&gt;-MATNR.
+      &lt;FS_JM3&gt;-ZXHYC = &lt;FS_LBJ&gt;-ZXHYC + &lt;FS_JM3&gt;-ZXHYC.
+      I_NO = I_NO + 1.
+    ENDLOOP.
+
+    &lt;FS_JM3&gt;-ZXHYC = &lt;FS_JM3&gt;-ZXHYC / I_NO.
+
+    "结算单价转换成基本单价
+    IF &lt;FS_JM3&gt;-ZUNIT = &lt;FS_JM3&gt;-MEINS.
+      &lt;FS_JM3&gt;-ZXHYCB = &lt;FS_JM3&gt;-ZXHYC.
+    ELSE.
+<font color ="#0000FF">*      READ TABLE GT_MARM ASSIGNING &lt;FS_MARM&gt; WITH KEY MATNR = &lt;FS_JM3&gt;-MATNR MEINH = &lt;FS_JM3&gt;-ZUNIT BINARY SEARCH.</font>
+<font color ="#0000FF">*      IF SY-SUBRC = 0.</font>
+<font color ="#0000FF">*        &lt;FS_JM3&gt;-ZXHYCB = &lt;FS_JM3&gt;-ZXHYC * &lt;FS_MARM&gt;-UMREN / &lt;FS_MARM&gt;-UMREZ.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+
+      READ TABLE LT_EINA ASSIGNING &lt;FS_EINA&gt; WITH KEY MATNR = &lt;FS_JM3&gt;-MATNR WERKS = &lt;FS_JM3&gt;-WERKS EKORG = &lt;FS_JM3&gt;-EKORG
+                                                      ESOKZ = &lt;FS_JM3&gt;-ESOKZ BINARY SEARCH.
+      IF SY-SUBRC = 0.
+        &lt;FS_JM3&gt;-ZXHYCB = &lt;FS_JM3&gt;-ZXHYC * &lt;FS_EINA&gt;-BPUMZ / &lt;FS_EINA&gt;-BPUMN.
+      ENDIF.
+    ENDIF.
+
+  ENDLOOP.
+
+  G_BTN_FLAG = 'X'. "设置按钮标识
+ENDFORM.                    "calucate_xhyc
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  update_pric</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       更新物料主数据的商业价格</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM UPDATE_PRIC.
+  DATA: HEADDATA                TYPE BAPIMATHEAD,     "表头数据
+      LT_VAL TYPE BAPI_MBEW,
+<font color ="#0000FF">*      price_flag type c,</font>
+      LT_VALX TYPE BAPI_MBEWX.
+
+  DATA RETURN TYPE BAPIRET2.
+
+  LOOP AT GT_JM3 ASSIGNING &lt;FS_JM3&gt;.
+    "开始赋值
+    HEADDATA-MATERIAL = &lt;FS_JM3&gt;-MATNR.
+    "如果数据库中没有相应的评估类型，就不执行以下的代码
+<font color ="#0000FF">*    IF &lt;FS_JM3&gt;-BKLAS IS INITIAL.</font>
+<font color ="#0000FF">*      CONTINUE.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+
+    LT_VAL-VAL_AREA = &lt;FS_JM3&gt;-WERKS.
+    LT_VAL-VAL_CLASS = &lt;FS_JM3&gt;-BKLAS.
+    "如果数据中是预测价格1的就把新核预测总价更新到商业价格1上
+    IF G_YCJG1 IS NOT INITIAL.
+      LT_VAL-COMMPRICE1 = &lt;FS_JM3&gt;-ZXHYCB * 1000.
+      &lt;FS_JM3&gt;-ZYCJG1 = &lt;FS_JM3&gt;-ZXHYCB.
+    ENDIF.
+    "如果数据中是预测价格2的就把新核预测总价更新到商业价格2上
+    IF G_YCJG2 IS NOT INITIAL.
+      LT_VAL-COMMPRICE2 = &lt;FS_JM3&gt;-ZXHYCB * 1000.
+      &lt;FS_JM3&gt;-ZYCJG2 = &lt;FS_JM3&gt;-ZXHYCB.
+    ENDIF.
+    "如果数据中是预测价格3的就把新核预测总价更新到商业价格3上
+    IF G_YCJG3 IS NOT INITIAL.
+      LT_VAL-COMMPRICE3 = &lt;FS_JM3&gt;-ZXHYCB * 1000.
+      &lt;FS_JM3&gt;-ZYCJG3 = &lt;FS_JM3&gt;-ZXHYCB.
+    ENDIF.
+
+    LT_VAL-TAX_CML_UN = 1000.
+
+    LT_VALX-VAL_AREA = &lt;FS_JM3&gt;-WERKS.
+    LT_VALX-VAL_CLASS = 'X'.
+    IF LT_VAL-COMMPRICE1 IS NOT INITIAL.
+      LT_VALX-COMMPRICE1 = 'X'.
+    ENDIF.
+    IF LT_VAL-COMMPRICE2 IS NOT INITIAL.
+      LT_VALX-COMMPRICE2 = 'X'.
+    ENDIF.
+    IF LT_VAL-COMMPRICE3 IS NOT INITIAL.
+      LT_VALX-COMMPRICE3 = 'X'.
+    ENDIF.
+    LT_VALX-TAX_CML_UN = 'X'.
+
+
+    CALL FUNCTION 'BAPI_MATERIAL_SAVEDATA'
+      EXPORTING
+        HEADDATA                   = HEADDATA
+<font color ="#0000FF">*   CLIENTDATA                 =</font>
+<font color ="#0000FF">*   CLIENTDATAX                =</font>
+<font color ="#0000FF">*   PLANTDATA                  =</font>
+<font color ="#0000FF">*   PLANTDATAX                 =</font>
+<font color ="#0000FF">*   FORECASTPARAMETERS         =</font>
+<font color ="#0000FF">*   FORECASTPARAMETERSX        =</font>
+<font color ="#0000FF">*   PLANNINGDATA               =</font>
+<font color ="#0000FF">*   PLANNINGDATAX              =</font>
+<font color ="#0000FF">*   STORAGELOCATIONDATA        =</font>
+<font color ="#0000FF">*   STORAGELOCATIONDATAX       =</font>
+        VALUATIONDATA              = LT_VAL
+        VALUATIONDATAX             = LT_VALX
+<font color ="#0000FF">*   WAREHOUSENUMBERDATA        =</font>
+<font color ="#0000FF">*   WAREHOUSENUMBERDATAX       =</font>
+<font color ="#0000FF">*   SALESDATA                  =</font>
+<font color ="#0000FF">*   SALESDATAX                 =</font>
+<font color ="#0000FF">*   STORAGETYPEDATA            =</font>
+<font color ="#0000FF">*   STORAGETYPEDATAX           =</font>
+<font color ="#0000FF">*   FLAG_ONLINE                = ' '</font>
+<font color ="#0000FF">*   FLAG_CAD_CALL              = ' '</font>
+<font color ="#0000FF">*   NO_DEQUEUE                 = ' '</font>
+<font color ="#0000FF">*   NO_ROLLBACK_WORK           = ' '</font>
+    IMPORTING
+        RETURN                     = RETURN
+<font color ="#0000FF">* TABLES</font>
+<font color ="#0000FF">*   MATERIALDESCRIPTION        =</font>
+<font color ="#0000FF">*   UNITSOFMEASURE             =</font>
+<font color ="#0000FF">*   UNITSOFMEASUREX            =</font>
+<font color ="#0000FF">*   INTERNATIONALARTNOS        =</font>
+<font color ="#0000FF">*   MATERIALLONGTEXT           =</font>
+<font color ="#0000FF">*   TAXCLASSIFICATIONS         =</font>
+<font color ="#0000FF">*   RETURNMESSAGES             =</font>
+<font color ="#0000FF">*   PRTDATA                    =</font>
+<font color ="#0000FF">*   PRTDATAX                   =</font>
+<font color ="#0000FF">*   EXTENSIONIN                =</font>
+<font color ="#0000FF">*   EXTENSIONINX               =</font>
+              .
+
+    IF RETURN-TYPE = 'S'.
+      CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+      EXPORTING
+        WAIT          = 'X'
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     RETURN        =</font>
+               .
+    ELSE.
+      CALL FUNCTION 'BAPI_TRANSACTION_ROLLBACK'
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     RETURN        =</font>
+             .
+      WRITE '物料主数据商业价格更新失败！' .
+      MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+              WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+
+<font color ="#0000FF">***********************add by 叶天鹏 2012-11-10 start</font>
+<font color ="#0000FF">***数据存在错误，退出循环</font>
+      EXIT.
+<font color ="#0000FF">***********************add by 叶天鹏 2012-11-10 end</font>
+    ENDIF.
+  ENDLOOP.
+
+ENDFORM.                    "update_pric
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  CHECK_INPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CHECK_INPUT .
+  IF LIST_TYPE IS INITIAL
+    OR SCR_CONTENT IS INITIAL.
+    MESSAGE E085.
+  ENDIF.
+ENDFORM.                    " CHECK_INPUT
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FIND_FIRST_LINE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FIND_FIRST_LINE .
+
+  IF G_CX_FLAG = 'X'.
+    IF LIST_TYPE IS NOT INITIAL
+      AND SCR_CONTENT IS NOT INITIAL.
+      CASE LIST_TYPE.
+        WHEN '0'.
+          PERFORM ADD_LEADING_ZERO USING SCR_CONTENT.
+          READ TABLE GT_JM3 ASSIGNING &lt;FS_JM3&gt; WITH KEY MATNR = SCR_CONTENT.
+        WHEN '1'.
+          READ TABLE GT_JM3 ASSIGNING &lt;FS_JM3&gt; WITH KEY MAKTX = SCR_CONTENT.
+        WHEN '2'.
+          READ TABLE GT_JM3 ASSIGNING &lt;FS_JM3&gt; WITH KEY ZEINR = SCR_CONTENT.
+      ENDCASE.
+
+      IF SY-SUBRC = 0.
+        TAB3-TOP_LINE = SY-TABIX.
+        G_LOOKUP_INDEX = SY-TABIX.
+      ELSE.
+        G_LOOKUP_INDEX = 0.
+        MESSAGE I020.
+      ENDIF.
+    ENDIF.
+  ELSE.
+    IF LIST_TYPE IS NOT INITIAL
+  AND SCR_CONTENT IS NOT INITIAL.
+      CASE LIST_TYPE.
+        WHEN '0'.
+          PERFORM ADD_LEADING_ZERO USING SCR_CONTENT.
+          READ TABLE GT_JM4 ASSIGNING &lt;FS_JM4&gt; WITH KEY MATNR = SCR_CONTENT.
+        WHEN '1'.
+          READ TABLE GT_JM4 ASSIGNING &lt;FS_JM4&gt; WITH KEY MAKTX = SCR_CONTENT.
+        WHEN '2'.
+          READ TABLE GT_JM4 ASSIGNING &lt;FS_JM4&gt; WITH KEY ZEINR = SCR_CONTENT.
+      ENDCASE.
+
+      IF SY-SUBRC = 0.
+        TAB4-TOP_LINE = SY-TABIX.
+        G_LOOKUP_INDEX = SY-TABIX.
+      ELSE.
+        G_LOOKUP_INDEX = 0.
+        MESSAGE I020.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+
+ENDFORM.                    " FIND_FIRST_LINE
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  add_leading_zero</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       增加前导零</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;FU_INPUT   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+FORM ADD_LEADING_ZERO USING FU_INPUT.
+  CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+    EXPORTING
+      INPUT  = FU_INPUT
+    IMPORTING
+      OUTPUT = FU_INPUT.
+
+ENDFORM.                    "add_leading_zero
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  LOOKUP_LINE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       查找具体某一行</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM LOOKUP_LINE .
+  CALL SCREEN 9005 STARTING AT 30 5 ENDING AT 63 10.
+ENDFORM.                    " LOOKUP_LINE
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

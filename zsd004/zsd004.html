@@ -1,0 +1,2079 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZSD004</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZSD004</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  提货单打印程序</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& 程序名称       : ZSD004</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 作者           : 陈星烨（人民）</font>
+<font color ="#0000FF">*& 开发日期       : 2012-06-11</font>
+<font color ="#0000FF">*& 请求号         :</font>
+<font color ="#0000FF">*& 申请者         : 陈星烨（人民）</font>
+<font color ="#0000FF">*& 描述           : 提货单打印程序</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 变更记录</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">** 修改日期 开发人员  请求号 描述</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  zsd004 MESSAGE-ID zpeople.
+<font color ="#0000FF">***********************************************************************</font>
+<font color ="#0000FF">* 类型池</font>
+<font color ="#0000FF">************************************************************************</font>
+TYPE-POOLS slis.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 表声明</font>
+<font color ="#0000FF">************************************************************************</font>
+TABLES:likp,
+       lips,
+       mseg,
+       mara,
+       kna1.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 类型定义</font>
+<font color ="#0000FF">************************************************************************</font>
+TYPES:BEGIN OF ty_wxjh,
+       sel TYPE c,
+       zxh TYPE i,
+       vbelv TYPE vbfa-vbelv,
+       sortl TYPE kna1-sortl,                                                    "联系人
+       kunnr TYPE likp-kunnr,                                                    "送达方
+       vbeln TYPE likp-vbeln,                                                    "外向交货单号
+       mblnr TYPE mseg-mblnr,                                                    "物料凭证号
+       matnr TYPE lips-matnr,                                                    "物料号
+       prdha TYPE mara-prdha,                                                    "产品层次
+       arktx TYPE lips-arktx,                                                    "物料描述
+       posnr TYPE lips-posnr,                                                    "交货项目
+       vrkme TYPE lips-vrkme,                                                    "销售单位
+       lfimg TYPE lips-lfimg,                                                    "数量
+       werks TYPE lips-werks,                                                    "工厂
+       lgort TYPE lips-lgort,                                                    "库存地点
+       meins TYPE lips-meins,                                                    "基本计量单位
+       zjbsl TYPE lips-lfimg,                                                    "基本单位对应的数量
+       umvkz TYPE lips-umvkz,                                             "销售数量转换成SKU的分子(因子)
+       umvkn TYPE lips-umvkn,                                             "销售数量转换为 SKU 的值（除数）
+       ntgew TYPE lips-ntgew,                                                    "净重
+       zjbdw TYPE t006a-msehl,                                                   "基本单位描述
+       vgbel TYPE lips-vgbel,                                                    "参考单据的单据编号
+       vgpos TYPE lips-vgpos,                                                    "参考项目的项目号
+<font color ="#0000FF">*       VBTYV type lips-VBTYV,   " SD 凭证类别</font>
+       bstkd TYPE vbkd-bstkd,                                                    "采购订单号
+       zxsdd TYPE vbap-vbeln,
+       ernam TYPE vbak-ernam,
+       vgtyp TYPE lips-vgtyp,                                                   " SD 凭证类别
+       lfart TYPE likp-lfart,                                                    " 交货类型
+       zfhrq TYPE likp-wadat_ist, " 实际货物移动日期
+       bldat TYPE likp-bldat,     " 凭证日期
+       zdycs TYPE i,
+       tdline TYPE tdline,             " 行备注
+       zjsfz  TYPE i,                  " 件数分子
+       zjsfm  TYPE i,                 " 件数分母
+       zcpjs  TYPE string,            " 产品件数显示
+        auart TYPE vbak-auart,  " 销售凭证类型
+       wadat TYPE likp-wadat,   " 交货日期
+       vkorg TYPE likp-vkorg,   " 销售机构
+       bukrs TYPE t001-bukrs,
+       butxt TYPE t001-butxt,   " 公司代码或公司的名称
+<font color ="#0000FF">******************************** add by huangcz 20121206 begin *********************************</font>
+       knkli TYPE likp-knkli,
+<font color ="#0000FF">******************************** add by huangcz 20121206 end *********************************</font>
+       KBETR type konv-KBETR,    " add by huangcz 20130829
+       WAERK type vbak-WAERK,  " 币别   " add by huangcz 20130830
+        KZWI1 type vbap-KZWI1,   " 小计1
+        KWMENG type vbap-KWMENG,  " 订单数量
+<font color ="#0000FF">******************************** add by yetp 20150513 begin *********************************</font>
+        ekgrp TYPE ekko-ekgrp,
+        eknam type t024-eknam,      "采购组描述
+<font color ="#0000FF">******************************** add by yetp 20150513 end *********************************</font>
+     END OF ty_wxjh.
+
+TYPES:BEGIN OF ty_thd,
+       arktx TYPE lips-arktx,                                            "物料描述
+<font color ="#0000FF">*       vrkme TYPE lips-vrkme,</font>
+<font color ="#0000FF">*       mseht TYPE t006a-mseht,                                            "销售单位描述</font>
+<font color ="#0000FF">*       lfimg TYPE lips-lfimg,                                            "数量</font>
+<font color ="#0000FF">*       meins TYPE lips-meins,                                            "单位</font>
+
+<font color ="#0000FF">*       matnr TYPE lips-matnr,</font>
+<font color ="#0000FF">*       zwlzl TYPE p DECIMALS 3,</font>
+<font color ="#0000FF">*       zcpjs TYPE i,</font>
+       posnr TYPE lips-posnr,
+       vbeln TYPE likp-vbeln,
+       lgort TYPE lips-lgort,
+       ntgew TYPE lips-ntgew,         " 净重
+       zjbdw TYPE t006a-msehl,        " 基本单位描述
+       zjbsl TYPE lips-lfimg,         " 基本单位对应的数量
+       tdline TYPE tdline,        " 行备注
+       zjsfz  TYPE i,                  " 件数分子
+       zjsfm  TYPE i,                 " 件数分母
+       zcpjs  TYPE string,            " 产品件数显示
+<font color ="#0000FF">*** add by feijian.fegn 2012-09-03 (S)</font>
+       vgbel  TYPE lips-vgbel,        "参考单据号
+<font color ="#0000FF">*** add by feijian.fegn 2012-09-03 (S)</font>
+
+        KBETR type konv-KBETR,    " add by huangcz 20130829
+        total type konv-KBETR,    " add by huangcz 20130829
+        KZWI1 type vbap-KZWI1,   " 小计1
+     END OF ty_thd.
+
+TYPES:BEGIN OF ty_kna1,
+      kunnr TYPE kna1-kunnr,
+      sortl TYPE kna1-sortl,
+      END OF ty_kna1.
+
+TYPES:BEGIN OF ty_cal,
+      meinh TYPE marm-meinh,                                            "计量单位
+      umrez TYPE marm-umrez,                                            "分子
+      umren TYPE marm-umren,                                            "分母
+      matnr TYPE marm-matnr,
+      END OF ty_cal.
+
+TYPES:BEGIN OF ty_material,
+      ntgew TYPE mara-ntgew,                                            "净重
+      matnr TYPE mara-matnr,
+      END OF ty_material,
+
+      BEGIN OF ty_t001l,
+        werks TYPE t001l-werks,
+        lgort TYPE t001l-lgort,   " 库存地点
+        lgobe TYPE t001l-lgobe,   "库存地点描述
+      END OF ty_t001l,
+
+      BEGIN OF ty_head,
+      name1 TYPE t001w-name1,                                           "交货工厂描述
+<font color ="#0000FF">*      kunnr TYPE kna1-kunnr,</font>
+<font color ="#0000FF">*      vkorg TYPE tvko-vkorg,</font>
+      bukrs TYPE tvko-bukrs,
+      werks TYPE t001w-werks,
+      sortl TYPE kna1-sortl,                                            "联系人
+      lgort TYPE t001l-lgort,
+      lgobe TYPE t001l-lgobe,                                           "库存地点描述
+      zkhnm TYPE adrc-name1,                                            "客户名称
+      zgsnm TYPE t880-name1,                                            "公司名称
+      zgsdm TYPE t880-rcomp,
+      vgtyp TYPE lips-vgtyp,
+<font color ="#0000FF">*      zcgdh TYPE lips-vgbel,                                            "采购单号</font>
+
+      zcgdh TYPE vbkd-bstkd,      " 客户采购订单编号    add by huangcz 20121226
+      wadat TYPE likp-wadat,                                            "交货日期
+      zzdnm TYPE ad_namtext,                                            "制单人
+      ernam TYPE likp-ernam,
+      zckrq TYPE likp-wadat_ist,                                        "出库日期
+      vbeln TYPE likp-vbeln,                                            "提货单号
+      vgbel TYPE lips-vgbel,
+      lfart TYPE likp-lfart,                                            " 交货类型
+      zdycs TYPE i,
+        total TYPE i,
+        WAERK type vbak-WAERK,    " 货币码 add by huangcz 20130830
+        eknam type t024-eknam,    " 采购组描述 add by yetp 20150515
+     END OF ty_head.
+
+TYPES:BEGIN OF ty_t006a,
+      msehi TYPE t006a-msehi,                                           "单位
+      msehl TYPE t006a-msehl,                                           "单位描述
+      spras TYPE t006a-spras,
+      END OF ty_t006a,
+
+      BEGIN OF ty_mara,
+        matnr TYPE mara-matnr,
+        prdha TYPE mara-prdha,
+      END OF ty_mara,
+
+      BEGIN OF ty_t001,
+        werks TYPE t001w-werks, " 工厂
+        name1 TYPE t001w-name1, " 名称
+      END OF ty_t001.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 内表声明</font>
+<font color ="#0000FF">************************************************************************</font>
+DATA:gt_head TYPE STANDARD TABLE OF ty_head,
+     w_middle TYPE ty_head,
+     gt_middle TYPE STANDARD TABLE OF ty_head,
+     w_head TYPE ty_head,
+     gt_alv TYPE STANDARD TABLE OF ty_wxjh,
+     w_alv TYPE ty_wxjh,
+     gt_kna1 TYPE STANDARD TABLE OF ty_kna1,
+
+     gt_thd TYPE STANDARD TABLE OF ty_thd,
+     w_thd TYPE ty_thd,
+
+     gt_data TYPE STANDARD TABLE OF ty_wxjh,
+      w_data TYPE ty_wxjh,
+     gt_cal TYPE STANDARD TABLE OF ty_cal,
+     w_cal TYPE ty_cal,
+
+     gt_material TYPE STANDARD TABLE OF ty_material,
+     gt_t006a TYPE STANDARD TABLE OF ty_t006a,
+     w_t006a TYPE ty_t006a,
+     gt_t001l TYPE STANDARD TABLE OF ty_t001l,
+     w_t001l TYPE ty_t001l,
+
+     gt_mara TYPE STANDARD TABLE OF ty_mara,    " 物料产品层次信息
+     w_mara TYPE ty_mara,
+     gt_t001 TYPE STANDARD TABLE OF ty_t001,    " 工厂名称
+     w_t001 TYPE ty_t001,
+
+     gt_fieldcat TYPE slis_t_fieldcat_alv,
+      w_fieldcat  TYPE slis_fieldcat_alv,
+      w_layout    TYPE slis_layout_alv,
+     g_alv_grid TYPE REF TO cl_gui_alv_grid,
+      fm_name TYPE rs38l_fnam.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 字段符声明</font>
+<font color ="#0000FF">************************************************************************</font>
+FIELD-SYMBOLS:&lt;fs_thd&gt; TYPE ty_thd,
+              &lt;fs_data&gt; TYPE ty_wxjh,
+              &lt;fs_head&gt; TYPE ty_head,
+              &lt;fs_kna1&gt; TYPE ty_kna1,
+              &lt;fs_wxjh&gt; TYPE ty_wxjh,
+              &lt;fs_material&gt; TYPE ty_material,
+              &lt;fs_t001l&gt; TYPE ty_t001l,
+              &lt;fs_alv&gt; TYPE ty_wxjh,
+              &lt;fs_t006a&gt; TYPE ty_t006a,
+              &lt;fs_cal&gt; TYPE ty_cal.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 定义选择屏幕参数</font>
+<font color ="#0000FF">************************************************************************</font>
+SELECTION-SCREEN BEGIN OF BLOCK blk1 WITH FRAME TITLE text-001.
+
+SELECT-OPTIONS:s_gc FOR lips-werks NO-EXTENSION NO INTERVALS OBLIGATORY,  " 供方工厂
+               s_xfgc FOR lips-werks,   " 需方工厂
+               s_jhd FOR likp-vbeln MATCHCODE OBJECT vmvl,
+               s_xsdh FOR lips-vgbel,
+               s_wlh FOR lips-matnr MATCHCODE OBJECT mat1_s_mpn,
+               p_khbm FOR kna1-kunnr MATCHCODE OBJECT debi NO INTERVALS NO-EXTENSION,
+               s_kunag FOR kna1-kunnr MATCHCODE OBJECT debi NO INTERVALS NO-EXTENSION,
+               s_pzrq FOR likp-bldat OBLIGATORY DEFAULT sy-datum TO sy-datum,
+               s_cpcc FOR mara-prdha,
+<font color ="#0000FF">*********************** add by huangcz 20121206 begin *******************************</font>
+               s_knkli FOR likp-knkli.
+<font color ="#0000FF">*********************** add by huangcz 20121206 end *******************************</font>
+PARAMETERS: p_my TYPE c RADIOBUTTON GROUP g1 DEFAULT 'X',
+            p_qb TYPE c RADIOBUTTON GROUP g1 ,
+            p_wdy TYPE c AS CHECKBOX DEFAULT 'X',   " 未打印
+            p_ydy TYPE c AS CHECKBOX.               " 已打印
+SELECTION-SCREEN END OF BLOCK blk1.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* Initialization</font>
+<font color ="#0000FF">************************************************************************</font>
+
+AT SELECTION-SCREEN.
+  IF p_wdy = space AND p_ydy = space.
+    MESSAGE s000 WITH '请选择打印信息！' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* event Start of Selection</font>
+<font color ="#0000FF">************************************************************************</font>
+START-OF-SELECTION.
+  PERFORM get_data_alv USING space.
+  PERFORM display_by_alv.
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_data_alv</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM get_data_alv USING p_flag.
+  TYPES:BEGIN OF ty_vbfa,
+        vbeln TYPE lips-vbeln,
+        posnv TYPE vbfa-posnv,
+        vbelv TYPE vbfa-vbelv,
+        posnn TYPE vbfa-posnn,
+        END OF ty_vbfa.
+  TYPES:BEGIN OF ty_mseg,
+        mblnr TYPE mseg-mblnr,
+        smbln TYPE mseg-smbln,
+        END OF ty_mseg,
+
+        BEGIN OF ty_vbkd,
+        vbeln TYPE vbkd-vbeln,
+        bstkd TYPE vbkd-bstkd,
+        END OF ty_vbkd,
+
+        BEGIN OF ty_xs,
+        zxsdd TYPE vbak-vbeln,
+          POSNR type vbap-POSNR,
+        ernam TYPE vbak-ernam,
+          auart TYPE vbak-auart,  " 销售凭证类型
+          KNUMV type vbak-KNUMV,  " 单据条件数   " add by huangcz 20130830
+          WAERK type vbak-WAERK,  " 币别   " add by huangcz 20130830
+          KZWI1 type vbap-KZWI1,  " 小计1
+          KWMENG type vbap-KWMENG,  " 订单数量
+        END OF ty_xs,
+
+        BEGIN OF ty_ekko,
+          ebeln TYPE ekko-ebeln,
+          ernam TYPE ekko-ernam,
+          ekgrp type ekko-ekgrp,      "采购组  add by yetp 20150513
+          eknam type t024-eknam,      "采购组描述  add by yetp 20150513
+        END OF ty_ekko,
+
+        BEGIN OF ty_tvko,
+          vkorg TYPE tvko-vkorg,
+          bukrs TYPE tvko-bukrs,
+          butxt TYPE t001-butxt,
+        END OF ty_tvko,
+
+        BEGIN OF ty_konv,
+          KNUMV type konv-KNUMV,
+          KPOSN type konv-KPOSN,   " 条件项目号
+          KBETR type konv-KBETR,  " 价格( 条件金额或百分数 )
+          KPEIN type konv-KPEIN,   " 条件定价单位
+        END OF ty_konv.
+
+  DATA:l_zxh TYPE i,
+       lt_vbfa TYPE STANDARD TABLE OF ty_vbfa,
+       lw_vbfa TYPE ty_vbfa,
+       lt_vbkd TYPE STANDARD TABLE OF ty_vbkd,
+       lw_vbkd TYPE ty_vbkd,
+       lt_xs TYPE STANDARD TABLE OF ty_xs,
+       lw_xs TYPE ty_xs,
+       lt_mseg TYPE STANDARD TABLE OF ty_mseg,
+       lw_mseg TYPE ty_mseg,
+       lt_ekko TYPE STANDARD TABLE OF ty_ekko,
+       lw_ekko TYPE ty_ekko,
+       l_zjsfz TYPE char13,
+       l_zjsfm TYPE char13,
+       lt_tvko TYPE STANDARD TABLE OF ty_tvko,
+       lw_tvko TYPE ty_tvko,
+       lt_konv type STANDARD TABLE OF ty_konv,
+       lw_konv type ty_konv,
+       l_find TYPE c.
+
+  CLEAR: gt_data, gt_alv, gt_mara.
+
+  IF p_my = 'X'.
+    " 获取订单数据
+    SELECT kunnr                                                     "送达方
+           likp~vbeln                                                "外向交货单号
+           matnr                                                     "物料号
+           arktx                                                     "物料描述
+           posnr                                                     "交货项目
+           vrkme                                                     "销售单位
+           lfimg                                                     "数量
+           lips~werks                                                "工厂
+           lgort                                                     "库存地点
+           meins                                                     " 基本计量单位
+           umvkz                                                     " 销售数量转换成SKU的分子(因子)
+           umvkn                                                     " 销售数量转换为 SKU 的值（除数）
+           lips~ntgew                                                     " 净重
+           vgbel          " 参考单据的单据编号
+           vgpos           " 参考项目的项目号
+         vgtyp           " SD 凭证类别
+           lfart          " 交货类型
+          wadat_ist AS zfhrq    " 发货日期
+          bldat                 " 凭证日期
+          likp~wadat  " 计划货物移动日期
+          likp~vkorg  " 销售机构
+          likp~ernam  " 创建对象的人员名称
+          likp~knkli      " add by huangcz 20121206
+      INTO CORRESPONDING FIELDS OF TABLE gt_data
+      FROM likp INNER JOIN lips
+      ON likp~vbeln = lips~vbeln
+    WHERE likp~vbeln IN s_jhd
+      AND kunnr IN p_khbm
+      AND kunag IN s_kunag    " 售达方
+<font color ="#0000FF">*      and matnr in s_wlh</font>
+      AND likp~ernam = sy-uname
+      AND lips~vgbel IN s_xsdh
+      AND likp~bldat IN s_pzrq
+      AND lips~werks IN s_gc
+      AND likp~werks IN s_xfgc
+      AND likp~knkli IN s_knkli.
+  ELSE.
+    SELECT kunnr                                                   "送达方
+         likp~vbeln                                                "外向交货单号
+         matnr                                                     "物料号
+         arktx                                                     "物料描述
+         posnr                                                     "交货项目
+         vrkme                                                     "销售单位
+         lfimg                                                     "数量
+         lips~werks                                                "工厂
+         lgort                                                     "库存地点
+         meins                                                     " 基本计量单位
+         umvkz                                                     " 销售数量转换成SKU的分子(因子)
+         umvkn                                                     " 销售数量转换为 SKU 的值（除数）
+         lips~ntgew                                                " 净重
+         vgbel                                                     " 参考单据的单据编号
+         vgpos                                                     " 参考项目的项目号
+         vgtyp                                                    " SD 凭证类别
+         lfart                                                     " 交货类型
+      wadat_ist AS zfhrq    " 发货日期
+          bldat                 " 凭证日期
+        likp~wadat  " 计划货物移动日期
+        likp~vkorg  " 销售机构
+        likp~ernam  " 创建对象的人员名称
+      likp~knkli      " add by huangcz 20121206
+    INTO CORRESPONDING FIELDS OF TABLE gt_data
+    FROM likp INNER JOIN lips
+    ON likp~vbeln = lips~vbeln
+  WHERE likp~vbeln IN s_jhd
+    AND kunnr IN p_khbm
+      AND kunag IN s_kunag  " 售达方
+<font color ="#0000FF">*    and matnr in s_wlh</font>
+    AND lips~vgbel IN s_xsdh
+    AND likp~bldat IN s_pzrq
+    AND lips~werks IN s_gc
+    AND likp~werks IN s_xfgc
+      AND likp~knkli IN s_knkli.
+  ENDIF.
+
+  IF gt_data IS INITIAL.
+    MESSAGE s050 DISPLAY LIKE 'E'.
+    IF p_flag = space.
+      STOP.
+    ELSE.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  " 获取产品层次下的物料信息
+  IF s_cpcc IS NOT INITIAL.
+    SELECT matnr
+           prdha
+      INTO CORRESPONDING FIELDS OF TABLE gt_mara
+      FROM mara
+      FOR ALL ENTRIES IN gt_data
+    WHERE matnr = gt_data-matnr
+      AND prdha IN s_cpcc.
+    SORT gt_mara BY matnr.
+  ENDIF.
+  "获取销售订单号，创建者，销售单位
+  SELECT vbak~vbeln AS zxsdd
+         POSNR
+         vbak~ernam
+         auart    " 销售凭证类型
+        KNUMV     " 单据条件数
+        vbak~WAERK     " 币别
+        KZWI1     " 小计1
+        KWMENG
+    INTO CORRESPONDING FIELDS OF TABLE lt_xs
+    FROM vbak INNER JOIN vbap
+    on vbak~vbeln = vbap~vbeln
+    FOR ALL ENTRIES IN gt_data
+  WHERE vbak~vbeln = gt_data-vgbel.
+
+<font color ="#0000FF">************* add by huangcz 20130829 begin **************</font>
+  if lt_xs[] is not INITIAL.
+    select KNUMV
+      KPOSN   " 条件项目号
+      KBETR   " 价格( 条件金额或百分数 )
+      KPEIN   " 条件定价单位
+      into TABLE lt_konv
+      from konv
+      FOR ALL ENTRIES IN lt_xs
+    where KNUMV = lt_xs-KNUMV
+      AND KPOSN = LT_XS-POSNR
+      and KSCHL = 'ZR01'.
+
+    sort lt_konv by KNUMV KPOSN.
+  endif.
+<font color ="#0000FF">************* add by huangcz 20130829 end **************</font>
+
+  SELECT vbeln
+         bstkd
+    INTO CORRESPONDING FIELDS OF TABLE lt_vbkd
+    FROM vbkd
+    FOR ALL ENTRIES IN gt_data
+  WHERE vbeln = gt_data-vgbel
+    AND posnr = '000000'.
+
+  " 获取联系人信息
+  SELECT kunnr
+         sortl                                                    "联系人
+    INTO TABLE gt_kna1
+    FROM kna1
+    FOR ALL ENTRIES IN gt_data
+  WHERE kunnr = gt_data-kunnr.
+  SORT gt_kna1 BY kunnr.
+
+  SELECT vbelv
+         posnv
+         vbeln
+         posnn
+    INTO TABLE lt_vbfa
+    FROM vbfa
+    FOR ALL ENTRIES IN gt_data
+  WHERE vbelv = gt_data-vbeln
+    AND ( vbtyp_n = 'h'
+    OR vbtyp_n = 'R' ).
+
+  IF lt_vbfa[] IS NOT INITIAL.
+    SELECT mblnr
+           smbln
+      INTO CORRESPONDING FIELDS OF TABLE lt_mseg
+      FROM mseg
+      FOR ALL ENTRIES IN lt_vbfa
+    WHERE mblnr = lt_vbfa-vbelv.
+
+<font color ="#0000FF">*  排序优化</font>
+    SORT lt_vbfa BY vbelv.
+    SORT lt_mseg BY smbln.
+
+    LOOP AT lt_vbfa INTO lw_vbfa.
+      READ TABLE lt_mseg INTO lw_mseg WITH KEY smbln = lw_vbfa-vbelv BINARY SEARCH.          "把冲销掉的记录删除
+      IF sy-subrc = 0.
+        DELETE lt_vbfa.
+        DELETE lt_vbfa WHERE vbelv = lw_mseg-mblnr.
+      ENDIF.
+    ENDLOOP.
+
+  ENDIF.
+
+  SELECT ekko~ebeln
+    ekko~ernam
+    ekko~ekgrp "add by yetp 20150513
+    t024~eknam "add by yetp 20150513
+    INTO TABLE lt_ekko
+    FROM ekko
+    LEFT JOIN t024  "add by yetp 20150513
+    on ekko~ekgrp = t024~ekgrp  "add by yetp 20150513
+    FOR ALL ENTRIES IN gt_data
+  WHERE ekko~ebeln = gt_data-vgbel.
+  SORT lt_ekko BY ebeln.
+
+  SORT lt_vbfa BY vbeln.
+  SORT lt_vbkd BY vbeln.
+  SORT lt_xs BY zxsdd posnr.
+
+  LOOP AT gt_data ASSIGNING &lt;fs_data&gt;.
+    l_zxh = l_zxh + 1.
+    &lt;fs_data&gt;-zxh = l_zxh.
+
+    READ TABLE lt_vbfa INTO lw_vbfa WITH KEY vbeln = &lt;fs_data&gt;-vbeln BINARY SEARCH.
+    IF sy-subrc = 0.
+      &lt;fs_data&gt;-mblnr = lw_vbfa-vbelv.
+    ENDIF.
+
+    IF &lt;fs_data&gt;-vgtyp = 'V'.
+      &lt;fs_data&gt;-bstkd = &lt;fs_data&gt;-vgbel.
+<font color ="#0000FF">*      READ TABLE lt_vbkd INTO lw_vbkd WITH KEY vbeln = &lt;fs_data&gt;-vgbel BINARY SEARCH.</font>
+<font color ="#0000FF">*      IF sy-subrc = 0.</font>
+<font color ="#0000FF">*        &lt;fs_data&gt;-bstkd = lw_vbkd-bstkd.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">*      " 取外向交货单上的创建者  begin 20121020 ********</font>
+<font color ="#0000FF">*      READ TABLE lt_ekko INTO lw_ekko WITH KEY ebeln = &lt;fs_data&gt;-vgbel BINARY SEARCH.</font>
+<font color ="#0000FF">*      IF sy-subrc = 0.</font>
+<font color ="#0000FF">*        &lt;fs_data&gt;-ernam = lw_ekko-ernam.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">*      end 20121020 **************************</font>
+
+<font color ="#0000FF">*****add by yetp 20150513*******start</font>
+"取采购订单的采购组和描述
+      READ TABLE lt_ekko INTO lw_ekko WITH key ebeln = &lt;fs_data&gt;-vgbel BINARY SEARCH.
+      IF sy-subrc = 0.
+          &lt;fs_data&gt;-ekgrp = lw_ekko-ekgrp.
+          &lt;fs_data&gt;-eknam = lw_ekko-eknam.
+      ENDIF.
+<font color ="#0000FF">*****add by yetp 20150513*******end</font>
+    ELSE.
+      &lt;fs_data&gt;-zxsdd = &lt;fs_data&gt;-vgbel.
+      READ TABLE lt_vbkd INTO lw_vbkd WITH KEY vbeln = &lt;fs_data&gt;-vgbel BINARY SEARCH.
+      IF sy-subrc = 0.
+        &lt;fs_data&gt;-bstkd = lw_vbkd-bstkd.
+      ENDIF.
+      READ TABLE lt_xs INTO lw_xs WITH KEY zxsdd = &lt;fs_data&gt;-vgbel
+                                           posnr = &lt;fs_data&gt;-vgpos BINARY SEARCH.
+      IF sy-subrc = 0.
+<font color ="#0000FF">*        &lt;fs_data&gt;-zxsdd = lw_xs-zxsdd.</font>
+<font color ="#0000FF">*        &lt;fs_data&gt;-ernam = lw_xs-ernam.</font>
+        &lt;fs_data&gt;-auart = lw_xs-auart.
+        &lt;fs_data&gt;-WAERK = lw_xs-WAERK.
+        &lt;fs_data&gt;-KZWI1 = LW_XS-KZWI1.  " 结算金额
+        &lt;fs_data&gt;-KWMENG = lw_xs-KWMENG.
+
+<font color ="#0000FF">******** add by huangcz 20130829 begin *****************</font>
+        READ TABLE lt_konv into lw_konv with key KNUMV = lw_xs-KNUMV
+                                                 KPOSN = &lt;fs_data&gt;-vgpos BINARY SEARCH.
+        if sy-subrc = 0.
+          if lw_konv-KPEIN is INITIAL.
+            &lt;fs_data&gt;-KBETR = lw_konv-KBETR.
+          else.
+            &lt;fs_data&gt;-KBETR = lw_konv-KBETR / lw_konv-KPEIN.
+          endif.
+        endif.
+<font color ="#0000FF">******** add by huangcz 20130829 end *****************</font>
+      ENDIF.
+    ENDIF.
+    READ TABLE gt_mara INTO w_mara WITH KEY matnr = &lt;fs_data&gt;-matnr BINARY SEARCH.
+    IF sy-subrc = 0.
+      &lt;fs_data&gt;-prdha = w_mara-prdha.
+<font color ="#0000FF">**********  delete by huangcz 20120901  *******</font>
+<font color ="#0000FF">*    else.</font>
+<font color ="#0000FF">*      delete gt_data.</font>
+<font color ="#0000FF">**********  delete by huangcz 20120901  *******</font>
+    ENDIF.
+
+<font color ="#0000FF">*    move-corresponding w_data to w_alv.</font>
+<font color ="#0000FF">*    append w_alv to gt_alv.</font>
+  ENDLOOP.
+
+  " 查看是否有对应物料/产品层次的订单号
+  IF s_wlh IS NOT INITIAL OR s_cpcc IS NOT INITIAL.
+    CLEAR l_find.
+    IF s_wlh IS NOT INITIAL AND s_cpcc IS NOT INITIAL.
+      LOOP AT gt_data INTO w_data WHERE matnr IN s_wlh
+                                     AND prdha IN s_cpcc.
+        l_find = 'X'.
+        EXIT.
+      ENDLOOP.
+    ELSEIF s_wlh IS NOT INITIAL.
+      LOOP AT gt_data INTO w_data WHERE matnr IN s_wlh.
+        l_find = 'X'.
+        EXIT.
+      ENDLOOP.
+    ELSE.
+      LOOP AT gt_data INTO w_data WHERE prdha IN s_cpcc.
+        l_find = 'X'.
+        EXIT.
+      ENDLOOP.
+    ENDIF.
+
+    IF l_find IS INITIAL.
+      MESSAGE s050 DISPLAY LIKE 'E'.
+      IF p_flag = space.
+        STOP.
+      ELSE.
+        RETURN.
+      ENDIF.
+    ENDIF.
+  ENDIF.
+
+  " 获取公司名称，通过销售组织获取对应公司
+  SELECT vkorg
+         tvko~bukrs
+         t001~butxt
+    INTO TABLE lt_tvko
+    FROM tvko LEFT JOIN t001
+    ON tvko~bukrs = t001~bukrs
+    FOR ALL ENTRIES IN gt_data
+  WHERE vkorg = gt_data-vkorg.
+  SORT lt_tvko BY vkorg.
+
+
+  " 获取单位名称
+  SELECT msehi
+         msehl
+         spras
+      INTO TABLE gt_t006a
+      FROM t006a
+      FOR ALL ENTRIES IN gt_data
+    WHERE ( msehi = gt_data-meins )
+      AND spras = '1'.
+  SORT gt_t006a BY msehi.
+
+  " 获取工厂名称
+  IF gt_t001 IS INITIAL.
+    SELECT werks
+      name1                "交货工厂描述
+      INTO TABLE gt_t001
+      FROM t001w.
+    SORT gt_t001 BY werks.
+  ENDIF.
+
+  " 获取库存描述
+  IF gt_t001l IS INITIAL.
+    SELECT werks
+           lgort    " 库存地点
+           lgobe    " 仓储地点的描述
+      INTO TABLE gt_t001l
+      FROM t001l.
+    SORT gt_t001l BY werks lgort.
+  ENDIF.
+
+  " 获取物料的装箱对应关系
+  SELECT meinh
+    umrez
+    umren
+    matnr
+    INTO TABLE gt_cal
+    FROM marm
+    FOR ALL ENTRIES IN gt_data
+  WHERE matnr = gt_data-matnr
+    AND meinh = 'KAR'.       " 对应CAR的换算关系
+  SORT gt_cal BY matnr.
+
+  LOOP AT gt_data ASSIGNING &lt;fs_alv&gt;.
+<font color ="#0000FF">*回写客户名称</font>
+    READ TABLE gt_kna1 ASSIGNING &lt;fs_kna1&gt; WITH KEY kunnr = &lt;fs_alv&gt;-kunnr BINARY SEARCH.
+    IF sy-subrc = 0.
+      &lt;fs_alv&gt;-sortl = &lt;fs_kna1&gt;-sortl.
+    ENDIF.
+
+    " 设置基本单位对应的数量
+    &lt;fs_alv&gt;-zjbsl = &lt;fs_alv&gt;-umvkz * &lt;fs_alv&gt;-lfimg.
+    IF &lt;fs_alv&gt;-umvkn &lt;&gt; 0.
+      &lt;fs_alv&gt;-zjbsl = &lt;fs_alv&gt;-zjbsl / &lt;fs_alv&gt;-umvkn.
+    ENDIF.
+
+    " 设置基本单位名称
+    READ TABLE gt_t006a INTO w_t006a WITH KEY msehi = &lt;fs_alv&gt;-meins BINARY SEARCH.
+    IF sy-subrc = 0.
+      &lt;fs_alv&gt;-zjbdw = w_t006a-msehl.
+    ENDIF.
+
+    " 计算件数
+    IF &lt;fs_alv&gt;-vrkme = 'ST'.
+      &lt;fs_alv&gt;-zjsfz = 0.                                 "不能成整箱的数量
+      &lt;fs_alv&gt;-zjsfm = &lt;fs_alv&gt;-lfimg.                    "整箱数
+    ELSEIF &lt;fs_alv&gt;-meins = 'ST'.
+      &lt;fs_alv&gt;-zjsfz = 0.
+      &lt;fs_alv&gt;-zjsfm = &lt;fs_alv&gt;-zjbsl.
+    ELSE.
+      READ TABLE gt_cal INTO w_cal WITH KEY matnr = &lt;fs_alv&gt;-matnr BINARY SEARCH.
+      IF sy-subrc = 0.
+        IF w_cal-umrez &lt;&gt; 0.
+          &lt;fs_alv&gt;-zjsfz = &lt;fs_alv&gt;-zjbsl MOD w_cal-umrez.
+          &lt;fs_alv&gt;-zjsfm = &lt;fs_alv&gt;-zjbsl DIV w_cal-umrez.
+        ENDIF.
+        &lt;fs_alv&gt;-zjsfm = &lt;fs_alv&gt;-zjsfm * w_cal-umren.
+      ELSE.
+        &lt;fs_alv&gt;-zjsfz = &lt;fs_alv&gt;-zjbsl.
+        &lt;fs_alv&gt;-zjsfm = 0.
+      ENDIF.
+    ENDIF.
+    WRITE &lt;fs_alv&gt;-zjsfz TO l_zjsfz.
+    WRITE &lt;fs_alv&gt;-zjsfm TO l_zjsfm.
+    CONDENSE l_zjsfz.
+    CONDENSE l_zjsfm.
+    CONCATENATE l_zjsfm l_zjsfz INTO &lt;fs_alv&gt;-zcpjs SEPARATED BY '/'.
+
+    " 设置备注
+    PERFORM set_tdline CHANGING &lt;fs_alv&gt;.
+
+    " 设置公司名称
+    READ TABLE lt_tvko INTO lw_tvko WITH KEY vkorg = &lt;fs_alv&gt;-vkorg BINARY SEARCH.
+    IF sy-subrc = 0.
+      &lt;fs_alv&gt;-butxt = lw_tvko-butxt.
+      &lt;fs_alv&gt;-bukrs = lw_tvko-bukrs.
+    ENDIF.
+
+<font color ="#0000FF">*    " 公司间发货，客户名称取采购订单工厂名称</font>
+<font color ="#0000FF">*    IF &lt;fs_alv&gt;-lfart = 'NLCC' OR &lt;fs_alv&gt;-lfart = 'NCR'.</font>
+<font color ="#0000FF">*      SELECT SINGLE werks</font>
+<font color ="#0000FF">*        INTO CORRESPONDING FIELDS OF lw_t001</font>
+<font color ="#0000FF">*        FROM ekpo</font>
+<font color ="#0000FF">*      WHERE ebeln = &lt;fs_alv&gt;-zcgdh.</font>
+<font color ="#0000FF">*      IF sy-subrc = 0.</font>
+<font color ="#0000FF">*        SELECT SINGLE name1                                                 "交货工厂描述</font>
+<font color ="#0000FF">*          INTO CORRESPONDING FIELDS OF lw_t001</font>
+<font color ="#0000FF">*          FROM t001w</font>
+<font color ="#0000FF">*        WHERE werks = lw_t001-werks.</font>
+<font color ="#0000FF">*        IF sy-subrc = 0.</font>
+<font color ="#0000FF">*          &lt;fs_alv&gt;-zkhnm = lw_t001-name1.</font>
+<font color ="#0000FF">*        ENDIF.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+  ENDLOOP.
+
+  " 复制到alv中
+  IF s_wlh IS NOT INITIAL AND s_cpcc IS NOT INITIAL.
+    LOOP AT gt_data INTO w_data WHERE matnr IN s_wlh
+                                  AND prdha IN s_cpcc.
+      APPEND w_data TO gt_alv.
+    ENDLOOP.
+  ELSEIF s_wlh IS NOT INITIAL.
+    LOOP AT gt_data INTO w_data WHERE matnr IN s_wlh.
+      APPEND w_data TO gt_alv.
+    ENDLOOP.
+  ELSEIF s_cpcc IS NOT INITIAL.
+    LOOP AT gt_data INTO w_data WHERE prdha IN s_cpcc.
+      APPEND w_data TO gt_alv.
+    ENDLOOP.
+  ELSE.
+    MOVE gt_data TO gt_alv.
+  ENDIF.
+
+  IF gt_alv IS INITIAL.
+    MESSAGE s050 DISPLAY LIKE 'E'.
+    IF p_flag = space.
+      STOP.
+    ELSE.
+      RETURN.
+    ENDIF.
+  ENDIF.
+  SORT gt_alv BY vbeln.
+
+  " 获取打印次数
+  PERFORM select_data.
+
+  IF p_wdy = space.
+    DELETE gt_alv WHERE zdycs = 0 AND mblnr = space.
+  ELSEIF p_ydy = space.
+    DELETE gt_alv WHERE zdycs &gt; 0 OR mblnr &lt;&gt; space.
+  ENDIF.
+
+  IF gt_alv IS INITIAL.
+    MESSAGE s050 DISPLAY LIKE 'E'.
+    IF p_flag = space.
+      STOP.
+    ELSE.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+ENDFORM.                    "get_data_alv
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_data_smart</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM get_data_smart.
+  PERFORM get_item.
+
+  PERFORM get_head.
+
+  SORT gt_head BY vbeln lgort vgbel.
+  SORT gt_thd ASCENDING.
+
+  DELETE ADJACENT DUPLICATES FROM gt_head COMPARING vbeln lgort vgbel.
+  DELETE ADJACENT DUPLICATES FROM gt_thd COMPARING ALL FIELDS.
+
+<font color ="#0000FF">*  set parameter id 'ZSD004' field w_alv-zdycs.                              "把上一次的打印次数传到内存中</font>
+  EXPORT gt_head TO MEMORY ID 'ZHEAD'.
+  EXPORT gt_thd TO MEMORY ID 'ZITEM'.                              "把同一外向交货单号下的数据传到内存中
+ENDFORM.                    "get_data_smart
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  user_command</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;UCOMM      text</font>
+<font color ="#0000FF">*      --&gt;SELFIELD   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM user_command USING ucomm LIKE sy-ucomm
+                       selfield TYPE slis_selfield.
+  DATA: l_vbeln LIKE w_alv-vbeln,
+        l_str TYPE string,
+  l_ret TYPE c.
+
+  DATA: ls_stable TYPE lvc_s_stbl.
+  ls_stable-row = 'X'.
+  ls_stable-col = 'X'.
+  CASE ucomm.
+    WHEN '&IC1'.    " 双击
+      CLEAR:gt_thd,gt_head.
+      READ TABLE gt_alv ASSIGNING &lt;fs_alv&gt; INDEX selfield-tabindex.
+      CHECK sy-subrc = 0.
+      IF selfield-fieldname = 'VBELN'.
+        SET PARAMETER ID 'VL' FIELD &lt;fs_alv&gt;-vbeln.
+<font color ="#0000FF">*        SET PARAMETER ID 'AGN' FIELD &lt;fs_alv&gt;-vbeln.</font>
+        CALL TRANSACTION 'VL03N' AND SKIP FIRST SCREEN.
+      ELSE.
+
+        IF &lt;fs_alv&gt;-mblnr IS NOT INITIAL AND sy-tcode = 'ZSD04'.      " modify by huangcz 20130105 begin
+          MESSAGE s000 WITH '已过账的订单不能打印' DISPLAY LIKE 'E'.
+        ELSEIF &lt;fs_alv&gt;-auart = 'ZBRE' OR &lt;fs_alv&gt;-auart = 'ZLRE'.
+          MESSAGE s000 WITH '退货订单不能打印' DISPLAY LIKE 'E'.
+        ELSE.
+          " 还有其他行项目未选中，则报错
+          LOOP AT gt_alv INTO w_alv WHERE vbeln = &lt;fs_alv&gt;-vbeln
+                                       AND posnr &lt;&gt; &lt;fs_alv&gt;-posnr.
+            MESSAGE e000 WITH '该订单还有其他行项目未被选中'.
+          ENDLOOP.
+
+          IF &lt;fs_alv&gt;-zdycs &gt; 0.
+            PERFORM confirm_window USING text-002 text-003 CHANGING l_ret.
+            IF l_ret &lt;&gt; '1'.
+              RETURN.
+            ENDIF.
+          ENDIF.
+          &lt;fs_alv&gt;-sel = 'X'.
+          PERFORM get_data_smart.
+          PERFORM display_by_smart.
+        ENDIF.
+
+
+      ENDIF.
+    WHEN 'REFRESH'. " 刷新alv界面显示
+      PERFORM get_data_alv USING 'X'.
+<font color ="#0000FF">*      PERFORM display_by_alv.</font>
+      " 刷新alv界面显示
+      IF g_alv_grid IS INITIAL.
+        CALL FUNCTION 'GET_GLOBALS_FROM_SLVC_FULLSCR'
+          IMPORTING
+            e_grid = g_alv_grid.
+      ENDIF.
+      " 刷新数据
+      CALL METHOD g_alv_grid-&gt;refresh_table_display
+        EXPORTING
+          is_stable      =  ls_stable
+<font color ="#0000FF">*          I_SOFT_REFRESH =</font>
+<font color ="#0000FF">*        EXCEPTIONS</font>
+<font color ="#0000FF">*          FINISHED       = 1</font>
+<font color ="#0000FF">*          others         = 2</font>
+              .
+    WHEN '&PRINT'.
+      CLEAR:gt_thd,gt_head.
+
+      LOOP AT gt_alv INTO w_alv WHERE sel = 'X'.
+        IF w_alv-mblnr IS NOT INITIAL AND sy-tcode = 'ZSD04'.      " modify by huangcz 20130105 begin.
+          MESSAGE e000 WITH '已过账的订单不能打印'.
+        ELSEIF w_alv-auart = 'ZBRE' OR w_alv-auart = 'ZLRE'.
+          MESSAGE e000 WITH '退货订单不能打印'.
+        ELSE.
+          " 还有其他行项目未选中，则报错
+          LOOP AT gt_alv ASSIGNING &lt;fs_alv&gt; WHERE vbeln = w_alv-vbeln
+                                       AND sel = space.
+            MESSAGE e000 WITH '该订单还有其他行项目未被选中'.
+          ENDLOOP.
+
+          IF w_alv-zdycs &gt; 0.
+            IF l_str IS INITIAL.
+              l_str = w_alv-vbeln.
+            ELSE.
+              CONCATENATE l_str w_alv-vbeln INTO l_str SEPARATED BY '、'.
+            ENDIF.
+          ENDIF.
+        ENDIF.
+      ENDLOOP.
+
+      IF l_str IS NOT INITIAL.
+        CONCATENATE l_str '已经打印，确认是否重复打印？' INTO l_str.
+        PERFORM confirm_window USING text-002 l_str CHANGING l_ret.
+        IF l_ret &lt;&gt; '1'.
+          RETURN.
+        ENDIF.
+      ENDIF.
+
+      PERFORM get_data_smart.
+      PERFORM display_by_smart.
+  ENDCASE.
+ENDFORM.                    "user_command
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  display_by_alv</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM display_by_alv.
+  DATA:gs_grid_settings TYPE lvc_s_glay.
+  gs_grid_settings-edt_cll_cb = 'X'.
+  PERFORM fill_alv_fieldcat.
+
+  PERFORM fill_layout.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+<font color ="#0000FF">*     I_INTERFACE_CHECK                 = ' '</font>
+<font color ="#0000FF">*     I_BYPASSING_BUFFER                = ' '</font>
+<font color ="#0000FF">*     I_BUFFER_ACTIVE                   = ' '</font>
+     i_callback_program                = sy-repid
+     i_callback_pf_status_set          = 'SET_PF_STATUS'
+     i_callback_user_command           = 'USER_COMMAND'
+<font color ="#0000FF">*     I_CALLBACK_TOP_OF_PAGE            = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE       = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_END_OF_LIST       = ' '</font>
+<font color ="#0000FF">*     I_STRUCTURE_NAME                  =</font>
+<font color ="#0000FF">*     I_BACKGROUND_ID                   = ' '</font>
+<font color ="#0000FF">*     I_GRID_TITLE                      =</font>
+     i_grid_settings                   = gs_grid_settings
+     is_layout                         = w_layout
+     it_fieldcat                       = gt_fieldcat
+<font color ="#0000FF">*     IT_EXCLUDING                      =</font>
+<font color ="#0000FF">*     IT_SPECIAL_GROUPS                 =</font>
+<font color ="#0000FF">*     IT_SORT                           =</font>
+<font color ="#0000FF">*     IT_FILTER                         =</font>
+<font color ="#0000FF">*     IS_SEL_HIDE                       =</font>
+<font color ="#0000FF">*     I_DEFAULT                         = 'X'</font>
+     i_save                            = 'A'
+<font color ="#0000FF">*     IS_VARIANT                        =</font>
+<font color ="#0000FF">*     IT_EVENTS                         =</font>
+<font color ="#0000FF">*     IT_EVENT_EXIT                     =</font>
+<font color ="#0000FF">*     IS_PRINT                          =</font>
+<font color ="#0000FF">*     IS_REPREP_ID                      =</font>
+<font color ="#0000FF">*     I_SCREEN_START_COLUMN             = 0</font>
+<font color ="#0000FF">*     I_SCREEN_START_LINE               = 0</font>
+<font color ="#0000FF">*     I_SCREEN_END_COLUMN               = 0</font>
+<font color ="#0000FF">*     I_SCREEN_END_LINE                 = 0</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_TOP                 = 0</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_END                 = 0</font>
+<font color ="#0000FF">*     IT_ALV_GRAPHICS                   =</font>
+<font color ="#0000FF">*     IT_HYPERLINK                      =</font>
+<font color ="#0000FF">*     IT_ADD_FIELDCAT                   =</font>
+<font color ="#0000FF">*     IT_EXCEPT_QINFO                   =</font>
+<font color ="#0000FF">*     IR_SALV_FULLSCREEN_ADAPTER        =</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">*     ES_EXIT_CAUSED_BY_USER            =</font>
+    TABLES
+      t_outtab                          = gt_alv
+<font color ="#0000FF">*   EXCEPTIONS</font>
+<font color ="#0000FF">*     PROGRAM_ERROR                     = 1</font>
+<font color ="#0000FF">*     OTHERS                            = 2</font>
+            .
+  IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+
+ENDFORM.                    "display_by_alv
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  fill_alv_fieldcat</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM fill_alv_fieldcat.
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZXH'.
+  w_fieldcat-seltext_l = '序号'.
+  w_fieldcat-no_zero = 'X'.
+  w_fieldcat-key = 'X'.
+  w_fieldcat-fix_column = 'X'.
+  w_fieldcat-outputlen = 2.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'VBELN'.
+  w_fieldcat-seltext_l = '外向交货单号'.
+  w_fieldcat-no_zero = 'X'.
+  w_fieldcat-key = 'X'.
+  w_fieldcat-fix_column = 'X'.
+  w_fieldcat-outputlen = 10.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'POSNR'.
+  w_fieldcat-seltext_l = '项目'.
+  w_fieldcat-no_zero = 'X'.
+  w_fieldcat-outputlen = 3.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'KUNNR'.
+  w_fieldcat-seltext_l = '送达方'.
+  w_fieldcat-no_zero = 'X'.
+  w_fieldcat-outputlen = 10.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'SORTL'.
+  w_fieldcat-seltext_l = '联系人'.
+  w_fieldcat-outputlen = 10.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'KNKLI'.
+  w_fieldcat-seltext_l = '信贷账户号'.
+  w_fieldcat-outputlen = 10.
+  w_fieldcat-no_zero = 'X'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'MATNR'.
+  w_fieldcat-seltext_l = '物料编码'.
+  w_fieldcat-no_zero = 'X'.
+  w_fieldcat-outputlen = 18.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ARKTX'.
+  w_fieldcat-seltext_l = '物料描述'.
+  w_fieldcat-outputlen = 40.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'BLDAT'.
+  w_fieldcat-seltext_l = '凭证日期'.
+  w_fieldcat-outputlen = 8.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'BSTKD'.
+  w_fieldcat-seltext_l = '采购订单号'.
+  w_fieldcat-no_zero = 'X'.
+  w_fieldcat-outputlen = 10.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZXSDD'.
+  w_fieldcat-seltext_l = '销售订单号'.
+  w_fieldcat-no_zero = 'X'.
+  w_fieldcat-outputlen = 10.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'VGPOS'.
+  w_fieldcat-seltext_l = '销售订单行项目'.
+  w_fieldcat-no_zero = 'X'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZJBDW'.
+  w_fieldcat-seltext_l = '基本单位'.
+<font color ="#0000FF">*  w_fieldcat-edit_mask = '==CUNIT'.</font>
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZJBSL'.
+  w_fieldcat-seltext_l = '数量'.
+  w_fieldcat-edit_mask = '==ZZERO'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'VRKME'.
+  w_fieldcat-seltext_l = '销售单位'.
+  w_fieldcat-edit_mask = '==CUNIT'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ERNAM'.
+  w_fieldcat-seltext_l = '创建者'.
+  w_fieldcat-outputlen = 12.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZCPJS'.
+  w_fieldcat-seltext_l = '件数'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'WERKS'.
+  w_fieldcat-seltext_l = '工厂'.
+  w_fieldcat-outputlen = 4.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'LGORT'.
+  w_fieldcat-seltext_l = '库存地点'.
+  w_fieldcat-outputlen = 4.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'MBLNR'.
+  w_fieldcat-seltext_l = '物料凭证'.
+  w_fieldcat-outputlen = 10.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZFHRQ'.
+  w_fieldcat-seltext_l = '过账日期'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+<font color ="#0000FF">*****add by yetp 20150513***start</font>
+   CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'EKGRP'.
+  w_fieldcat-seltext_l = '采购组'.
+  w_fieldcat-outputlen = 132.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'EKNAM'.
+  w_fieldcat-seltext_l = '采购组描述'.
+  APPEND w_fieldcat TO gt_fieldcat.
+<font color ="#0000FF">*****add by yetp 20150513***end</font>
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'TDLINE'.
+  w_fieldcat-seltext_l = '备注'.
+  w_fieldcat-outputlen = 132.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZDYCS'.
+  w_fieldcat-seltext_l = '打印次数'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+
+
+
+ENDFORM.                    "fill_alv_fieldcat
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  fill_layout</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM fill_layout.
+  w_layout-zebra = 'X'.
+  w_layout-colwidth_optimize  = 'X'.
+  w_layout-box_fieldname  = 'SEL'.
+ENDFORM.                    "fill_layout
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  display_by_smart</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM display_by_smart.
+  DATA: ls_stable TYPE lvc_s_stbl,
+        l_vbeln LIKE w_alv-vbeln,
+        output_options TYPE ssfcompop.
+  ls_stable-row = 'X'.
+  ls_stable-col = 'X'.
+  output_options-tdiexit = 'X'.
+
+  DATA: control TYPE ssfctrlop,
+        g_error TYPE c,
+        ssfcrescl TYPE ssfcrescl,
+        lw_db TYPE zztwxjhd.
+
+  if gt_head is INITIAL.
+    return.
+  endif.
+
+  if s_gc-low = '1030' and s_gc-OPTION = 'EQ'.
+<font color ="#0000FF">* 获取打印FORM函数名称</font>
+  CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+    EXPORTING
+      formname           = 'ZSMART_THD_JZ'
+<font color ="#0000FF">*     VARIANT            = ' '</font>
+<font color ="#0000FF">*     DIRECT_CALL        = ' '</font>
+    IMPORTING
+      fm_name            = fm_name
+    EXCEPTIONS
+      no_form            = 1
+      no_function_module = 2
+      OTHERS             = 3.
+  IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+  else.
+<font color ="#0000FF">* 获取打印FORM函数名称</font>
+  CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+    EXPORTING
+      formname           = 'ZSMART_THD'
+<font color ="#0000FF">*     VARIANT            = ' '</font>
+<font color ="#0000FF">*     DIRECT_CALL        = ' '</font>
+    IMPORTING
+      fm_name            = fm_name
+    EXCEPTIONS
+      no_form            = 1
+      no_function_module = 2
+      OTHERS             = 3.
+  IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+  endif.
+<font color ="#0000FF">*调用打印</font>
+  CALL FUNCTION fm_name
+    EXPORTING
+<font color ="#0000FF">*     CONTROL_PARAMETERS = CONTROL</font>
+      output_options     = output_options
+    IMPORTING
+      job_output_info    = ssfcrescl
+    EXCEPTIONS
+      formatting_error   = 1
+      internal_error     = 2
+      send_error         = 3
+      user_canceled      = 4
+      OTHERS             = 5.
+
+  IF sy-subrc &lt;&gt; 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+                WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+
+<font color ="#0000FF">*判断是否真实打印</font>
+  IF ssfcrescl-outputdone = 'X'.
+    g_error = 'S'.
+    SORT gt_head BY vbeln.
+    CLEAR l_vbeln.
+    LOOP AT gt_head ASSIGNING &lt;fs_head&gt;.
+      IF l_vbeln IS INITIAL OR &lt;fs_head&gt;-vbeln &lt;&gt; l_vbeln.
+<font color ="#0000FF">*        LOOP AT gt_alv INTO w_alv WHERE vbeln = &lt;fs_head&gt;-vbeln.</font>
+<font color ="#0000FF">*          w_alv-zdycs = w_alv-zdycs + 1.</font>
+<font color ="#0000FF">**          lw_db-vbeln = w_alv-vbeln.</font>
+<font color ="#0000FF">**          lw_db-zdycs = w_alv-zdycs.</font>
+<font color ="#0000FF">*          MODIFY gt_alv FROM w_alv.</font>
+<font color ="#0000FF">*        ENDLOOP.</font>
+        SELECT SINGLE *
+          INTO lw_db
+          FROM zztwxjhd
+        WHERE vbeln = &lt;fs_head&gt;-vbeln.
+        IF sy-subrc = 0.
+          lw_db-zdycs = lw_db-zdycs + 1.
+        ELSE.
+          lw_db-vbeln = &lt;fs_head&gt;-vbeln.
+          lw_db-zdycs = 1.
+        ENDIF.
+        MODIFY zztwxjhd FROM lw_db.
+        COMMIT WORK AND WAIT.
+
+        LOOP AT gt_alv ASSIGNING &lt;fs_alv&gt; WHERE vbeln = &lt;fs_head&gt;-vbeln.
+          &lt;fs_alv&gt;-zdycs = lw_db-zdycs.
+<font color ="#0000FF">*          MODIFY gt_alv FROM w_alv.</font>
+        ENDLOOP.
+
+        l_vbeln = &lt;fs_head&gt;-vbeln.
+      ENDIF.
+    ENDLOOP.
+    " 刷新alv界面显示
+    IF g_alv_grid IS INITIAL.
+      CALL FUNCTION 'GET_GLOBALS_FROM_SLVC_FULLSCR'
+        IMPORTING
+          e_grid = g_alv_grid.
+    ENDIF.
+    " 刷新数据
+    CALL METHOD g_alv_grid-&gt;refresh_table_display
+      EXPORTING
+        is_stable      =  ls_stable
+<font color ="#0000FF">*          I_SOFT_REFRESH =</font>
+<font color ="#0000FF">*        EXCEPTIONS</font>
+<font color ="#0000FF">*          FINISHED       = 1</font>
+<font color ="#0000FF">*          others         = 2</font>
+            .
+  ELSE.
+    g_error = 'E'.
+  ENDIF.
+
+ENDFORM.                    "display_by_smart
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FLASH_ALV</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM flash_alv.
+  CALL FUNCTION 'GET_GLOBALS_FROM_SLVC_FULLSCR'
+<font color ="#0000FF">*   EXPORTING</font>
+<font color ="#0000FF">*     IR_SALV_FULLSCREEN_ADAPTER       =</font>
+   IMPORTING
+<font color ="#0000FF">*     ET_EXCLUDING                     =</font>
+<font color ="#0000FF">*     E_REPID                          =</font>
+<font color ="#0000FF">*     E_CALLBACK_PROGRAM               =</font>
+<font color ="#0000FF">*     E_CALLBACK_ROUTINE               =</font>
+     e_grid                           = g_alv_grid
+<font color ="#0000FF">*     ET_FIELDCAT_LVC                  =</font>
+<font color ="#0000FF">*     ER_TRACE                         =</font>
+<font color ="#0000FF">*     E_FLG_NO_HTML                    =</font>
+<font color ="#0000FF">*     ES_LAYOUT_KKBLO                  =</font>
+<font color ="#0000FF">*     ES_SEL_HIDE                      =</font>
+<font color ="#0000FF">*     ET_EVENT_EXIT                    =</font>
+<font color ="#0000FF">*     ER_FORM_TOL                      =</font>
+<font color ="#0000FF">*     ER_FORM_EOL                      =</font>
+            .
+
+  CALL METHOD g_alv_grid-&gt;refresh_table_display
+    EXPORTING
+<font color ="#0000FF">*     IS_STABLE      =</font>
+      i_soft_refresh = 'X'
+    EXCEPTIONS
+      finished       = 1
+      OTHERS         = 2.
+  IF sy-subrc &lt;&gt; 0.
+    LEAVE TO SCREEN 0.
+  ENDIF.
+
+ENDFORM.                    "FLASH_ALV
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  add_zero</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;FU_ID      text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM add_zero USING fu_id.
+  CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+    EXPORTING
+      input  = fu_id
+    IMPORTING
+      output = fu_id.
+
+ENDFORM.                    "add_zero
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_PF_STATUS</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;RT_EXTAB   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM set_pf_status USING rt_extab TYPE slis_t_extab.
+  SET PF-STATUS 'STANDARD_FULLSCREEN' EXCLUDING rt_extab.
+ENDFORM.                    "SET_PF_STATUS
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_head</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM get_head.
+<font color ="#0000FF">*  TYPES:BEGIN OF ty_t001,</font>
+<font color ="#0000FF">*        name1 TYPE t001w-name1,</font>
+<font color ="#0000FF">*        burks TYPE t001k-bukrs,</font>
+<font color ="#0000FF">*        werks TYPE t001w-werks,</font>
+<font color ="#0000FF">*        END OF ty_t001.</font>
+<font color ="#0000FF">*  TYPES:BEGIN OF ty_tvko,</font>
+<font color ="#0000FF">*        vkorg TYPE tvko-vkorg,</font>
+<font color ="#0000FF">*        bukrs TYPE tvko-bukrs,</font>
+<font color ="#0000FF">*        END OF ty_tvko.</font>
+<font color ="#0000FF">*  TYPES:BEGIN OF ty_vbpa,</font>
+<font color ="#0000FF">*        vbeln TYPE vbpa-vbeln,</font>
+<font color ="#0000FF">*        name1 TYPE adrc-name1,</font>
+<font color ="#0000FF">*        END OF ty_vbpa,</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*        BEGIN OF ty_name,</font>
+<font color ="#0000FF">*          name1 TYPE kna1-name1,</font>
+<font color ="#0000FF">*          sortl TYPE kna1-sortl,</font>
+<font color ="#0000FF">*        END OF ty_name.</font>
+<font color ="#0000FF">*  DATA:lt_t001 TYPE STANDARD TABLE OF ty_t001,</font>
+<font color ="#0000FF">*       lw_t001 TYPE ty_t001,</font>
+<font color ="#0000FF">*       lt_tvko TYPE STANDARD TABLE OF ty_tvko,</font>
+<font color ="#0000FF">*       lw_tvko TYPE ty_tvko,</font>
+<font color ="#0000FF">*       lt_vbpa TYPE STANDARD TABLE OF ty_vbpa,</font>
+<font color ="#0000FF">*       lw_vbpa TYPE ty_vbpa,</font>
+<font color ="#0000FF">*       l_vgbel TYPE lips-vgbel,</font>
+<font color ="#0000FF">*       lw_name TYPE ty_name.</font>
+<font color ="#0000FF">*  SELECT  wadat                                                      "交货日期</font>
+<font color ="#0000FF">*          likp~ernam                                                 "制单人</font>
+<font color ="#0000FF">*          wadat_ist AS zckrq                                         "出库日期</font>
+<font color ="#0000FF">*          likp~vbeln</font>
+<font color ="#0000FF">*          likp~vkorg                                                 "销售组织</font>
+<font color ="#0000FF">*          lips~lgort</font>
+<font color ="#0000FF">*          lips~werks</font>
+<font color ="#0000FF">*          lips~vgtyp</font>
+<font color ="#0000FF">*          lips~vgbel</font>
+<font color ="#0000FF">*          likp~kunnr</font>
+<font color ="#0000FF">*          lfart</font>
+<font color ="#0000FF">*       INTO CORRESPONDING FIELDS OF TABLE gt_head</font>
+<font color ="#0000FF">*       FROM likp INNER JOIN lips</font>
+<font color ="#0000FF">*       ON likp~vbeln = lips~vbeln</font>
+<font color ="#0000FF">*     WHERE likp~vbeln = w_alv-vbeln.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  IF gt_head IS INITIAL.</font>
+<font color ="#0000FF">*    MESSAGE s050 DISPLAY LIKE 'E'.</font>
+<font color ="#0000FF">*    EXIT.</font>
+<font color ="#0000FF">*  ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  SELECT name1                                                 "交货工厂描述</font>
+<font color ="#0000FF">*         werks</font>
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE lt_t001</font>
+<font color ="#0000FF">*    FROM t001w</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN gt_head</font>
+<font color ="#0000FF">*  WHERE werks = gt_head-werks.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**  SELECT sortl</font>
+<font color ="#0000FF">**         kunnr</font>
+<font color ="#0000FF">**    INTO CORRESPONDING FIELDS OF TABLE gt_kna1</font>
+<font color ="#0000FF">**    FROM kna1</font>
+<font color ="#0000FF">**    FOR ALL ENTRIES IN gt_head</font>
+<font color ="#0000FF">**  WHERE kunnr = gt_head-kunnr.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  SELECT lgobe</font>
+<font color ="#0000FF">*         werks</font>
+<font color ="#0000FF">*         lgort</font>
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE gt_t001l</font>
+<font color ="#0000FF">*    FROM t001l</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN gt_head</font>
+<font color ="#0000FF">*  WHERE werks = gt_head-werks</font>
+<font color ="#0000FF">*    AND lgort = gt_head-lgort.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  SELECT vkorg</font>
+<font color ="#0000FF">*         bukrs</font>
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE lt_tvko</font>
+<font color ="#0000FF">*    FROM tvko</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN gt_head</font>
+<font color ="#0000FF">*  WHERE vkorg = gt_head-vkorg.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  SELECT vbeln</font>
+<font color ="#0000FF">*         adrc~name1</font>
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE lt_vbpa</font>
+<font color ="#0000FF">*    FROM vbpa INNER JOIN adrc</font>
+<font color ="#0000FF">*    ON vbpa~adrnr = adrc~addrnumber</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN gt_head</font>
+<font color ="#0000FF">*  WHERE vbeln = gt_head-vbeln</font>
+<font color ="#0000FF">*    AND parvw = 'AG'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  LOOP AT gt_head ASSIGNING &lt;fs_head&gt;.</font>
+<font color ="#0000FF">*    &lt;fs_head&gt;-zdycs = w_alv-zdycs.</font>
+<font color ="#0000FF">*    READ TABLE lt_t001 INTO lw_t001 WITH KEY werks = &lt;fs_head&gt;-werks.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      &lt;fs_head&gt;-name1 = lw_t001-name1.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    READ TABLE gt_kna1 ASSIGNING &lt;fs_kna1&gt; WITH KEY kunnr = &lt;fs_head&gt;-kunnr.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      &lt;fs_head&gt;-sortl = &lt;fs_kna1&gt;-sortl.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    READ TABLE gt_t001l ASSIGNING &lt;fs_t001l&gt; WITH KEY werks = &lt;fs_head&gt;-werks</font>
+<font color ="#0000FF">*                                              lgort = &lt;fs_head&gt;-lgort.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      &lt;fs_head&gt;-lgobe = &lt;fs_t001l&gt;-lgobe.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    READ TABLE lt_tvko INTO lw_tvko WITH KEY vkorg = &lt;fs_head&gt;-vkorg.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      &lt;fs_head&gt;-bukrs = lw_tvko-bukrs.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    READ TABLE lt_vbpa INTO lw_vbpa WITH KEY vbeln = &lt;fs_head&gt;-vbeln.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      &lt;fs_head&gt;-zkhnm = lw_vbpa-name1.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*  ENDLOOP.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  LOOP AT gt_head ASSIGNING &lt;fs_head&gt;.</font>
+<font color ="#0000FF">*    PERFORM add_zero USING &lt;fs_head&gt;-bukrs.                 "给公司代码加上前导0</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**根据公司代码获取公司名称</font>
+<font color ="#0000FF">*    SELECT SINGLE name1 AS zgsnm</font>
+<font color ="#0000FF">*      INTO CORRESPONDING FIELDS OF &lt;fs_head&gt;</font>
+<font color ="#0000FF">*      FROM t880</font>
+<font color ="#0000FF">*    WHERE rcomp = &lt;fs_head&gt;-zgsdm.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    IF &lt;fs_head&gt;-vgtyp = 'V'.                                            "如果凭证类别是V的，表示是采购订单</font>
+<font color ="#0000FF">*      SELECT SINGLE vgbel AS zcgdh</font>
+<font color ="#0000FF">*        INTO CORRESPONDING FIELDS OF &lt;fs_head&gt;</font>
+<font color ="#0000FF">*        FROM lips</font>
+<font color ="#0000FF">*      WHERE vbeln = &lt;fs_head&gt;-vbeln</font>
+<font color ="#0000FF">*        AND posnr = w_alv-posnr.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    IF &lt;fs_head&gt;-vgtyp = 'C'.                                            "如果凭证类别是C的，表示是销售订单</font>
+<font color ="#0000FF">*      SELECT SINGLE bstkd AS zcgdh</font>
+<font color ="#0000FF">*        INTO CORRESPONDING FIELDS OF &lt;fs_head&gt;</font>
+<font color ="#0000FF">*        FROM vbkd INNER JOIN lips</font>
+<font color ="#0000FF">*        ON vbkd~vbeln = lips~vgbel</font>
+<font color ="#0000FF">*      WHERE lips~vbeln = &lt;fs_head&gt;-vbeln</font>
+<font color ="#0000FF">*        AND vbkd~posnr = '0'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*      " 按销售订单生成的交货单联系人和客户名称取销售订单的相关字段内容</font>
+<font color ="#0000FF">*      SELECT SINGLE vgbel</font>
+<font color ="#0000FF">*        INTO l_vgbel</font>
+<font color ="#0000FF">*        FROM lips</font>
+<font color ="#0000FF">*      WHERE vbeln = &lt;fs_head&gt;-vbeln</font>
+<font color ="#0000FF">*        AND posnr = w_alv-posnr.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*      SELECT SINGLE name1</font>
+<font color ="#0000FF">*        sortl</font>
+<font color ="#0000FF">*        INTO lw_name</font>
+<font color ="#0000FF">*        FROM kna1 INNER JOIN vbak</font>
+<font color ="#0000FF">*        ON kna1~kunnr = vbak~kunnr</font>
+<font color ="#0000FF">*      WHERE vbak~vbeln = l_vgbel.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*      IF sy-subrc = 0.</font>
+<font color ="#0000FF">*        &lt;fs_head&gt;-zkhnm = lw_name-name1.</font>
+<font color ="#0000FF">*        &lt;fs_head&gt;-sortl = lw_name-sortl.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    " 公司间发货，客户名称取采购订单工厂名称</font>
+<font color ="#0000FF">*    IF &lt;fs_head&gt;-lfart = 'NLCC' OR &lt;fs_head&gt;-lfart = 'NCR' OR &lt;fs_head&gt;-lfart = 'NL'.</font>
+<font color ="#0000FF">*      SELECT SINGLE werks</font>
+<font color ="#0000FF">*        INTO CORRESPONDING FIELDS OF lw_t001</font>
+<font color ="#0000FF">*        FROM ekpo</font>
+<font color ="#0000FF">*      WHERE ebeln = &lt;fs_head&gt;-zcgdh.</font>
+<font color ="#0000FF">*      IF sy-subrc = 0.</font>
+<font color ="#0000FF">*        SELECT SINGLE name1                                                 "交货工厂描述</font>
+<font color ="#0000FF">*          INTO CORRESPONDING FIELDS OF lw_t001</font>
+<font color ="#0000FF">*          FROM t001w</font>
+<font color ="#0000FF">*        WHERE werks = lw_t001-werks.</font>
+<font color ="#0000FF">*        IF sy-subrc = 0.</font>
+<font color ="#0000FF">*          &lt;fs_head&gt;-zkhnm = lw_t001-name1.</font>
+<font color ="#0000FF">*        ENDIF.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    CALL FUNCTION 'ZGET_USER_NAME'</font>
+<font color ="#0000FF">*      EXPORTING</font>
+<font color ="#0000FF">*        sysname  = &lt;fs_head&gt;-ernam</font>
+<font color ="#0000FF">*      IMPORTING</font>
+<font color ="#0000FF">*        username = &lt;fs_head&gt;-zzdnm.</font>
+<font color ="#0000FF">*    IF sy-subrc &lt;&gt; 0.</font>
+<font color ="#0000FF">** Implement suitable error handling here</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*  ENDLOOP.</font>
+  TYPES: BEGIN OF ty_vbpa,
+          vbeln TYPE vbpa-vbeln,
+          name1 TYPE adrc-name1,
+        END OF ty_vbpa.
+
+  DATA: l_werks TYPE t001w-werks,
+        lt_vbpa TYPE STANDARD TABLE OF ty_vbpa,
+        lt_vbpa1 TYPE STANDARD TABLE OF ty_vbpa,    " 销售订单的数据
+        lw_vbpa TYPE ty_vbpa.
+
+  LOOP AT gt_alv INTO w_alv WHERE sel = 'X'.
+    " 工厂名称
+    READ TABLE gt_t001 INTO w_t001 WITH KEY werks = w_alv-werks BINARY SEARCH.
+    IF sy-subrc = 0.
+      w_head-name1 = w_t001-name1.
+    ENDIF.
+
+    w_head-werks = w_alv-werks.
+    w_head-sortl = w_alv-sortl.   "联系人
+    w_head-lgort = w_alv-lgort.
+    w_head-zgsnm = w_alv-butxt.
+    w_head-zgsdm = w_alv-bukrs.
+    PERFORM add_zero USING w_head-zgsdm.
+    w_head-vgtyp = w_alv-vgtyp.   " SD 凭证类别
+    w_head-zcgdh = w_alv-bstkd.   " 采购单号
+    w_head-wadat = w_alv-wadat.   " 交货日期
+    w_head-ernam = w_alv-ernam.   "
+    w_head-zckrq = w_alv-zfhrq.   " 出库日期
+    w_head-vbeln = w_alv-vbeln.
+    w_head-vgbel = w_alv-vgbel.
+    w_head-lfart = w_alv-lfart.
+    w_head-zdycs = w_alv-zdycs.
+    w_head-WAERK = w_alv-WAERK.
+    w_head-eknam = w_alv-eknam. "采购组描述 add by yetp 20150513
+
+    " 设置库存描述
+    READ TABLE gt_t001l INTO w_t001l WITH KEY werks = w_alv-werks
+                                              lgort = w_alv-lgort BINARY SEARCH.
+    IF sy-subrc = 0.
+      w_head-lgobe = w_t001l-lgobe.
+    ENDIF.
+
+    " 设置指定人员
+    call function <a href ="zget_user_name/zget_user_name.html">'ZGET_USER_NAME'</a>
+      EXPORTING
+        sysname  = w_alv-ernam
+      IMPORTING
+        username = w_head-zzdnm.
+
+    APPEND w_head TO gt_head.
+  ENDLOOP.
+
+  IF gt_head IS NOT INITIAL.
+    SELECT vbeln
+           adrc~name1
+      INTO TABLE lt_vbpa
+      FROM vbpa INNER JOIN adrc
+      ON vbpa~adrnr = adrc~addrnumber
+      FOR ALL ENTRIES IN gt_head
+    WHERE vbeln = gt_head-vbeln
+      AND parvw = 'AG'.
+    SORT lt_vbpa BY vbeln.
+
+<font color ="#0000FF">***************** add by huangcz 20130104 begin ***************</font>
+    SELECT vbeln
+           adrc~name1
+      INTO TABLE lt_vbpa1
+      FROM vbpa INNER JOIN adrc
+      ON vbpa~adrnr = adrc~addrnumber
+      FOR ALL ENTRIES IN gt_head
+    WHERE vbeln = gt_head-vgbel
+      AND parvw = 'RE'.
+    SORT lt_vbpa1 BY vbeln.
+<font color ="#0000FF">***************** add by huangcz 20130104 end ***************</font>
+
+    LOOP AT gt_head ASSIGNING &lt;fs_head&gt;.
+      " 公司间发货，客户名称取采购订单工厂名称
+      IF &lt;fs_head&gt;-lfart = 'NLCC' OR &lt;fs_head&gt;-lfart = 'NCR' OR &lt;fs_head&gt;-lfart = 'NL'.
+        SELECT SINGLE werks
+          INTO l_werks
+          FROM ekpo
+<font color ="#0000FF">*        WHERE ebeln = &lt;fs_head&gt;-zcgdh.     " modify by huangcz 20121226</font>
+        WHERE ebeln = &lt;fs_head&gt;-vgbel.
+
+        IF sy-subrc = 0.
+          READ TABLE gt_t001 INTO w_t001 WITH KEY werks = l_werks BINARY SEARCH.
+          IF sy-subrc = 0.
+            &lt;fs_head&gt;-zkhnm = w_t001-name1.
+          ENDIF.
+        ENDIF.
+      ELSEIF &lt;fs_head&gt;-vgtyp = 'C' OR &lt;fs_head&gt;-vgtyp = 'H'.  " 销售订单.                   add by huangcz 20130104
+        READ TABLE lt_vbpa1 INTO lw_vbpa WITH KEY vbeln = &lt;fs_head&gt;-vgbel BINARY SEARCH.
+        IF sy-subrc = 0.
+          &lt;fs_head&gt;-zkhnm = lw_vbpa-name1.
+        ENDIF.
+      ELSE.
+        READ TABLE lt_vbpa INTO lw_vbpa WITH KEY vbeln = &lt;fs_head&gt;-vbeln BINARY SEARCH.
+        IF sy-subrc = 0.
+          &lt;fs_head&gt;-zkhnm = lw_vbpa-name1.
+        ENDIF.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+ENDFORM.                    "get_head
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_item</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM get_item.
+<font color ="#0000FF">*  SELECT arktx                                                     "物料描述</font>
+<font color ="#0000FF">*         vrkme                                                     "销售单位</font>
+<font color ="#0000FF">*         lfimg                                                     "数量</font>
+<font color ="#0000FF">*         meins                                                      "单位</font>
+<font color ="#0000FF">*         matnr</font>
+<font color ="#0000FF">*         lgort</font>
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE gt_thd</font>
+<font color ="#0000FF">*    FROM lips</font>
+<font color ="#0000FF">*  WHERE vbeln = w_alv-vbeln.</font>
+
+<font color ="#0000FF">*  IF gt_thd IS NOT INITIAL.</font>
+<font color ="#0000FF">*    SELECT mseht</font>
+<font color ="#0000FF">*         msehi</font>
+<font color ="#0000FF">*         spras</font>
+<font color ="#0000FF">*      INTO CORRESPONDING FIELDS OF TABLE gt_t006a</font>
+<font color ="#0000FF">*      FROM t006a</font>
+<font color ="#0000FF">*      FOR ALL ENTRIES IN gt_data</font>
+<font color ="#0000FF">*    WHERE msehi = gt_data-vrkme</font>
+<font color ="#0000FF">*      AND spras = '1'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    SELECT ntgew                                                    "净重</font>
+<font color ="#0000FF">*           matnr</font>
+<font color ="#0000FF">*     INTO CORRESPONDING FIELDS OF TABLE gt_material</font>
+<font color ="#0000FF">*     FROM mara</font>
+<font color ="#0000FF">*     FOR ALL ENTRIES IN gt_thd</font>
+<font color ="#0000FF">*   WHERE matnr = gt_thd-matnr.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    SELECT umrez</font>
+<font color ="#0000FF">*           umren</font>
+<font color ="#0000FF">*           matnr</font>
+<font color ="#0000FF">*           meinh</font>
+<font color ="#0000FF">*      INTO CORRESPONDING FIELDS OF TABLE gt_cal</font>
+<font color ="#0000FF">*      FROM marm</font>
+<font color ="#0000FF">*      FOR ALL ENTRIES IN gt_thd</font>
+<font color ="#0000FF">*    WHERE matnr = gt_thd-matnr</font>
+<font color ="#0000FF">*      AND meinh = gt_thd-meins.</font>
+<font color ="#0000FF">*  ENDIF.</font>
+
+<font color ="#0000FF">*  LOOP AT gt_thd ASSIGNING &lt;fs_thd&gt;.</font>
+<font color ="#0000FF">*    READ TABLE gt_t006a ASSIGNING &lt;fs_t006a&gt; WITH KEY msehi = &lt;fs_thd&gt;-vrkme</font>
+<font color ="#0000FF">*                                                     spras = '1'.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      &lt;fs_thd&gt;-mseht = &lt;fs_t006a&gt;-mseht.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    READ TABLE gt_material ASSIGNING &lt;fs_material&gt; WITH KEY matnr = &lt;fs_thd&gt;-matnr.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      &lt;fs_thd&gt;-zwlzl = &lt;fs_thd&gt;-lfimg * &lt;fs_material&gt;-ntgew.                "计算重量</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    READ TABLE gt_cal ASSIGNING &lt;fs_cal&gt; WITH KEY matnr = &lt;fs_thd&gt;-matnr</font>
+<font color ="#0000FF">*                                                  meinh = &lt;fs_thd&gt;-meins.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0 AND &lt;fs_cal&gt;-umren &lt;&gt; 0.</font>
+<font color ="#0000FF">*      &lt;fs_thd&gt;-zcpjs = &lt;fs_cal&gt;-umrez / &lt;fs_cal&gt;-umren.                          "计算件数</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    CALL FUNCTION 'CONVERSION_EXIT_ZZERO_OUTPUT'</font>
+<font color ="#0000FF">*      EXPORTING</font>
+<font color ="#0000FF">*        input  = &lt;fs_thd&gt;-lfimg</font>
+<font color ="#0000FF">*      IMPORTING</font>
+<font color ="#0000FF">*        output = &lt;fs_thd&gt;-zqty.</font>
+<font color ="#0000FF">*  ENDLOOP.</font>
+
+  DATA: l_vbeln TYPE likp-vbeln.
+
+  LOOP AT gt_alv ASSIGNING &lt;fs_alv&gt; WHERE sel = 'X'.
+    w_thd-arktx = &lt;fs_alv&gt;-arktx.   " 物料描述
+    w_thd-posnr = &lt;fs_alv&gt;-posnr.
+    w_thd-vbeln = &lt;fs_alv&gt;-vbeln.
+    w_thd-ntgew = &lt;fs_alv&gt;-ntgew.   " 毛重
+<font color ="#0000FF">*    w_thd-zxsdw = &lt;fs_alv&gt;-zxsdw.   " 销售单位描述</font>
+    w_thd-zjbdw = &lt;fs_alv&gt;-zjbdw.   " 基本单位描述
+    w_thd-zjbsl = &lt;fs_alv&gt;-zjbsl.   " 基本单位对应的数量
+    w_thd-lgort = &lt;fs_alv&gt;-lgort.
+    w_thd-tdline = &lt;fs_alv&gt;-tdline.
+    w_thd-zjsfm = &lt;fs_alv&gt;-zjsfm.
+    w_thd-zjsfz = &lt;fs_alv&gt;-zjsfz.
+    w_thd-zcpjs = &lt;fs_alv&gt;-zcpjs.
+    w_thd-vgbel = &lt;fs_alv&gt;-vgbel.
+    w_thd-KBETR = &lt;fs_alv&gt;-KBETR.   " 单价
+    w_thd-total = &lt;fs_alv&gt;-KBETR * &lt;fs_alv&gt;-zjbsl.  " 总金额
+    if &lt;fs_alv&gt;-KWMENG is INITIAL.
+      w_thd-KZWI1 = &lt;fs_alv&gt;-KZWI1 * &lt;fs_alv&gt;-zjbsl.
+    else.
+      w_thd-KZWI1 = &lt;fs_alv&gt;-KZWI1 * &lt;fs_alv&gt;-zjbsl / &lt;fs_alv&gt;-KWMENG.
+    endif.
+
+    APPEND w_thd TO gt_thd.
+    CLEAR: w_thd.
+  ENDLOOP.
+ENDFORM.                    "get_item
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  select_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM select_data.
+  DATA: lt_dycs TYPE STANDARD TABLE OF zztwxjhd,
+        lw_dycs TYPE zztwxjhd.
+
+  IF gt_alv IS NOT INITIAL.
+    SELECT *
+      INTO TABLE lt_dycs
+      FROM zztwxjhd
+      FOR ALL ENTRIES IN gt_alv
+    WHERE vbeln = gt_alv-vbeln
+      AND zdycs &gt; 0.
+
+    " 设置alv界面上打印次数
+<font color ="#0000FF">*********** modify by huangcz 20130114 begin ************************</font>
+<font color ="#0000FF">*    LOOP AT lt_dycs INTO lw_dycs.</font>
+<font color ="#0000FF">*      LOOP AT gt_alv ASSIGNING &lt;fs_alv&gt; WHERE vbeln = lw_dycs-vbeln.</font>
+<font color ="#0000FF">*        &lt;fs_alv&gt;-zdycs = lw_dycs-zdycs.</font>
+<font color ="#0000FF">*      ENDLOOP.</font>
+<font color ="#0000FF">*    ENDLOOP.</font>
+    SORT lt_dycs BY vbeln.
+    LOOP AT gt_alv ASSIGNING &lt;fs_alv&gt;.
+      READ TABLE lt_dycs into lw_dycs with key vbeln = &lt;fs_alv&gt;-vbeln BINARY SEARCH.
+      if sy-subrc = 0.
+        &lt;fs_alv&gt;-zdycs = lw_dycs-zdycs.
+      endif.
+    ENDLOOP.
+<font color ="#0000FF">*********** modify by huangcz 20130114 end ************************</font>
+  ENDIF.
+<font color ="#0000FF">*  LOOP AT gt_alv ASSIGNING &lt;fs_alv&gt;.</font>
+<font color ="#0000FF">*    SELECT SINGLE zdycs</font>
+<font color ="#0000FF">*      INTO CORRESPONDING FIELDS OF &lt;fs_alv&gt;</font>
+<font color ="#0000FF">*      FROM zztwxjhd</font>
+<font color ="#0000FF">*    WHERE vbeln = &lt;fs_alv&gt;-vbeln.</font>
+<font color ="#0000FF">*  ENDLOOP.</font>
+ENDFORM.                    "select_data
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_TDLINE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       设置行项目文本</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      &lt;--P_&lt;FS_DATA&gt;  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM set_tdline  CHANGING p_data TYPE ty_wxjh.
+  DATA: l_name TYPE thead-tdname,
+        l_vgpos TYPE c LENGTH 5,
+        lt_line TYPE STANDARD TABLE OF tline,
+        lw_line TYPE tline.
+
+<font color ="#0000FF">*  CONCATENATE p_data-vbeln p_data-posnr INTO l_name.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CALL FUNCTION 'READ_TEXT'</font>
+<font color ="#0000FF">*    EXPORTING</font>
+<font color ="#0000FF">**     CLIENT                        = SY-MANDT</font>
+<font color ="#0000FF">*      id                            = 'Z001'</font>
+<font color ="#0000FF">*      language                      = '1'</font>
+<font color ="#0000FF">*      name                          = l_name</font>
+<font color ="#0000FF">*      object                        = 'VBBP'</font>
+<font color ="#0000FF">**     ARCHIVE_HANDLE                = 0</font>
+<font color ="#0000FF">**     LOCAL_CAT                     = ' '</font>
+<font color ="#0000FF">**   IMPORTING</font>
+<font color ="#0000FF">**     HEADER                        =</font>
+<font color ="#0000FF">*    TABLES</font>
+<font color ="#0000FF">*      lines                         = lt_line</font>
+<font color ="#0000FF">*   EXCEPTIONS</font>
+<font color ="#0000FF">*     id                            = 1</font>
+<font color ="#0000FF">*     language                      = 2</font>
+<font color ="#0000FF">*     name                          = 3</font>
+<font color ="#0000FF">*     not_found                     = 4</font>
+<font color ="#0000FF">*     object                        = 5</font>
+<font color ="#0000FF">*     reference_check               = 6</font>
+<font color ="#0000FF">*     wrong_access_to_archive       = 7</font>
+<font color ="#0000FF">*     OTHERS                        = 8</font>
+<font color ="#0000FF">*            .</font>
+<font color ="#0000FF">*  IF sy-subrc &lt;&gt; 0.</font>
+<font color ="#0000FF">** Implement suitable error handling here</font>
+<font color ="#0000FF">*  ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**  READ TABLE lt_line INTO lw_line INDEX 1.</font>
+<font color ="#0000FF">**  IF sy-subrc = 0.</font>
+<font color ="#0000FF">**    p_data-tdline = lw_line-tdline.</font>
+<font color ="#0000FF">**    CONDENSE p_data-tdline.</font>
+<font color ="#0000FF">**  ENDIF.</font>
+<font color ="#0000FF">*  LOOP AT lt_line INTO lw_line.</font>
+<font color ="#0000FF">*    IF p_data-tdline IS INITIAL.</font>
+<font color ="#0000FF">*      p_data-tdline = lw_line-tdline.</font>
+<font color ="#0000FF">*    ELSE.</font>
+<font color ="#0000FF">*      CONCATENATE p_data-tdline lw_line-tdline INTO p_data-tdline SEPARATED BY space.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*    CONDENSE p_data-tdline.</font>
+<font color ="#0000FF">*  ENDLOOP.</font>
+
+  " 获取参考订单的文本
+  CLEAR: l_name, lt_line[].
+
+
+  IF p_data-vgtyp = 'V'. " 采购订单
+    l_vgpos = p_data-vgpos+1(5).
+    CONCATENATE p_data-vgbel l_vgpos INTO l_name.
+    CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+<font color ="#0000FF">*     CLIENT                        = SY-MANDT</font>
+      id                            = 'F01'
+      language                      = '1'
+      name                          = l_name
+      object                        = 'EKPO'
+<font color ="#0000FF">*     ARCHIVE_HANDLE                = 0</font>
+<font color ="#0000FF">*     LOCAL_CAT                     = ' '</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     HEADER                        =</font>
+    TABLES
+      lines                         = lt_line
+   EXCEPTIONS
+     id                            = 1
+     language                      = 2
+     name                          = 3
+     not_found                     = 4
+     object                        = 5
+     reference_check               = 6
+     wrong_access_to_archive       = 7
+     OTHERS                        = 8
+            .
+    IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+      RETURN.
+    ENDIF.
+  ELSE.
+    CONCATENATE p_data-vgbel p_data-vgpos INTO l_name.
+    CALL FUNCTION 'READ_TEXT'
+      EXPORTING
+<font color ="#0000FF">*     CLIENT                        = SY-MANDT</font>
+        id                            = 'Z001'
+        language                      = '1'
+        name                          = l_name
+        object                        = 'VBBP'
+<font color ="#0000FF">*     ARCHIVE_HANDLE                = 0</font>
+<font color ="#0000FF">*     LOCAL_CAT                     = ' '</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     HEADER                        =</font>
+      TABLES
+        lines                         = lt_line
+     EXCEPTIONS
+       id                            = 1
+       language                      = 2
+       name                          = 3
+       not_found                     = 4
+       object                        = 5
+       reference_check               = 6
+       wrong_access_to_archive       = 7
+       OTHERS                        = 8
+              .
+    IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+<font color ="#0000FF">*  READ TABLE lt_line INTO lw_line INDEX 1.</font>
+<font color ="#0000FF">*  IF sy-subrc = 0.</font>
+  IF p_data-tdline IS NOT INITIAL.
+    CONCATENATE p_data-tdline '|' INTO p_data-tdline.
+    CONDENSE p_data-tdline.
+  ENDIF.
+  LOOP AT lt_line INTO lw_line.
+    IF p_data-tdline IS INITIAL.
+      p_data-tdline = lw_line-tdline.
+    ELSE.
+      CONCATENATE p_data-tdline lw_line-tdline INTO p_data-tdline SEPARATED BY space.
+    ENDIF.
+<font color ="#0000FF">*    p_data-tdline = lw_line-tdline.</font>
+    CONDENSE p_data-tdline.
+  ENDLOOP.
+<font color ="#0000FF">*  ENDIF.</font>
+
+ENDFORM.                    " SET_TDLINE
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  check_authority</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       控制工厂的权限</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM check_authority.
+  DATA:lw_werks TYPE t001w-werks.
+
+  SELECT SINGLE werks
+    INTO lw_werks
+    FROM t001w
+  WHERE werks IN s_gc.
+
+  AUTHORITY-CHECK OBJECT 'M_MSEG_WWA'
+              ID 'WERKS' FIELD lw_werks
+              ID 'ACTVT' FIELD '03'.
+  IF sy-subrc NE 0.
+    MESSAGE e344 WITH lw_werks.
+  ENDIF.
+ENDFORM.                    "check_authority
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  check_select</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       检查是否有选中的记录</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM check_select.
+  READ TABLE gt_alv INTO w_alv WITH KEY sel = 'X'
+                                        mblnr = space.  " 物料凭证不为空则不打印
+  IF sy-subrc NE 0.
+    MESSAGE e030.
+  ENDIF.
+ENDFORM.                    "check_select
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  CONFIRM_WINDOW</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       弹出确认窗口，包括是，否，取消</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;F_TITLE    text</font>
+<font color ="#0000FF">*      --&gt;F_TEXT     text</font>
+<font color ="#0000FF">*      --&gt;F_RET      text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM confirm_window USING f_title f_text CHANGING f_ret.
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+     titlebar                    = f_title
+<font color ="#0000FF">*     DIAGNOSE_OBJECT             = ' '</font>
+      text_question               = f_text
+   IMPORTING
+     answer                      = f_ret
+<font color ="#0000FF">*   TABLES</font>
+<font color ="#0000FF">*     PARAMETER                   =</font>
+<font color ="#0000FF">*   EXCEPTIONS</font>
+<font color ="#0000FF">*     TEXT_NOT_FOUND              = 1</font>
+<font color ="#0000FF">*     OTHERS                      = 2</font>
+            .
+  IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+
+ENDFORM.                    "CONFIRM_WINDOW
+
+<font color ="#0000FF">*Text elements</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* 001 查询条件</font>
+<font color ="#0000FF">* 002 确认打印</font>
+<font color ="#0000FF">* 003 该订单已经打印，请确认是否重复打印？</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* P_KHBM         送达方</font>
+<font color ="#0000FF">* P_MY         我的订单</font>
+<font color ="#0000FF">* P_QB         全部订单</font>
+<font color ="#0000FF">* P_WDY         未打印</font>
+<font color ="#0000FF">* P_YDY         已打印</font>
+<font color ="#0000FF">* S_CPCC         产品层次</font>
+<font color ="#0000FF">* S_GC         供方工厂</font>
+<font color ="#0000FF">* S_JHD         交货单号</font>
+<font color ="#0000FF">* S_KNKLI         信贷账户号</font>
+<font color ="#0000FF">* S_KUNAG         售达方</font>
+<font color ="#0000FF">* S_PZRQ         凭证日期</font>
+<font color ="#0000FF">* S_WLH         物料</font>
+<font color ="#0000FF">* S_XFGC         需方工厂</font>
+<font color ="#0000FF">* S_XSDH         销售订单号</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPEOPLE</font>
+<font color ="#0000FF">*000   &1 &2 &3 &4</font>
+<font color ="#0000FF">*030   请至少选择一条记录!</font>
+<font color ="#0000FF">*050   没有满足查询条件的数据!</font>
+<font color ="#0000FF">*344   该用户没有&工厂的权限！</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

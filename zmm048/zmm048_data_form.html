@@ -1,0 +1,609 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZMM048_DATA_FORM</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZMM048_DATA_FORM</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZMM048_DATA_FORM</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZMM048_DATA_FORM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SAVE_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SAVE_DATA .
+  DATA:LT_ZZTMM48 TYPE STANDARD TABLE OF ZZTMM48,
+       LW_ZZTMM48 TYPE ZZTMM48.
+
+
+  READ TABLE GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WITH KEY SEL = 'X'.
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE E000 WITH '没有保存的数据，请确认是否有选中行！'.
+  ENDIF.
+
+  "保存数据
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE  SEL = 'X' .
+    CLEAR:LW_ZZTMM48.
+
+    MOVE-CORRESPONDING &lt;FS_ZZTMM48&gt; TO LW_ZZTMM48.
+    APPEND LW_ZZTMM48 TO LT_ZZTMM48.
+  ENDLOOP.
+
+  MODIFY ZZTMM48 FROM TABLE LT_ZZTMM48.
+  IF SY-SUBRC = 0.
+    MESSAGE S000 WITH '保存数据成功！'.
+    COMMIT WORK AND WAIT.
+    CLEAR G_CHANGE.
+  ELSE.
+    ROLLBACK WORK .
+    MESSAGE A002 WITH 'ZZTMM48'.
+  ENDIF.
+
+ENDFORM.                    " SAVE_DATA
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  TJ_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM TJ_DATA .
+  DATA:LT_ZZTMM48 TYPE STANDARD TABLE OF ZZTMM48,
+       LW_ZZTMM48 TYPE ZZTMM48.
+  DATA:L_FLAG TYPE C.
+
+  "检查是否有选中行
+  READ TABLE GT_ZZTMM48 TRANSPORTING NO FIELDS WITH KEY SEL = 'X'.
+  IF SY-SUBRC &lt;&gt; 0  .
+    MESSAGE E000 WITH '没有可提交的数据，请确认选中行！'.
+  ENDIF.
+
+  "检查选中行中是否包含其他状态数据
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE SEL = 'X' AND  ZSTAT &lt;&gt; SPACE AND ZSTAT &lt;&gt; '1'.
+    L_FLAG = 'X'.
+  ENDLOOP.
+
+  IF L_FLAG = 'X'.
+    MESSAGE E000 WITH '没有可提交的数据，请确认选中行或单据状态为自建！'.
+  ENDIF.
+
+  " 检查数据
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE  SEL = 'X' AND ( ZSTAT = '1' OR ZSTAT = SPACE ) .
+    "检查承诺日期
+    IF &lt;FS_ZZTMM48&gt;-RVOD IS INITIAL.
+      MESSAGE E000 WITH '库存需求值不能为空'.
+    ENDIF.
+
+    IF &lt;FS_ZZTMM48&gt;-LGORT IS INITIAL.
+      MESSAGE E000 WITH '库存地点不能为空'.
+    ENDIF.
+  ENDLOOP.
+
+
+  "提交数据
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE  SEL = 'X' AND ( ZSTAT = '1' OR ZSTAT = SPACE ) .
+
+    &lt;FS_ZZTMM48&gt;-ZSTAT_TEXT = '编制'.
+    &lt;FS_ZZTMM48&gt;-ZSTAT = '2'.
+    &lt;FS_ZZTMM48&gt;-TJNAM = SY-UNAME.
+    &lt;FS_ZZTMM48&gt;-TJDAT = SY-DATUM.
+    &lt;FS_ZZTMM48&gt;-TJTIM  = SY-UZEIT.
+
+    MOVE-CORRESPONDING &lt;FS_ZZTMM48&gt; TO LW_ZZTMM48.
+
+    APPEND LW_ZZTMM48 TO LT_ZZTMM48.
+  ENDLOOP.
+
+
+  MODIFY ZZTMM48 FROM TABLE LT_ZZTMM48.
+  IF SY-SUBRC = 0.
+    MESSAGE S000 WITH '提交数据成功！'.
+    COMMIT WORK AND WAIT.
+    CLEAR G_CHANGE.
+  ELSE.
+    ROLLBACK WORK .
+
+    "数据恢复到原状态
+    LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE  SEL = 'X'.
+      &lt;FS_ZZTMM48&gt;-ZSTAT = '1'.
+      &lt;FS_ZZTMM48&gt;-ZSTAT_TEXT = '自建'.
+    ENDLOOP.
+
+    MESSAGE A002 WITH 'ZZTMM48'.
+  ENDIF.
+
+ENDFORM.                    " TJ_DATA
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  PASS_WL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM PASS_WL .
+  DATA:LT_ZZTMM48 TYPE STANDARD TABLE OF ZZTMM48,
+         LW_ZZTMM48 TYPE ZZTMM48.
+  DATA:L_FLAG TYPE C.
+
+  "检查是否有选中行
+  READ TABLE GT_ZZTMM48 TRANSPORTING NO FIELDS WITH KEY SEL = 'X'.
+  IF SY-SUBRC &lt;&gt; 0  .
+    MESSAGE E000 WITH '没有可审核通过的数据，请确认选中行！'.
+  ENDIF.
+
+  "检查选中行中是否包含其他状态数据
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE SEL = 'X' AND  ZSTAT &lt;&gt; '2'.
+    L_FLAG = 'X'.
+  ENDLOOP.
+
+  IF L_FLAG = 'X'.
+    MESSAGE E000 WITH '没有可审核的数据，请确认选中行或单据状态为编制！'.
+  ENDIF.
+
+  "提交数据
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE  SEL = 'X' AND  ZSTAT = '2' .
+
+    &lt;FS_ZZTMM48&gt;-ZSTAT_TEXT = '物流审批通过'.
+    &lt;FS_ZZTMM48&gt;-ZSTAT = '3'.
+    &lt;FS_ZZTMM48&gt;-YJSR = SY-UNAME.
+    &lt;FS_ZZTMM48&gt;-YJSD = SY-DATUM.
+    &lt;FS_ZZTMM48&gt;-YJST = SY-UZEIT.
+
+    MOVE-CORRESPONDING &lt;FS_ZZTMM48&gt; TO LW_ZZTMM48.
+
+    APPEND LW_ZZTMM48 TO LT_ZZTMM48.
+  ENDLOOP.
+
+
+  MODIFY ZZTMM48 FROM TABLE LT_ZZTMM48.
+  IF SY-SUBRC = 0.
+    MESSAGE S000 WITH '审核数据成功！'.
+    COMMIT WORK AND WAIT.
+    CLEAR G_CHANGE.
+  ELSE.
+    ROLLBACK WORK .
+
+    "数据恢复到原状态
+    LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE  SEL = 'X'.
+      &lt;FS_ZZTMM48&gt;-ZSTAT = '2'.
+      &lt;FS_ZZTMM48&gt;-ZSTAT_TEXT = '编制'.
+    ENDLOOP.
+
+    MESSAGE A002 WITH 'ZZTMM48'.
+  ENDIF.
+ENDFORM.                    " PASS_WL
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  REJECT_WL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM REJECT_WL .
+  DATA:LT_ZZTMM48 TYPE STANDARD TABLE OF ZZTMM48,
+         LW_ZZTMM48 TYPE ZZTMM48.
+  DATA:L_FLAG TYPE C.
+
+  "检查是否有选中行
+  READ TABLE GT_ZZTMM48 TRANSPORTING NO FIELDS WITH KEY SEL = 'X'.
+  IF SY-SUBRC &lt;&gt; 0  .
+    MESSAGE E000 WITH '没有可审核驳回的数据，请确认选中行！'.
+  ENDIF.
+
+  "检查选中行中是否包含其他状态数据
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE SEL = 'X' AND  ZSTAT &lt;&gt; '2'.
+    L_FLAG = 'X'.
+  ENDLOOP.
+
+  IF L_FLAG = 'X'.
+    MESSAGE E000 WITH '没有可驳回的数据，请确认选中行或单据状态为编制！'.
+  ENDIF.
+
+  "提交数据
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE  SEL = 'X' AND  ZSTAT = '2' .
+
+    &lt;FS_ZZTMM48&gt;-ZSTAT_TEXT = '自建'.
+    &lt;FS_ZZTMM48&gt;-ZSTAT = '1'.
+
+    MOVE-CORRESPONDING &lt;FS_ZZTMM48&gt; TO LW_ZZTMM48.
+
+    APPEND LW_ZZTMM48 TO LT_ZZTMM48.
+  ENDLOOP.
+
+
+  MODIFY ZZTMM48 FROM TABLE LT_ZZTMM48.
+  IF SY-SUBRC = 0.
+    MESSAGE S000 WITH '审核驳回数据成功！'.
+    COMMIT WORK AND WAIT.
+    CLEAR G_CHANGE.
+  ELSE.
+    ROLLBACK WORK .
+
+    "数据恢复到原状态
+    LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE  SEL = 'X'.
+      &lt;FS_ZZTMM48&gt;-ZSTAT = '2'.
+      &lt;FS_ZZTMM48&gt;-ZSTAT_TEXT = '编制'.
+    ENDLOOP.
+
+    MESSAGE A002 WITH 'ZZTMM48'.
+  ENDIF.
+ENDFORM.                    " REJECT_WL
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  PASS_ZB</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM PASS_ZB .
+  DATA:LT_ZZTMM48 TYPE STANDARD TABLE OF ZZTMM48,
+         LW_ZZTMM48 TYPE ZZTMM48.
+  DATA:L_FLAG TYPE C.
+
+  "检查是否有选中行
+  READ TABLE GT_ZZTMM48 TRANSPORTING NO FIELDS WITH KEY SEL = 'X'.
+  IF SY-SUBRC &lt;&gt; 0  .
+    MESSAGE E000 WITH '没有可审核通过的数据，请确认选中行！'.
+  ENDIF.
+
+  "检查选中行中是否包含其他状态数据
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE SEL = 'X' AND  ZSTAT &lt;&gt; '3'.
+    L_FLAG = 'X'.
+  ENDLOOP.
+
+  IF L_FLAG = 'X'.
+    MESSAGE E000 WITH '没有可审核的数据，请确认选中行或单据状态为物流审核通过！'.
+  ENDIF.
+
+  "提交数据
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE  SEL = 'X' AND  ZSTAT = '3'.
+
+    &lt;FS_ZZTMM48&gt;-ZSTAT_TEXT = '总部审批通过'.
+    &lt;FS_ZZTMM48&gt;-ZSTAT = '4'.
+    &lt;FS_ZZTMM48&gt;-EJSR = SY-UNAME.
+    &lt;FS_ZZTMM48&gt;-EJSD = SY-DATUM.
+    &lt;FS_ZZTMM48&gt;-EJST = SY-UZEIT.
+
+    MOVE-CORRESPONDING &lt;FS_ZZTMM48&gt; TO LW_ZZTMM48.
+
+    APPEND LW_ZZTMM48 TO LT_ZZTMM48.
+  ENDLOOP.
+
+
+  MODIFY ZZTMM48 FROM TABLE LT_ZZTMM48.
+  IF SY-SUBRC = 0.
+    MESSAGE S000 WITH '审核数据成功！'.
+    COMMIT WORK AND WAIT.
+    CLEAR G_CHANGE.
+  ELSE.
+    ROLLBACK WORK .
+
+    "数据恢复到原状态
+    LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE  SEL = 'X'.
+      &lt;FS_ZZTMM48&gt;-ZSTAT = '3'.
+      &lt;FS_ZZTMM48&gt;-ZSTAT_TEXT = '物流审核通过'.
+    ENDLOOP.
+
+    MESSAGE A002 WITH 'ZZTMM48'.
+  ENDIF.
+
+  PERFORM CREATEUB.
+
+ENDFORM.                    " PASS_ZB
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  REJECT_ZB</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM REJECT_ZB .
+  DATA:LT_ZZTMM48 TYPE STANDARD TABLE OF ZZTMM48,
+         LW_ZZTMM48 TYPE ZZTMM48.
+  DATA:L_FLAG TYPE C.
+
+  "检查是否有选中行
+  READ TABLE GT_ZZTMM48 TRANSPORTING NO FIELDS WITH KEY SEL = 'X'.
+  IF SY-SUBRC &lt;&gt; 0  .
+    MESSAGE E000 WITH '没有可审核驳回的数据，请确认选中行！'.
+  ENDIF.
+
+  "检查选中行中是否包含其他状态数据
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE SEL = 'X' AND  ZSTAT &lt;&gt; '3'.
+    L_FLAG = 'X'.
+  ENDLOOP.
+
+  IF L_FLAG = 'X'.
+    MESSAGE E000 WITH '没有可驳回的数据，请确认选中行或单据状态为总部审批通过！'.
+  ENDIF.
+
+  "提交数据
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE  SEL = 'X' AND  ZSTAT = '3' .
+
+    &lt;FS_ZZTMM48&gt;-ZSTAT_TEXT = '编制'.
+    &lt;FS_ZZTMM48&gt;-ZSTAT = '2'.
+
+    MOVE-CORRESPONDING &lt;FS_ZZTMM48&gt; TO LW_ZZTMM48.
+
+    APPEND LW_ZZTMM48 TO LT_ZZTMM48.
+  ENDLOOP.
+
+
+  MODIFY ZZTMM48 FROM TABLE LT_ZZTMM48.
+  IF SY-SUBRC = 0.
+    MESSAGE S000 WITH '总部驳回数据成功！'.
+    COMMIT WORK AND WAIT.
+    CLEAR G_CHANGE.
+  ELSE.
+    ROLLBACK WORK .
+
+    "数据恢复到原状态
+    LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE  SEL = 'X'.
+      &lt;FS_ZZTMM48&gt;-ZSTAT = '3'.
+      &lt;FS_ZZTMM48&gt;-ZSTAT_TEXT = '物流审核通过'.
+    ENDLOOP.
+
+    MESSAGE A002 WITH 'ZZTMM48'.
+  ENDIF.
+ENDFORM.                    " REJECT_ZB
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SELECT_ALL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SELECT_ALL .
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE SEL = ''.
+    &lt;FS_ZZTMM48&gt;-SEL = 'X'.
+  ENDLOOP.
+ENDFORM.                    " SELECT_ALL
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  UNSELECT_ALL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM UNSELECT_ALL .
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE SEL = 'X'.
+    &lt;FS_ZZTMM48&gt;-SEL = SPACE.
+  ENDLOOP.
+ENDFORM.                    " UNSELECT_ALL
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  CREATEUB</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       批量创建UB调拨单</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CREATEUB .
+  DATA:LW_HEADER LIKE  BAPIMEPOHEADER,
+       LW_HEADERX LIKE  BAPIMEPOHEADERX,
+       LW_ITEMS LIKE BAPIMEPOITEM,
+       LW_ITEMSX LIKE BAPIMEPOITEMX,
+       LW_CHEDULE LIKE BAPIMEPOSCHEDULE,
+       LW_CHEDULEX LIKE BAPIMEPOSCHEDULX,
+       LW_RETURN LIKE BAPIRET2,
+
+       GT_ITEMS  LIKE TABLE OF BAPIMEPOITEM,
+       GT_ITEMSX  LIKE TABLE OF BAPIMEPOITEMX,
+       GT_RETURN   LIKE TABLE OF BAPIRET2,
+       GT_CHEDULE  LIKE TABLE OF BAPIMEPOSCHEDULE,
+       GT_CHEDULEX  LIKE TABLE OF BAPIMEPOSCHEDULX.
+
+  DATA:LV_NUM TYPE BAPIMEPOHEADER-PO_NUMBER.
+
+
+
+  DATA: COUNT_TEMP TYPE I,  "50以内的计数器
+        COUNT_SUM TYPE I.   "计算总条目的计数器
+  DATA:L_POITEM TYPE EBELP.    "行项目号
+
+  COUNT_TEMP = 0.
+  COUNT_SUM = 0.
+
+<font color ="#0000FF">*  获取选中的总行数</font>
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48_INCLUDE&gt; WHERE  SEL = 'X' AND  ZSTAT = '4'.
+    COUNT_SUM = COUNT_SUM + 1.
+  ENDLOOP.
+
+<font color ="#0000FF">*   遍历创建UB调拨单，行项目每50行一订单</font>
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48_INCLUDE&gt; WHERE  SEL = 'X' AND  ZSTAT = '4'.
+
+    &lt;FS_ZZTMM48_INCLUDE&gt;-ISCUB = 'X'.
+
+<font color ="#0000FF">*       添加订单抬头</font>
+    IF COUNT_TEMP MOD 2 = 0.
+      CLEAR LW_HEADER.
+      CLEAR LW_HEADERX.
+      LW_HEADER-DOC_TYPE = 'UB'.        "采购订单类型
+      LW_HEADER-SUPPL_PLNT = '1000'.       "供应商/供货工厂
+      LW_HEADER-PURCH_ORG = '1001'.       "采购组织
+      LW_HEADER-PUR_GROUP = &lt;FS_ZZTMM48&gt;-EKGRP.       "采购组
+      LW_HEADER-COMP_CODE = '1000'.       "公司代码
+      LW_HEADER-CURRENCY = 'CNY'.
+      LW_HEADER-DOC_DATE =  &lt;FS_ZZTMM48&gt;-EJSD.        "凭证日期 默认当前日期
+      LW_HEADER-LANGU = SY-LANGU.
+
+
+      LW_HEADERX-DOC_TYPE = 'X'.        "采购订单类型
+      LW_HEADERX-SUPPL_PLNT = 'X'.       "供应商/供货工厂
+      LW_HEADERX-PURCH_ORG = 'X'.       "采购组织
+      LW_HEADERX-PUR_GROUP = 'X'.       "采购组
+      LW_HEADERX-COMP_CODE = 'X'.       "公司代码
+      LW_HEADERX-CURRENCY = 'X'.
+      LW_HEADERX-DOC_DATE =  'X'.        "凭证日期 默认当前日期
+      LW_HEADERX-LANGU = 'X'.
+    ENDIF.
+
+    COUNT_TEMP =  COUNT_TEMP + 1.
+
+
+<font color ="#0000FF">*      添加行项目</font>
+    IF  COUNT_TEMP MOD 2 &lt; 3 AND COUNT_TEMP &lt;= COUNT_SUM.   "51
+      CLEAR L_POITEM.
+      IF COUNT_TEMP MOD 2 &lt;&gt; 0.
+          L_POITEM = ( COUNT_TEMP MOD 2 )  * 10.     "行项目号
+       ELSE.
+         L_POITEM = 2 * 10.     "行项目号
+      ENDIF.
+
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          INPUT  = L_POITEM
+        IMPORTING
+          OUTPUT = L_POITEM.
+      LW_ITEMS-PO_ITEM =   L_POITEM .
+      LW_ITEMS-MATERIAL = &lt;FS_ZZTMM48_INCLUDE&gt;-MATNR.         "物料号
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          INPUT  = LW_ITEMS-MATERIAL
+        IMPORTING
+          OUTPUT = LW_ITEMS-MATERIAL.
+      LW_ITEMS-QUANTITY = &lt;FS_ZZTMM48_INCLUDE&gt;-RVOD.         "采购订单数量
+      LW_ITEMS-PO_UNIT = 'EA'.          "采购订单的计量单位
+      LW_ITEMS-PLANT = &lt;FS_ZZTMM48_INCLUDE&gt;-WERKS.         "工厂
+      LW_ITEMS-STGE_LOC = &lt;FS_ZZTMM48_INCLUDE&gt;-LGORT.       "库存地点
+      LW_ITEMS-SHORT_TEXT = &lt;FS_ZZTMM48_INCLUDE&gt;-TEXT.      "短文本
+      APPEND LW_ITEMS TO GT_ITEMS.
+
+      LW_ITEMSX-PO_ITEM = L_POITEM.
+      LW_ITEMSX-MATERIAL = 'X'.
+      LW_ITEMSX-PLANT = 'X'.
+      LW_ITEMSX-STGE_LOC = 'X'.
+      LW_ITEMSX-QUANTITY = 'X'.
+      LW_ITEMS-PO_UNIT = 'X'.
+      LW_ITEMS-SHORT_TEXT = 'X'.
+<font color ="#0000FF">*         lw_itemsX-ITEM_CAT = 'X'.</font>
+      APPEND LW_ITEMSX TO GT_ITEMSX.
+    ENDIF.
+
+
+<font color ="#0000FF">*   创建UB调拨单</font>
+    IF COUNT_TEMP = COUNT_SUM OR COUNT_TEMP MOD 2 = 0 .    "50
+      CALL FUNCTION 'BAPI_PO_CREATE1'
+        EXPORTING
+          POHEADER         = LW_HEADER
+          POHEADERX        = LW_HEADERX
+          NO_PRICE_FROM_PO = 'X'
+        IMPORTING
+          EXPPURCHASEORDER = LV_NUM
+        TABLES
+          RETURN           = GT_RETURN
+          POITEM           = GT_ITEMS
+          POITEMX          = GT_ITEMSX
+          POSCHEDULE       = GT_CHEDULE
+          POSCHEDULEX      = GT_CHEDULEX.
+
+      IF SY-SUBRC = 0.
+        CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+          EXPORTING
+            WAIT = 'X'.
+<font color ="#0000FF">*        WRITE LV_NUM.</font>
+      ELSE.
+<font color ="#0000FF">*        LOOP AT GT_RETURN INTO LW_RETURN.</font>
+<font color ="#0000FF">*      WRITE: / SY-TABIX,':gt_return-TYPE=',LW_RETURN-TYPE,</font>
+<font color ="#0000FF">*             / SY-TABIX,':gt_return-MESSAGE=',LW_RETURN-MESSAGE.</font>
+<font color ="#0000FF">*    ENDLOOP.</font>
+        CALL FUNCTION 'BAPI_TRANSACTION_ROLLBACK'.
+      ENDIF.
+
+<font color ="#0000FF">*      回写采购订单号</font>
+      LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt; WHERE  SEL = 'X' AND  ZSTAT = '4' AND ISCUB = 'X'.
+        &lt;FS_ZZTMM48&gt;-CGDD = LV_NUM.
+        &lt;FS_ZZTMM48&gt;-ISCUB = ''.
+      ENDLOOP.
+
+
+      CLEAR GT_ITEMS.
+      CLEAR GT_ITEMSX.
+      CLEAR GT_CHEDULE.
+      CLEAR GT_CHEDULEX.
+      CLEAR GT_RETURN.
+    ENDIF.
+
+  ENDLOOP.
+
+
+  LOOP AT GT_ZZTMM48 ASSIGNING &lt;FS_ZZTMM48&gt;.
+    W_MM-MATNR = &lt;FS_ZZTMM48&gt;-MATNR.
+    W_MM-WERKS = &lt;FS_ZZTMM48&gt;-WERKS.
+    W_MM-MAKTX = &lt;FS_ZZTMM48&gt;-MAKTX.
+    W_MM-RVOD = &lt;FS_ZZTMM48&gt;-RVOD.  "库存建议值
+    W_MM-EXTRA = &lt;FS_ZZTMM48&gt;-EXTRA.
+    W_MM-TEXT = &lt;FS_ZZTMM48&gt;-TEXT.
+    W_MM-BOXN = &lt;FS_ZZTMM48&gt;-BOXN.
+    W_MM-CARN = &lt;FS_ZZTMM48&gt;-CARN.
+    W_MM-EKGRP = &lt;FS_ZZTMM48&gt;-EKGRP.
+    W_MM-LGORT = &lt;FS_ZZTMM48&gt;-LGORT.
+    W_MM-MATKL = &lt;FS_ZZTMM48&gt;-MATKL.
+    W_MM-ZSTAT = &lt;FS_ZZTMM48&gt;-ZSTAT.
+    W_MM-YJSD = &lt;FS_ZZTMM48&gt;-YJSD.
+    W_MM-YJSR = &lt;FS_ZZTMM48&gt;-YJSR.
+    W_MM-YJST = &lt;FS_ZZTMM48&gt;-YJST.
+    W_MM-EJSD = &lt;FS_ZZTMM48&gt;-EJSD.
+    W_MM-EJSR = &lt;FS_ZZTMM48&gt;-EJSR.
+    W_MM-EJST = &lt;FS_ZZTMM48&gt;-EJST.
+    W_MM-TJDAT = &lt;FS_ZZTMM48&gt;-TJDAT.
+    W_MM-TJNAM = &lt;FS_ZZTMM48&gt;-TJNAM.
+    W_MM-TJTIM = &lt;FS_ZZTMM48&gt;-TJTIM.
+    W_MM-CGDD = &lt;FS_ZZTMM48&gt;-CGDD.
+    W_MM-PRDHA = &lt;FS_ZZTMM48&gt;-PRDHA.
+    W_MM-CRTED = &lt;FS_ZZTMM48&gt;-CRTED.
+    W_MM-CRTET = &lt;FS_ZZTMM48&gt;-CRTET.
+
+    APPEND W_MM TO GT_MM.
+  ENDLOOP.
+
+
+  MODIFY ZZTMM48 FROM TABLE GT_MM.
+  IF SY-SUBRC = 0.
+    COMMIT WORK AND WAIT.
+  ELSE.
+    ROLLBACK WORK .
+  ENDIF.
+
+ENDFORM.                    " CREATEUB
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

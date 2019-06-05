@@ -1,0 +1,391 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZHS051</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZHS051</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  原材料询价记录查询</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">**& 程序名称       : ZHS051</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 作者           : 陈星烨（人民）</font>
+<font color ="#0000FF">*& 开发日期       : 2012-04-09</font>
+<font color ="#0000FF">*& 请求号         :</font>
+<font color ="#0000FF">*& 申请者         : 陈星烨（人民）</font>
+<font color ="#0000FF">*& 描述           : 原材料询价记录查询</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 变更记录</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">** 修改日期 开发人员  请求号 描述</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  zhs051.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* Includes</font>
+<font color ="#0000FF">************************************************************************</font>
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* tables</font>
+<font color ="#0000FF">************************************************************************</font>
+TABLES:zztcllb,
+       zztclph,
+       zzyclxj.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 类型定义</font>
+<font color ="#0000FF">************************************************************************</font>
+TYPE-POOLS slis.
+
+TYPES:BEGIN OF ty_show,
+         zhsnr TYPE zzyclxj-zhsnr,
+         zstau TYPE zzyclxj-zstau,
+         zclid TYPE zzyclxj-zclid,
+         zclnm TYPE zzyclxj-zclnm,
+         zphnm TYPE zzyclxj-zphnm,
+         zphcd TYPE zzyclxj-zphcd,
+         ztjdw TYPE zzyclxj-ztjdw,
+         zpric TYPE zzyclxj-zpric,
+         zlycs TYPE zzyclxj-zlycs,
+         zlxfs TYPE zzyclxj-zlxfs,
+         zxjrq TYPE zzyclxj-zxjrq,
+         ernam TYPE zzyclxj-ernam,
+         erdat TYPE zzyclxj-erdat,
+         zbeiz TYPE zzyclxj-zbeiz,
+       END OF ty_show.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 内表声明</font>
+<font color ="#0000FF">************************************************************************</font>
+DATA: gt_fieldcat TYPE slis_t_fieldcat_alv,
+      w_fieldcat  TYPE slis_fieldcat_alv,
+      w_layout    TYPE slis_layout_alv.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 全局变量声明</font>
+<font color ="#0000FF">************************************************************************</font>
+DATA:firstday TYPE d,
+     lastday TYPE d,
+     gt_show TYPE STANDARD TABLE OF ty_show.
+
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 常数声明</font>
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*CONSTANTS:c_lb TYPE vrm_id VALUE 'G_ZCLID'.</font>
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 定义选择屏幕参数</font>
+<font color ="#0000FF">************************************************************************</font>
+SELECTION-SCREEN BEGIN OF BLOCK blk1 WITH FRAME TITLE text-001.
+
+SELECT-OPTIONS:s_lb for zztclph-zclid,
+               s_ph for zztclph-zphcd,
+               s_rq1 FOR zzyclxj-zxjrq.
+SELECTION-SCREEN END OF BLOCK blk1.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* Initialization</font>
+<font color ="#0000FF">************************************************************************</font>
+INITIALIZATION.
+
+<font color ="#0000FF">*  SELECT zclid</font>
+<font color ="#0000FF">*         zclnm</font>
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE gt_listlb</font>
+<font color ="#0000FF">*    FROM zztcllb.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  LOOP AT gt_listlb INTO w_listlb.</font>
+<font color ="#0000FF">*    w_vrm-key = w_listlb-zclid.</font>
+<font color ="#0000FF">*    w_vrm-text = w_listlb-zclnm.</font>
+<font color ="#0000FF">*    APPEND w_vrm TO it_vrm.</font>
+<font color ="#0000FF">*    CLEAR w_vrm.</font>
+<font color ="#0000FF">*  ENDLOOP.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CALL FUNCTION 'VRM_SET_VALUES'</font>
+<font color ="#0000FF">*    EXPORTING</font>
+<font color ="#0000FF">*      id              = 'P_LB'</font>
+<font color ="#0000FF">*      values          = it_vrm</font>
+<font color ="#0000FF">*    EXCEPTIONS</font>
+<font color ="#0000FF">*      id_illegal_name = 1</font>
+<font color ="#0000FF">*      OTHERS          = 2.</font>
+<font color ="#0000FF">*  IF sy-subrc &lt;&gt; 0.</font>
+<font color ="#0000FF">** Implement suitable error handling here</font>
+<font color ="#0000FF">*  ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  SELECT zphcd</font>
+<font color ="#0000FF">*         zphnm</font>
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE gt_listph</font>
+<font color ="#0000FF">*    FROM zztclph.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR it_vrm.</font>
+<font color ="#0000FF">*  LOOP AT gt_listph INTO w_listph.</font>
+<font color ="#0000FF">*    CLEAR w_vrm.</font>
+<font color ="#0000FF">*    w_vrm-key = w_listph-zphcd.</font>
+<font color ="#0000FF">*    w_vrm-text = w_listph-zphnm.</font>
+<font color ="#0000FF">*    APPEND w_vrm TO it_vrm.</font>
+<font color ="#0000FF">*    CLEAR w_vrm.</font>
+<font color ="#0000FF">*  ENDLOOP.</font>
+
+<font color ="#0000FF">*  CALL FUNCTION 'VRM_SET_VALUES'</font>
+<font color ="#0000FF">*    EXPORTING</font>
+<font color ="#0000FF">*      id              = 'P_PH'</font>
+<font color ="#0000FF">*      values          = it_vrm</font>
+<font color ="#0000FF">*    EXCEPTIONS</font>
+<font color ="#0000FF">*      id_illegal_name = 1</font>
+<font color ="#0000FF">*      OTHERS          = 2.</font>
+<font color ="#0000FF">*  IF sy-subrc &lt;&gt; 0.</font>
+<font color ="#0000FF">** Implement suitable error handling here</font>
+<font color ="#0000FF">*  ENDIF.</font>
+  CONCATENATE sy-datum(6) '01' INTO firstday.
+  CALL FUNCTION 'BKK_GET_MONTH_LASTDAY'
+    EXPORTING
+      i_date = sy-datum
+    IMPORTING
+      e_date = lastday.
+  s_rq1-sign ='I'.
+  s_rq1-option = 'BT'.
+  s_rq1-low = firstday.
+  s_rq1-high = lastday.
+  APPEND s_rq1.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* at selection screen</font>
+<font color ="#0000FF">************************************************************************</font>
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* event Start of Selection</font>
+<font color ="#0000FF">************************************************************************</font>
+START-OF-SELECTION.
+  PERFORM getdata.
+  IF gt_show IS NOT INITIAL.
+    PERFORM display_by_alv.
+  ELSE.
+    MESSAGE s050(zpeople) DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*EVENT End-of selection</font>
+<font color ="#0000FF">************************************************************************</font>
+END-OF-SELECTION.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*EVENT  End-of page</font>
+<font color ="#0000FF">************************************************************************</font>
+END-OF-PAGE.
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  getdata</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM getdata.
+  SELECT zhsnr
+         zstau
+         zclid
+         zclnm
+         zphnm
+         zphcd
+         ztjdw
+         zpric
+         zlycs
+         zlxfs
+         zxjrq
+         ernam
+         erdat
+         zbeiz
+    INTO CORRESPONDING FIELDS OF TABLE gt_show
+    FROM zzyclxj
+    WHERE zclid in s_lb
+    AND zphcd in s_ph
+    AND zxjrq IN s_rq1.
+ENDFORM.                    "getdata
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  fill_alv_fieldcat</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM fill_alv_fieldcat.
+<font color ="#0000FF">*  clear w_fieldcat.</font>
+<font color ="#0000FF">*  w_fieldcat-fieldname ='SEL'.</font>
+<font color ="#0000FF">*  w_fieldcat-seltext_l = '选择列'.</font>
+<font color ="#0000FF">*  w_fieldcat-checkbox = 'X'.</font>
+<font color ="#0000FF">*  append w_fieldcat to gt_fieldcat.</font>
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZHSNR'.
+  w_fieldcat-seltext_l = '询价单号'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZSTAU'.
+  w_fieldcat-seltext_l = '状态'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZCLID'.
+  w_fieldcat-seltext_l = '料别代码'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZCLNM'.
+  w_fieldcat-seltext_l = '料别名称'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZPHNM'.
+  w_fieldcat-seltext_l = '牌号名称'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZPHCD'.
+  w_fieldcat-seltext_l = '牌号代码'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZTJDW'.
+  w_fieldcat-seltext_l = '调价单位'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZPRIC'.
+  w_fieldcat-seltext_l = '价格'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZLYCS'.
+  w_fieldcat-seltext_l = '来源厂商'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZLXFS'.
+  w_fieldcat-seltext_l = '联系方式'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZXJRQ'.
+  w_fieldcat-seltext_l = '询价日期'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ERNAM'.
+  w_fieldcat-seltext_l = '创建人'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ERDAT'.
+  w_fieldcat-seltext_l = '创建日期'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+  CLEAR w_fieldcat.
+  w_fieldcat-fieldname = 'ZBEIZ'.
+  w_fieldcat-seltext_l = '备注'.
+  APPEND w_fieldcat TO gt_fieldcat.
+
+ENDFORM.                    "fill_alv_fieldcat
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  fill_layout</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM fill_layout.
+  w_layout-zebra = 'X'.
+  w_layout-colwidth_optimize  = 'X'.
+ENDFORM.                    "fill_layout
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  display_by_alv</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM display_by_alv.
+  PERFORM fill_alv_fieldcat.
+
+  PERFORM fill_layout.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+<font color ="#0000FF">*     I_INTERFACE_CHECK                 = ' '</font>
+<font color ="#0000FF">*     I_BYPASSING_BUFFER                = ' '</font>
+<font color ="#0000FF">*     I_BUFFER_ACTIVE                   = ' '</font>
+     i_callback_program                = sy-repid
+<font color ="#0000FF">*     I_CALLBACK_PF_STATUS_SET          = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_USER_COMMAND           = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_TOP_OF_PAGE            = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE       = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_END_OF_LIST       = ' '</font>
+<font color ="#0000FF">*     I_STRUCTURE_NAME                  =</font>
+<font color ="#0000FF">*     I_BACKGROUND_ID                   = ' '</font>
+<font color ="#0000FF">*     I_GRID_TITLE                      =</font>
+<font color ="#0000FF">*     I_GRID_SETTINGS                   =</font>
+     is_layout                         = w_layout
+     it_fieldcat                       = gt_fieldcat
+<font color ="#0000FF">*     IT_EXCLUDING                      =</font>
+<font color ="#0000FF">*     IT_SPECIAL_GROUPS                 =</font>
+<font color ="#0000FF">*     IT_SORT                           =</font>
+<font color ="#0000FF">*     IT_FILTER                         =</font>
+<font color ="#0000FF">*     IS_SEL_HIDE                       =</font>
+<font color ="#0000FF">*     I_DEFAULT                         = 'X'</font>
+<font color ="#0000FF">*     I_SAVE                            = ' '</font>
+<font color ="#0000FF">*     IS_VARIANT                        =</font>
+<font color ="#0000FF">*     IT_EVENTS                         =</font>
+<font color ="#0000FF">*     IT_EVENT_EXIT                     =</font>
+<font color ="#0000FF">*     IS_PRINT                          =</font>
+<font color ="#0000FF">*     IS_REPREP_ID                      =</font>
+<font color ="#0000FF">*     I_SCREEN_START_COLUMN             = 0</font>
+<font color ="#0000FF">*     I_SCREEN_START_LINE               = 0</font>
+<font color ="#0000FF">*     I_SCREEN_END_COLUMN               = 0</font>
+<font color ="#0000FF">*     I_SCREEN_END_LINE                 = 0</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_TOP                 = 0</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_END                 = 0</font>
+<font color ="#0000FF">*     IT_ALV_GRAPHICS                   =</font>
+<font color ="#0000FF">*     IT_HYPERLINK                      =</font>
+<font color ="#0000FF">*     IT_ADD_FIELDCAT                   =</font>
+<font color ="#0000FF">*     IT_EXCEPT_QINFO                   =</font>
+<font color ="#0000FF">*     IR_SALV_FULLSCREEN_ADAPTER        =</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">*     ES_EXIT_CAUSED_BY_USER            =</font>
+    TABLES
+      t_outtab                          = gt_show
+<font color ="#0000FF">*   EXCEPTIONS</font>
+<font color ="#0000FF">*     PROGRAM_ERROR                     = 1</font>
+<font color ="#0000FF">*     OTHERS                            = 2</font>
+            .
+  IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+
+
+ENDFORM.                    "display_by_alv
+
+<font color ="#0000FF">*Text elements</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* 001 查询条件</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* P_LB         料别</font>
+<font color ="#0000FF">* P_PH         牌号</font>
+<font color ="#0000FF">* S_LB         料别</font>
+<font color ="#0000FF">* S_PH         牌号</font>
+<font color ="#0000FF">* S_RQ         调价日期</font>
+<font color ="#0000FF">* S_RQ1         询价日期</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPEOPLE</font>
+<font color ="#0000FF">*050   没有满足查询条件的数据!</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

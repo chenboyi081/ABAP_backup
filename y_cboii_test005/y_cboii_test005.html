@@ -1,0 +1,485 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>Y_CBOII_TEST005</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: Y_CBOII_TEST005</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  ALV测试</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  Y_CBOII_TEST005</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&alv测试</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  Y_CBOII_TEST005.
+
+
+"$. Region 1.0 简单的ALV显示
+
+
+<font color ="#0000FF">* 在ALV开发中有两个重要的对象：LAYOUT和FIELDCAT。LAYOUT主要用于设置ALV的输出格式，如输出字段的颜色、表格中的线条等；</font>
+<font color ="#0000FF">* 而FIELDCAT主要用于ALV结构定义，包括具体字段的名称、类型、格式等属性，它们同属于类型池SLIS，在ALV开发中必须导入类型池SLIS。</font>
+<font color ="#0000FF">*       [For Example]</font>
+
+
+<font color ="#0000FF">* ALV使用到的类型池</font>
+TYPE-POOLS:SLIS.
+
+DATA WA_ALV_FIELD TYPE SLIS_FIELDCAT_ALV.
+
+<font color ="#0000FF">* 列表字段 （綁定FIELD）无HEADLER LINE</font>
+DATA WA_ALV_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV.
+
+<font color ="#0000FF">* DATA wa_alv_fieldcat TYPE SLIS_T_FIELDCAT_ALV WITH HEADER LINE. "有HEADLINE LINE定义的FIELDCAT</font>
+
+<font color ="#0000FF">* 定义数据內表</font>
+DATA WA_SPFLI LIKE TABLE OF SPFLI WITH HEADER LINE.
+
+<font color ="#0000FF">*內表賦值</font>
+SELECT * INTO TABLE WA_SPFLI FROM SPFLI.
+
+<font color ="#0000FF">*定義四FIELDCAT信息</font>
+WA_ALV_FIELD-COL_POS = 1. "ALV列索引
+WA_ALV_FIELD-FIELDNAME = 'CARRID'."ALV绑定字段
+WA_ALV_FIELD-SELTEXT_M = '航班承運人'."ALV表头显示的文字
+APPEND WA_ALV_FIELD TO WA_ALV_FIELDCAT."內表賦值，无HEADER LINE只能APPEND...TO...
+
+
+<font color ="#0000FF">*有HEADER LINE 的FIELDCAT可以直接用对象赋值给对象</font>
+
+<font color ="#0000FF">*wa_alv_fieldcat-COL_POS = 1.</font>
+<font color ="#0000FF">*wa_alv_fieldcat-FIELDNAME = 'CARRID'.</font>
+<font color ="#0000FF">*wa_alv_fieldcat-SELTEXT_M = '航班承運人'.</font>
+<font color ="#0000FF">*APPEND wa_alv_fieldcat.</font>
+
+WA_ALV_FIELD-COL_POS = 2.
+WA_ALV_FIELD-FIELDNAME = 'CONNID'.
+WA_ALV_FIELD-SELTEXT_M = '航班數量'.
+APPEND WA_ALV_FIELD TO WA_ALV_FIELDCAT.
+
+WA_ALV_FIELD-COL_POS = 3.
+WA_ALV_FIELD-FIELDNAME = 'CITYFROM'.
+WA_ALV_FIELD-SELTEXT_M = '起飛城市'.
+APPEND WA_ALV_FIELD TO WA_ALV_FIELDCAT.
+
+WA_ALV_FIELD-COL_POS = 4.
+WA_ALV_FIELD-FIELDNAME = 'CITYTO'.
+WA_ALV_FIELD-SELTEXT_M = '目標城市'.
+APPEND WA_ALV_FIELD TO WA_ALV_FIELDCAT.
+
+WA_ALV_FIELD-COL_POS = 5.
+WA_ALV_FIELD-FIELDNAME = 'AIRPFROM'.
+WA_ALV_FIELD-SELTEXT_M = '部門機場'.
+APPEND WA_ALV_FIELD TO WA_ALV_FIELDCAT.
+
+WA_ALV_FIELD-COL_POS = 6.
+WA_ALV_FIELD-FIELDNAME = 'AIRPTO'.
+WA_ALV_FIELD-SELTEXT_M = '目地機場'.
+APPEND WA_ALV_FIELD TO WA_ALV_FIELDCAT.
+
+
+<font color ="#0000FF">*調用ALV顯示表單</font>
+CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY' "'REUSE_ALV_LIST_DISPLAY' 樣式風格有點迥異
+     EXPORTING
+       IT_FIELDCAT = WA_ALV_FIELDCAT. "设置ALV显示风格 对于无HEADER LINE 也可以用wa_alv_fieldcat[],
+"然而有HEADER LINE的只能用后者，否则程序将报错，有无HEADER LINE的FIELDCAT加上[]取回的都是表身吧。
+TABLES
+    T_OUTTAB = WA_SPFLI.
+"$. Endregion 1.0 简单的ALV显示
+
+
+"$. Region 2.ALV调用的几个标准函数
+<font color ="#0000FF">* ALV的调用主要由以下几个标准函数实现,所有函数的输入输出参数必须大写，否则系统会出现异常中止，相关函数如下：</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* 　　1）REUSE_ALV_FIENDCATALOG_MERGE：根据内表结构返回FIELDCAT字段结构信息，其常用输入输出参数如下：</font>
+<font color ="#0000FF">* 　　EXPORTING项：</font>
+<font color ="#0000FF">*       1.I_PROGRAM_NAME：程序名称。</font>
+<font color ="#0000FF">*       2.I_INTERNAL_TABNAME：内表名称，必须为输出内表所自定义的STRUCTURE名。</font>
+<font color ="#0000FF">*       3.I_STRUCTURE_NAME：直接参考数据字典中所定义的透明表名或STRUCTURE名。</font>
+<font color ="#0000FF">*       函数定义时I_INTERNAL_TABNAME或I_STRUCTURE_NAME参数只需一项。</font>
+<font color ="#0000FF">*      CHANGING项：</font>
+<font color ="#0000FF">* 　  CT_FIELDCAT：导出FIELDCAT内表数据。</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* 　　2）REUSE_ALV_GRID_DISPLAY/REUSE_ALV_LIST_DISPLAY：输出ALV报表，定义其为GRID模式还是LIST模式，两个函数的语法结构一样，其常用输入输出参数如下：</font>
+<font color ="#0000FF">*       EXPORT项:</font>
+<font color ="#0000FF">* 　　1.I_CALLBACK_PROGRAM：程序名称。</font>
+<font color ="#0000FF">* 　　2.IS_LAYOUT：程序所定义的LAYOUT名称。</font>
+<font color ="#0000FF">* 　　3.I_GRID_TITLE：定义ALV标题名。</font>
+<font color ="#0000FF">* 　　4.IT_FIELDCAT：定义FIELDCAT数据。</font>
+<font color ="#0000FF">* 　　5.IT_EVENTS：定义ALV输出事件。</font>
+<font color ="#0000FF">* 　　6.I_CALLBACK_PF_STATUS_SET：定义触发工具栏定义，通常为一个子程序。</font>
+<font color ="#0000FF">* 　　7.I_CALLBACK_USER_COMMAND：其对应值一般为子程序名，在对ALV操作时触发所定义子程序(如某表字段的双击事件)。</font>
+<font color ="#0000FF">* 　　TABLES项（定义输入内表数据）：</font>
+<font color ="#0000FF">* 　　1.T_OUTTAB：输入所需显示的内表数据。</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* 　　3）LAYOUT为一STRUCTURE，其主要字段定义及属性如下：</font>
+<font color ="#0000FF">* 　　1.EDIT：设置ALV是否为可编辑模式。</font>
+<font color ="#0000FF">* 　　2.COLWIDTH_OPTIMIZE：将ALV字段宽度设置为最优化，按实际输出内容宽度自动匹配。</font>
+<font color ="#0000FF">* 　　3.NO_VLINE：输出ALV表格不显示垂直格式。</font>
+<font color ="#0000FF">* 　　4.NO_ULINE_HS：输出ALV表格不显示水平格线。</font>
+<font color ="#0000FF">* 　　5.INFO_FIELDNAME：设置颜色属性。</font>
+<font color ="#0000FF">* 　　6.KEY_HOTSPOT：设置关键字段热点。</font>
+<font color ="#0000FF">* 　　7.NO_COLNAME：是否显示字段名。</font>
+<font color ="#0000FF">* 　　8.ZEBRA：使ALV表格按斑马线间隔条纹方式显示，以便显示效果更有美观。</font>
+<font color ="#0000FF">* 　　9.BOX_FIELDNAME：设置ALV表格是否显示选择按钮字段。</font>
+<font color ="#0000FF">* 　　10.INFO_FIELDNAME：用于设置ALV输出报表每一行的颜色，其参数为输出内表的字段名称，要注意的是使用该属性需要同时在内表中定义一个与该参数所定义字段名相同的字段，例如：</font>
+<font color ="#0000FF">* 　　LAYOUT-INFO_FIELDNAME = 'COLOR'.</font>
+<font color ="#0000FF">* 　　倘若其数据输出内表名为LT_OUT,则需要在该内表增加一字段“COLOR”，并为其内表每行复制，颜色参数范围C000~C999，例如：</font>
+<font color ="#0000FF">* 　　LT_OUT-COLOR = 'C012'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* 　　4）FIELDCAT主要属性介绍</font>
+<font color ="#0000FF">* 　　1.KEY：将定义字段设置为KEY值。</font>
+<font color ="#0000FF">* 　　2.ICON：将定义字段以ICON的形式显示。</font>
+<font color ="#0000FF">* 　　3.CHECKBOX：将定义字段以CHECKBOX的形式显示。</font>
+<font color ="#0000FF">* 　　4.JUST：定义字段对齐方式(R)RIGHT、(L)LEFT、(C)CENTER。</font>
+<font color ="#0000FF">* 　　5.IZERO：将定义字段以前导"0"的形式显示。</font>
+<font color ="#0000FF">* 　　6.NO_SIGN：将定义字段符号设置为不显示。</font>
+<font color ="#0000FF">* 　　7.NO_ZERO：定义字段是否显示。</font>
+<font color ="#0000FF">* 　　8.EMPHASIZE：设置字段的颜色。</font>
+<font color ="#0000FF">* 　　9.DO_SUM：对字段进行汇总。</font>
+<font color ="#0000FF">* 　　10.SELTEXT_L/M/S：设置字段名称描述长/中/短。</font>
+<font color ="#0000FF">* 　　11.DDICTXT：设置字段显示字符串。</font>
+<font color ="#0000FF">* 　　12.HOTSPOT：设置字段是否有热点(热点字段显示有下划线)。</font>
+<font color ="#0000FF">* 　　13.NO_OUT:隐藏不需要的字段(NO_OUT = 'X')。</font>
+"$. Endregion 2.ALV调用的几个标准函数
+
+
+"$. Region 3.0 用REUSE_ALV_FIELDCATALOG_MERGE函数来获取FIELDCAT
+<font color ="#0000FF">*ALV START</font>
+
+<font color ="#0000FF">*TYPE-POOLS:SLIS."调用该类型池</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**定义FIELDCAT与LAYOUT</font>
+<font color ="#0000FF">*DATA:FIELDCAT TYPE SLIS_T_FIELDCAT_ALV WITH HEADER LINE,</font>
+<font color ="#0000FF">*        LAYOUT TYPE SLIS_LAYOUT_ALV,</font>
+<font color ="#0000FF">*        W_REPID LIKE SY-REPID.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*TABLES:SPFLI.</font>
+<font color ="#0000FF">*DATA:LSPFLI LIKE STANDARD TABLE OF SPFLI WITH HEADER LINE.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**屏幕开始事件</font>
+<font color ="#0000FF">*START-OF-SELECTION.</font>
+<font color ="#0000FF">*  PERFORM GETDATA.</font>
+<font color ="#0000FF">*  PERFORM CATALOG.</font>
+<font color ="#0000FF">*  PERFORM ALVSHOW.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**The Function Of GETDATA</font>
+<font color ="#0000FF">*FORM GETDATA.</font>
+<font color ="#0000FF">*  SELECT * FROM SPFLI INTO CORRESPONDING FIELDS OF TABLE LSPFLI.</font>
+<font color ="#0000FF">*ENDFORM.                    "GETDATA</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**FORM CATALOG 根据结构体获取FIELDCAT</font>
+<font color ="#0000FF">*FORM CATALOG.</font>
+<font color ="#0000FF">*  W_REPID = SY-REPID.</font>
+<font color ="#0000FF">*  CLEAR FIELDCAT.</font>
+<font color ="#0000FF">*  CALL FUNCTION 'REUSE_ALV_FIELDCATALOG_MERGE'</font>
+<font color ="#0000FF">*    EXPORTING</font>
+<font color ="#0000FF">*I_PROGRAM_NAME       = W_REPID</font>
+<font color ="#0000FF">**I_INTERNAL_TABNAME           =</font>
+<font color ="#0000FF">*I_STRUCTURE_NAME     = 'SPFLI'</font>
+<font color ="#0000FF">**I_CLIENT_NEVER_DISPLAY       = 'X'</font>
+<font color ="#0000FF">**I_INCLNAME                   =</font>
+<font color ="#0000FF">**I_BYPASSING_BUFFER           =</font>
+<font color ="#0000FF">**I_BUFFER_ACTIVE              =</font>
+<font color ="#0000FF">*CHANGING</font>
+<font color ="#0000FF">*CT_FIELDCAT = FIELDCAT[] "导出FIELDCAT内表数据</font>
+<font color ="#0000FF">*    EXCEPTIONS</font>
+<font color ="#0000FF">*      INCONSISTENT_INTERFACE = 1</font>
+<font color ="#0000FF">*      PROGRAM_ERROR          = 2</font>
+<font color ="#0000FF">*      OTHERS                 = 3.</font>
+<font color ="#0000FF">*IF SY-SUBRC &lt;&gt; 0.</font>
+<font color ="#0000FF">*  MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO</font>
+<font color ="#0000FF">*    WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.</font>
+<font color ="#0000FF">*ENDIF.</font>
+<font color ="#0000FF">*  "对fieldcat属性的修改</font>
+<font color ="#0000FF">**READ TABLE fieldCat INDEX 2. "将第二列设为热点显示</font>
+<font color ="#0000FF">**fieldCat-HOTSPOT = 'X'.</font>
+<font color ="#0000FF">**MODIFY fieldCat INDEX 2.</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**READ TABLE fieldCat INDEX 4. "将第四列设为KEY值字段</font>
+<font color ="#0000FF">**fieldCat-KEY = 'X'.</font>
+<font color ="#0000FF">**MODIFY fieldCat INDEX 4.</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**READ TABLE fieldCat INDEX 5. "将第五列设为CHECKBOX</font>
+<font color ="#0000FF">**fieldCat-CHECKBOX = 'X'.</font>
+<font color ="#0000FF">**MODIFY fieldCat INDEX 5.</font>
+<font color ="#0000FF">*  LAYOUT-COLWIDTH_OPTIMIZE = 'X'. "设置LAYOUT输出格式最优化</font>
+<font color ="#0000FF">*ENDFORM.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**The Function Of Show ALV</font>
+<font color ="#0000FF">*FORM ALVSHOW.</font>
+<font color ="#0000FF">*CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'</font>
+<font color ="#0000FF">*EXPORTING</font>
+<font color ="#0000FF">*      I_CALLBACK_PROGRAM = W_REPID</font>
+<font color ="#0000FF">*      I_GRID_TITLE       = 'ALV REPORT TEST' "ALV显示标题</font>
+<font color ="#0000FF">*      IS_LAYOUT          = LAYOUT</font>
+<font color ="#0000FF">*      IT_FIELDCAT        = FIELDCAT[]</font>
+<font color ="#0000FF">*TABLES</font>
+<font color ="#0000FF">*  T_OUTTAB           = LSPFLI</font>
+<font color ="#0000FF">*EXCEPTIONS</font>
+<font color ="#0000FF">*  PROGRAM_ERROR      = 1</font>
+<font color ="#0000FF">*OTHERS             = 2.</font>
+<font color ="#0000FF">*  IF SY-SUBRC &lt;&gt; 0.</font>
+<font color ="#0000FF">*    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO</font>
+<font color ="#0000FF">*       WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.</font>
+<font color ="#0000FF">*  ENDIF.</font>
+<font color ="#0000FF">*ENDFORM.</font>
+"$. Endregion 3.0 用REUSE_ALV_FIELDCATALOG_MERGE函数来获取FIELDCAT
+
+"$. Region 4.0 自定义FIELDCAT参数控制ALV输出
+<font color ="#0000FF">*TYPE-POOLS:SLIS."引用类型池</font>
+<font color ="#0000FF">*TABLES:SPFLI.</font>
+<font color ="#0000FF">*DATA:FIELDCAT TYPE SLIS_T_FIELDCAT_ALV WITH HEADER LINE,</font>
+<font color ="#0000FF">*    LAYOUT TYPE SLIS_LAYOUT_ALV,</font>
+<font color ="#0000FF">*    W_REPID LIKE SY-REPID.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*DATA:LSPFLI LIKE STANDARD TABLE OF SPFLI WITH HEADER LINE.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**屏幕开始事件</font>
+<font color ="#0000FF">*START-OF-SELECTION.</font>
+<font color ="#0000FF">*  PERFORM GETDATA.</font>
+<font color ="#0000FF">*  PERFORM CATALOG.</font>
+<font color ="#0000FF">*  PERFORM ALVSHOW.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">**&      Form  GETDATA</font>
+<font color ="#0000FF">**&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">**       text</font>
+<font color ="#0000FF">**----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*FORM GETDATA.</font>
+<font color ="#0000FF">*  SELECT * FROM SPFLI INTO CORRESPONDING FIELDS OF TABLE LSPFLI.</font>
+<font color ="#0000FF">*ENDFORM.                    "GETDATA</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">**&      Form  CATALOG</font>
+<font color ="#0000FF">**&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">**       text</font>
+<font color ="#0000FF">**----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*FORM CATALOG.</font>
+<font color ="#0000FF">*  W_REPID = SY-REPID.</font>
+<font color ="#0000FF">*  CLEAR FIELDCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  "定义宏来设置FIELDAT属性 &1 &2 &3分别为参数</font>
+<font color ="#0000FF">*  DEFINE FIELDCATSET.</font>
+<font color ="#0000FF">* FIELDCAT-REF_TABNAME ='LSPFLI'.</font>
+<font color ="#0000FF">* FIELDCAT-FIELDNAME = &1.</font>
+<font color ="#0000FF">* FIELDCAT-SELTEXT_L = &2.</font>
+<font color ="#0000FF">* FIELDCAT-COL_POS = &3.</font>
+<font color ="#0000FF">* APPEND FIELDCAT.</font>
+<font color ="#0000FF">*  END-OF-DEFINITION.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  FIELDCATSET 'CARRID' '航线承运人' SY-TABIX.</font>
+<font color ="#0000FF">*  FIELDCATSET 'CONNID' '航班数量' SY-TABIX.</font>
+<font color ="#0000FF">*  FIELDCATSET 'COUNTRYFR' '起飞国家' SY-TABIX.</font>
+<font color ="#0000FF">*  FIELDCATSET 'CITYFROM' '起飞城市' SY-TABIX.</font>
+<font color ="#0000FF">*  FIELDCATSET 'AIRPFROM' '部门机场' SY-TABIX.</font>
+<font color ="#0000FF">*  FIELDCATSET 'COUNTRYTO' '目的国家' SY-TABIX.</font>
+<font color ="#0000FF">*  FIELDCATSET 'AIRPTO' '目的机场' SY-TABIX.</font>
+<font color ="#0000FF">*  FIELDCATSET 'FLTIME' '航班时间' SY-TABIX.</font>
+<font color ="#0000FF">*  FIELDCATSET 'DEPTIME' '离开' SY-TABIX.</font>
+<font color ="#0000FF">*  FIELDCATSET 'ARRTIME' '到达时间' SY-TABIX.</font>
+<font color ="#0000FF">*  FIELDCATSET 'DISTANCE' '距离' SY-TABIX.</font>
+<font color ="#0000FF">*  FIELDCATSET 'DISTID' '位于' SY-TABIX.</font>
+<font color ="#0000FF">*  FIELDCATSET 'FLTYPE' '图解' SY-TABIX.</font>
+<font color ="#0000FF">*  FIELDCATSET 'PERIOD' '周期' SY-TABIX.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  LAYOUT-COLWIDTH_OPTIMIZE = 'x'. "设置LAYOUT输出格式最优化</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*ENDFORM.                    "CATALOG</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">**&      Form  ALVSHOW</font>
+<font color ="#0000FF">**&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">**       text</font>
+<font color ="#0000FF">**----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*FORM ALVSHOW.</font>
+<font color ="#0000FF">*  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'</font>
+<font color ="#0000FF">*    EXPORTING</font>
+<font color ="#0000FF">*I_CALLBACK_PROGRAM = W_REPID</font>
+<font color ="#0000FF">*"I_SAVE = ''</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*IS_LAYOUT            = LAYOUT</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*      I_GRID_TITLE         = 'AlV DEMO'</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*      IT_FIELDCAT          = FIELDCAT[]</font>
+<font color ="#0000FF">*    TABLES</font>
+<font color ="#0000FF">*      T_OUTTAB             = LSPFLI</font>
+<font color ="#0000FF">*    EXCEPTIONS</font>
+<font color ="#0000FF">*      PROGRAM_ERROR        = 1</font>
+<font color ="#0000FF">*      　　OTHERS             = 2.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  IF SY-SUBRC &lt;&gt; 0.</font>
+<font color ="#0000FF">*MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO</font>
+<font color ="#0000FF">*            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.</font>
+<font color ="#0000FF">*  ENDIF.</font>
+<font color ="#0000FF">*ENDFORM.                    "ALVSHOW</font>
+"$. Endregion 4.0 自定义FIELDCAT参数控制ALV输出
+
+"$. Region 5.0 简单的ALV显示信息(二)
+
+<font color ="#0000FF">*TYPE-POOLS:SLIS. "引用类型池</font>
+<font color ="#0000FF">*TABLES:MARA,MAKT.</font>
+<font color ="#0000FF">*DATA:i_fieldcat TYPE SLIS_T_FIELDCAT_ALV WITH HEADER LINE,</font>
+<font color ="#0000FF">* i_layout TYPE SLIS_LAYOUT_ALV,</font>
+<font color ="#0000FF">* i_repid TYPE SY-REPID.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*SELECT-OPTIONS:s_matnr FOR MARA-MATNR OBLIGATORY. "选择屏幕，选择物料编号进行查询,必须填写</font>
+<font color ="#0000FF">*DATA imatnr LIKE MARA-MATNR.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*DATA:BEGIN OF imara OCCURS 0, "存储物料信息的内表</font>
+<font color ="#0000FF">*MATNR LIKE MARA-MATNR,</font>
+<font color ="#0000FF">*MAKTX LIKE MAKT-MAKTX,</font>
+<font color ="#0000FF">*END OF imara.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**&--------------------------------------------------------------</font>
+<font color ="#0000FF">**&  Start of screen</font>
+<font color ="#0000FF">**&--------------------------------------------------------------</font>
+<font color ="#0000FF">*START-OF-SELECTION.</font>
+<font color ="#0000FF">*PERFORM get_Data.</font>
+<font color ="#0000FF">*PERFORM fieldcat_Build.</font>
+<font color ="#0000FF">*PERFORM layout_Build.</font>
+<font color ="#0000FF">*PERFORM alv_Display.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**&--------------------------------------------------------------</font>
+<font color ="#0000FF">**&  Get Material Data</font>
+<font color ="#0000FF">**&--------------------------------------------------------------</font>
+<font color ="#0000FF">*FORM get_Data.</font>
+<font color ="#0000FF">*SELECT * FROM MARA WHERE MATNR IN s_matnr.</font>
+<font color ="#0000FF">*imatnr = MARA-MATNR.</font>
+<font color ="#0000FF">*SELECT SINGLE * FROM MAKT WHERE MATNR EQ imatnr.</font>
+<font color ="#0000FF">*IF SY-SUBRC = 0.</font>
+<font color ="#0000FF">*imara-MATNR = MARA-MATNR.</font>
+<font color ="#0000FF">*imara-MAKTX = MAKT-MAKTX.</font>
+<font color ="#0000FF">*APPEND imara.</font>
+<font color ="#0000FF">*ENDIF.</font>
+<font color ="#0000FF">*ENDSELECT.</font>
+<font color ="#0000FF">*ENDFORM.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**&--------------------------------------------------------------</font>
+<font color ="#0000FF">**&  FieldCat Build</font>
+<font color ="#0000FF">**&--------------------------------------------------------------</font>
+<font color ="#0000FF">*FORM fieldCat_Build.</font>
+<font color ="#0000FF">*i_repid = SY-REPID.</font>
+<font color ="#0000FF">*CLEAR i_fieldcat.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*CALL FUNCTION 'REUSE_ALV_FIELDCATALOG_MERGE'</font>
+<font color ="#0000FF">* EXPORTING</font>
+<font color ="#0000FF">*I_PROGRAM_NAME               = i_repid</font>
+<font color ="#0000FF">*"I_STRUCTURE_NAME             = 'IMARA'</font>
+<font color ="#0000FF">*   I_INTERNAL_TABNAME = 'IMARA'  "按内表结构返回FIELDCAT</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* I_INCLNAME = i_repid   "传递程序名</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*CHANGING</font>
+<font color ="#0000FF">*CT_FIELDCAT                  = i_fieldcat[]</font>
+<font color ="#0000FF">* EXCEPTIONS</font>
+<font color ="#0000FF">* 　　INCONSISTENT_INTERFACE       = 1</font>
+<font color ="#0000FF">* 　　PROGRAM_ERROR                = 2</font>
+<font color ="#0000FF">* 　　OTHERS                       = 3</font>
+<font color ="#0000FF">*        .</font>
+<font color ="#0000FF">*IF SY-SUBRC &lt;&gt; 0.</font>
+<font color ="#0000FF">* MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO</font>
+<font color ="#0000FF">*     WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.</font>
+<font color ="#0000FF">*ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**  LOOP AT i_fieldcat.</font>
+<font color ="#0000FF">**     IF i_fieldcat-FIELDNAME = 'MATNR'.</font>
+<font color ="#0000FF">**       i_fieldcat-NO_OUT = 'X'. "如果从内表中生成FIELDCAT，而ALV显示出来不需要某个字段，可以将其隐藏</font>
+<font color ="#0000FF">**       MODIFY i_fieldcat.</font>
+<font color ="#0000FF">**     ENDIF.</font>
+<font color ="#0000FF">**  ENDLOOP.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**  i_fieldcat-COL_POS = 1.</font>
+<font color ="#0000FF">**  i_fieldcat-SELTEXT_M = '物料編號'.</font>
+<font color ="#0000FF">**  i_fieldcat-FIELDNAME = 'MATNR'.</font>
+<font color ="#0000FF">**  APPEND i_fieldcat.</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**  i_fieldcat-COL_POS = 2.</font>
+<font color ="#0000FF">**  i_fieldcat-SELTEXT_M = '物料名稱'.</font>
+<font color ="#0000FF">**  i_fieldcat-FIELDNAME = 'MAKTX'.</font>
+<font color ="#0000FF">**  APPEND i_fieldcat.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*ENDFORM.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**&--------------------------------------------------------------</font>
+<font color ="#0000FF">**&  Layout Build</font>
+<font color ="#0000FF">**&--------------------------------------------------------------</font>
+<font color ="#0000FF">*FORM layout_Build.</font>
+<font color ="#0000FF">*i_layout-ZEBRA = 'X'.</font>
+<font color ="#0000FF">*"i_layout-DETAIL_TITLEBAR = '詳細內容'.</font>
+<font color ="#0000FF">*ENDFORM.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**&--------------------------------------------------------------</font>
+<font color ="#0000FF">**&  Display ALV</font>
+<font color ="#0000FF">**&--------------------------------------------------------------</font>
+<font color ="#0000FF">*FORM alv_Display.</font>
+<font color ="#0000FF">*CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'</font>
+<font color ="#0000FF">* EXPORTING</font>
+<font color ="#0000FF">* I_CALLBACK_PROGRAM                = i_repid</font>
+<font color ="#0000FF">**     I_STRUCTURE_NAME                  =</font>
+<font color ="#0000FF">**     I_BACKGROUND_ID                   = ' '</font>
+<font color ="#0000FF">**     I_GRID_TITLE                      =</font>
+<font color ="#0000FF">**     I_GRID_SETTINGS                   =</font>
+<font color ="#0000FF">*IS_LAYOUT                         = i_layout</font>
+<font color ="#0000FF">*IT_FIELDCAT                       = i_fieldcat[]</font>
+<font color ="#0000FF">**     IT_EXCLUDING                      =</font>
+<font color ="#0000FF">**     IT_SPECIAL_GROUPS                 =</font>
+<font color ="#0000FF">**     IT_SORT                           =</font>
+<font color ="#0000FF">**     IT_FILTER                         =</font>
+<font color ="#0000FF">**     IS_SEL_HIDE                       =</font>
+<font color ="#0000FF">**     I_DEFAULT                         = 'X'</font>
+<font color ="#0000FF">**     I_SAVE                            = ' '</font>
+<font color ="#0000FF">**     IS_VARIANT                        =</font>
+<font color ="#0000FF">**     IT_EVENTS                         =</font>
+<font color ="#0000FF">**     IT_EVENT_EXIT                     =</font>
+<font color ="#0000FF">**     IS_PRINT                          =</font>
+<font color ="#0000FF">**     IS_REPREP_ID                      =</font>
+<font color ="#0000FF">**     I_SCREEN_START_COLUMN             = 0</font>
+<font color ="#0000FF">**     I_SCREEN_START_LINE               = 0</font>
+<font color ="#0000FF">**     I_SCREEN_END_COLUMN               = 0</font>
+<font color ="#0000FF">**     I_SCREEN_END_LINE                 = 0</font>
+<font color ="#0000FF">**     I_HTML_HEIGHT_TOP                 = 0</font>
+<font color ="#0000FF">**     I_HTML_HEIGHT_END                 = 0</font>
+<font color ="#0000FF">**     IT_ALV_GRAPHICS                   =</font>
+<font color ="#0000FF">**     IT_HYPERLINK                      =</font>
+<font color ="#0000FF">**     IT_ADD_FIELDCAT                   =</font>
+<font color ="#0000FF">**     IT_EXCEPT_QINFO                   =</font>
+<font color ="#0000FF">**     IR_SALV_FULLSCREEN_ADAPTER        =</font>
+<font color ="#0000FF">**   IMPORTING</font>
+<font color ="#0000FF">**     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">**     ES_EXIT_CAUSED_BY_USER            =</font>
+<font color ="#0000FF">*TABLES</font>
+<font color ="#0000FF">*　T_OUTTAB                          = imara</font>
+<font color ="#0000FF">* EXCEPTIONS</font>
+<font color ="#0000FF">*　　 PROGRAM_ERROR                     = 1</font>
+<font color ="#0000FF">*OTHERS                            = 2</font>
+<font color ="#0000FF">*        .</font>
+<font color ="#0000FF">*IF SY-SUBRC &lt;&gt; 0.</font>
+<font color ="#0000FF">*MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO</font>
+<font color ="#0000FF">*WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.</font>
+<font color ="#0000FF">*ENDIF.</font>
+<font color ="#0000FF">*ENDFORM.</font>
+"$. Endregion 5.0 简单的ALV显示信息(二)
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

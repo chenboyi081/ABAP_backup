@@ -1,0 +1,380 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>Y_CBOII_TEST001</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: Y_CBOII_TEST001</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  ABAP基础语法</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  Y_CBOII_TEST001</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  Y_CBOII_TEST001.
+
+<font color ="#0000FF">*PARAMETERS:p_file LIKE rlgrap-filename OBLIGATORY.</font>
+<font color ="#0000FF">*DATA: il_raw TYPE truxs_t_text_data.</font>
+<font color ="#0000FF">*DATA:l_obj TYPE REF TO cl_gui_frontend_services.</font>
+<font color ="#0000FF">*DATA: it_file TYPE filetable WITH HEADER LINE.</font>
+<font color ="#0000FF">*DATA: g_rc TYPE i.</font>
+<font color ="#0000FF">*DATA: BEGIN OF i_data OCCURS 0,</font>
+<font color ="#0000FF">*     PROC_ID(10) TYPE C,        "采购凭证</font>
+<font color ="#0000FF">*     SUPPLIER_ID(6) TYPE C,     "供应商编码.</font>
+<font color ="#0000FF">*     SUPPLIER_NAME(30) TYPE C,    "TODO:添加长度和注解GTY_EXCEL</font>
+<font color ="#0000FF">*     MA_ID(16) TYPE C,</font>
+<font color ="#0000FF">*     MA_DESC(30) TYPE C,</font>
+<font color ="#0000FF">*     UNIT(30) TYPE C,</font>
+<font color ="#0000FF">*     COUNT(30) TYPE C,</font>
+<font color ="#0000FF">*     MONEY(30) TYPE C,</font>
+<font color ="#0000FF">*     FEE_TYPE(30) TYPE C,</font>
+<font color ="#0000FF">*     SUBJ_TYPE(30) TYPE C,</font>
+<font color ="#0000FF">*     LINE_ITEM(10) TYPE C,</font>
+<font color ="#0000FF">*      END OF i_data.</font>
+<font color ="#0000FF">*AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file. "弹出选择文件对话框</font>
+<font color ="#0000FF">*  CREATE OBJECT l_obj.</font>
+<font color ="#0000FF">*  CALL METHOD l_obj-&gt;file_open_dialog</font>
+<font color ="#0000FF">*    EXPORTING</font>
+<font color ="#0000FF">*      file_filter       = '*.xls;*.xlsx;*.txt'</font>
+<font color ="#0000FF">**      initial_directory = 'C:\data'</font>
+<font color ="#0000FF">*    CHANGING</font>
+<font color ="#0000FF">*      file_table        = it_file[]</font>
+<font color ="#0000FF">*      rc                = g_rc.</font>
+<font color ="#0000FF">*  READ TABLE it_file INDEX 1.</font>
+<font color ="#0000FF">*  p_file = it_file-filename.</font>
+<font color ="#0000FF">*START-OF-SELECTION.</font>
+<font color ="#0000FF">*  CALL FUNCTION 'TEXT_CONVERT_XLS_TO_SAP'"可以是Excel文件，也可以是Txt文件</font>
+<font color ="#0000FF">*    EXPORTING</font>
+<font color ="#0000FF">**     I_FIELD_SEPERATOR    = 分隔符，默认为Tab</font>
+<font color ="#0000FF">**     i_line_header        = 'X' "文本中的第一行是否是标题头，如果是则不会读取</font>
+<font color ="#0000FF">*      i_tab_raw_data       = il_raw "该参数实际上没有使用到，但为必输参数</font>
+<font color ="#0000FF">*      i_filename           = p_file</font>
+<font color ="#0000FF">*    TABLES</font>
+<font color ="#0000FF">*      i_tab_converted_data = i_data. "会自动的将Excel、Txt文件中的数据一行行读取到数据内表中</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  LOOP AT i_data FROM 1 TO 10.</font>
+<font color ="#0000FF">*  WRITE:'id:',  i_data-MA_ID.</font>
+<font color ="#0000FF">**  WRITE GT_EXCEL.</font>
+<font color ="#0000FF">*ENDLOOP.</font>
+
+<font color ="#0000FF">*DATA:chr TYPE C.</font>
+<font color ="#0000FF">*FIELD-SYMBOLS:&lt;FS&gt; TYPE X,   "定义一个十六进制的指针类型</font>
+<font color ="#0000FF">*&lt;FC&gt; TYPE C.</font>
+<font color ="#0000FF">*chr = 'A'.</font>
+<font color ="#0000FF">*ASSIGN chr TO &lt;FS&gt; CASTING.  "将字符转换为十六进制</font>
+<font color ="#0000FF">* &lt;FS&gt; = &lt;FS&gt; + 1.</font>
+<font color ="#0000FF">* ASSIGN &lt;FS&gt; TO &lt;FC&gt; CASTING. "将十六进制的指针对象转换为字符指针对象</font>
+<font color ="#0000FF">* MOVE &lt;FC&gt; TO chr.                     "将指针变量赋值到字符变量</font>
+<font color ="#0000FF">* WRITE CHR.</font>
+
+<font color ="#0000FF">**1.0 ABAP基础程序类型(ABAP Elementary Data Types)|</font>
+<font color ="#0000FF">** https://www.cnblogs.com/foxting/archive/2012/03/11/2390148.html</font>
+
+
+
+"$. Region 2.0 变量的声明(Declaring Variables)
+
+<font color ="#0000FF">**2.1 通过DATA进行声明</font>
+<font color ="#0000FF">**  ABAP的变量需要通过关键字DATA进行声明，当同时声明多个变量时，需要在DATA后面加冒号，如“DATA:”，每个变量可以分配默认值，使用"VALUE ‘默认值’"进行定义，基本语法如下：</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**    DATA  &lt;变量名&gt;(长度)  TYPE  &lt;数据类型&gt;  VALUE  &lt;默认值&gt;.</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**例如：定义一个C类型变量“TEST1”，长度为10，默认值为“Hello Sap” 。</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*DATA test1(10) TYPE C VALUE 'HELLO SAP'.</font>
+<font color ="#0000FF">*WRITE TEST1.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**当同时定义多个变量时语法如下：</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*DATA:player(35) TYPE C,</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*              nickname(35),</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*              points TYPE I,</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*              games TYPE I VALUE '10',</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*              average(5) TYPE P,</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*              acquired TYPE D.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**在使用VALUE定义变量的默认值时，默认的最大长度不要超过变量设定的长度，否则系统会按设定长度自动截取。</font>
+<font color ="#0000FF">**例如，定义变量"DATA:TITLE(5) TYPE C VALUE 'HELLO SAP'."。时变量的定长为5，那么该变量的实际值就为"HELLO"。</font>
+<font color ="#0000FF">**若定义变量时未使用TYPE来声明数据类型，那么该变量会默认为字符类型，如例中的nickname(35)则表示长度等于35位的字符变量。</font>
+
+<font color ="#0000FF">**2.2.按参考定义变量</font>
+<font color ="#0000FF">** 使用“LIKE”运算符，可以实现参照ABAP程序中的某变量或参照某一数据字典类型来定义新的变量，基本语法如下：</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**    DATA &lt;变量1&gt; LIKE &lt;变量2&gt;.</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**    如：</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    DATA: test1(10) TYPE C VALUE 'HELLO SAP',</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*              test2 LIKE test1.</font>
+<font color ="#0000FF">*              TEST2 = 'heeeeeeee'.</font>
+<font color ="#0000FF">*    WRITE TEST2 .</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**    通过以上定义，test2与test1具有相同的属性。</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**2.3.变量的初始值</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**   变量在赋值后要吧进行初始化恢复初始值，语法如下：</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**   CLEAR &lt;变量1&gt;.</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**   例如：</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*CLEAR test2.</font>
+
+<font color ="#0000FF">*  2.4.常量</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*     ABAP中使用关键字CONSTANT来定义常量。定义常量必须使用VALUE指定它的初始值，基本语法如下：</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*     CONSTANT &lt;变量名&gt;(长度) TYPE &lt;数据类型&gt; VALUE &lt;默认值&gt;.</font>
+
+<font color ="#0000FF">**   2.5.输出变量</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**    输出变量用关键字“WRITE”，多个变量则加冒号“WRITE:”，如下：</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    WRITE test1.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    WRITE:test1,test2.</font>
+
+<font color ="#0000FF">*2.5 扩展</font>
+<font color ="#0000FF">*WRITE:'hello world',/'hello world2',/'hello world3'.</font>
+<font color ="#0000FF">**类型定义(自定义类型)</font>
+<font color ="#0000FF">*TYPES:TY_FFJ TYPE C,</font>
+<font color ="#0000FF">*      TY_FFJ2(10) TYPE C.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**全局变量声明</font>
+<font color ="#0000FF">*DATA: G_FFJ TYPE TY_FFJ,</font>
+<font color ="#0000FF">*      G_FFJ2 TYPE TY_FFJ2,</font>
+<font color ="#0000FF">*      G_DATA TYPE sy-datum.</font>
+<font color ="#0000FF">*write:'用户名':,sy-uname,</font>
+<font color ="#0000FF">*      /'日期':,sy-datum,</font>
+<font color ="#0000FF">*      /'时间':,sy-uzeit,</font>
+<font color ="#0000FF">*      /'当前事务代码':,sy-tcode.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*perform write_data.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*FORM WRITE_DATA.</font>
+<font color ="#0000FF">*    G_FFJ = '10'.</font>
+<font color ="#0000FF">*    G_FFJ2 = '01231231'.</font>
+<font color ="#0000FF">*    G_DATA = sy-datum.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    WRITE:/'FFJ',G_FFJ,</font>
+<font color ="#0000FF">*          / 'FFJ2',g_ffj2,</font>
+<font color ="#0000FF">*          /'G_DATA',G_DATA.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*ENDFORM.</font>
+"$. Endregion 2.0 变量的声明(Declaring Variables)
+
+"$. Region 3. 自定义数据类型
+
+
+<font color ="#0000FF">**FOR EXAMPLE:</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*     TYPES name(10) TYPE C,</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*          teams(23) TYPE C.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*     DATA:player TYPE NAME VALUE 'JERY TANG',</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*              nickname LIKE player.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*     CONSTANTS:team1 TYPE TEAMS VALUE 'team1',</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*               team2 TYPE TEAMS VALUE 'team2'.</font>
+<font color ="#0000FF">**自定义变量就注意以下几点：</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**    1）SAP对关键字及变量定义时不区分大小写。SAP建议关键字大写变量采用小写方式编码，养成良好的编码习惯。</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**    2）SAP编程风格灵活，并没有特定的格式限制，可以看成由在两个关键字间加入多个空格，同一变量可换行隔开，但应注意美观，养成良好的编程风格。</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**    3）同时定义多个参数时需要在关键字后面加上冒号":",默认值需要用单引号进行注明。</font>
+"$. Endregion 3. 自定义数据类型
+
+
+
+<font color ="#0000FF">**4.0 结构体</font>
+<font color ="#0000FF">**  ABAP中除了简单类型之外，用户还可以在程序中定义结构体类型，将相同性质的字段进行归类，便于整理及操作。结构体不属于数据字典对象，在程序运行时会被作为临时对象创建。</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**      语法：</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**       TYPES|DATA:BEGIN OF STRUCTURE,</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**                           k1[TYPE type]|[LIKE obj]...,</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**                           k2[TYPE type]|[LIKE obj]...,</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**                           ......</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**                           kn[TYPE type]|[LIKE obj]...,</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**                   END OF STRUCTURE.</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**       或:  TYPES|DATA STRUCTURE TYPE str_type|LIKE str_dob.</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**       例如一个职员的信息如下：</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*DATA:BEGIN OF USERINFO</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*         SID TYPE STRING,</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*         NAME TYPE STRING,</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*         TEL(20) TYPE C,</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* END OF USERINFO.</font>
+<font color ="#0000FF">**         这样就定义好一个职员结构，ABAP中可以使用语句&lt;Structure&gt;-&lt;fieldname&gt;进行操作指字的字段(在.ENT或是JAVA中都是用操作符".",而ABAP却是用"-",开始用时真有点习惯,呵)。</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*       USERINFO-SID =  'A20013'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*       USERINFO-NAME = 'KEN'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*       USERINFO-TEL = 'XXX'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**       用语句链输出:</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*       WRITE:USERINFO-SID,USERINFO-NAME,USERINFO-TEL.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**       *输出结果：A20013      KEN     XXX</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**    当然还有另外一种定义结构用TYPES关键字，笔者觉得用TYPES定义的更为灵活，就像是定义一个类一样。</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*        TYPES:BEGIN OF PERSON,</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*                  nameTYPE STRING,</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*                  sex(1) TYPE C,</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*                  age TYPE I,</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*         END OF PERSON.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**         实例化对象：</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*         DATA p1 TYPE PERSON.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*          p1-name = 'Obama'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*          p1-sex = 'Male'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*          p1-age = '50'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**          用语句链输出：</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*          WRITE:p1-name,p1-sex,p1-age.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**       *输出结果：Obama   Male  50</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**       这样你可以多定义几个对象，而用DATA定义的结构在内存中只能存在一次，没有TYPES定义的灵活(本人经验有限,如果有不正确的地方欢迎指出)。</font>
+
+<font color ="#0000FF">** 接下来是介绍ABAP中结构的继承功能,通过参照某个已存在的结构体来创建一个属性相同的新结构体，并且可以在新建的结构体中按实际需求增加字段。</font>
+<font color ="#0000FF">**定义结构体继承的具体语句为:INCLUDE STRUCTURE。参照上文中的UISERINFO结构来新建继承新的结构。</font>
+<font color ="#0000FF">*  DATA:BEGIN OF STAFFINFO. &lt;此处是.操作符&gt;</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*                 INCLUDE STRUCTURE USERINFO.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*        DATA:BIRTHDAY TYPE D,</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*                 ADDRESS(50) TYPE C,</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*        END OF STAFFINFO.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**        这样就完成了继承关系。</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*        STAFFINFO-SID = 'SKY001'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*        STAFFINFO-NAME = 'SKY'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*        STAFFINFO-TEL = '010XXX'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*        STAFFINFO-BIRTHDAY = '2012-03-11'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*        STAFFINFO-ADDRESS = 'BEIJING'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*        WRITE:STAFFINFO-SID,STAFFINFO-NAME,STAFFINFO-TEL,STAFFINFO-BIRTHDAY,STAFFINFO-ADDRESS.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**        *输出结果：SKY001    SKY    010XXX   2012-03-11  BEIJING.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**        与变量的定义类似,结构体的初始化通过语句CLEAR来实现.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**        总结：</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**        用DATA关键字定义的结构可以实现继承关系,而TYPES关键字定义的结构则不可以实现,在实际的编码过程中还是按具体要求做取舍。</font>
+
+
+<font color ="#0000FF">*5.0 （重要）内表 参考https://www.cnblogs.com/foxting/archive/2012/03/19/2406830.html</font>
+
+<font color ="#0000FF">*6.0 数据的输出与数值的传递 参考：https://www.cnblogs.com/foxting/archive/2012/03/21/2410451.html</font>
+
+<font color ="#0000FF">*7.0 数据类型的转换 https://www.cnblogs.com/foxting/archive/2012/03/28/2421934.html</font>
+
+<font color ="#0000FF">*8.0 数值运算及算术运算函数 https://www.cnblogs.com/foxting/archive/2012/03/28/2422066.html</font>
+
+<font color ="#0000FF">*9.字符串控制函数  https://www.cnblogs.com/foxting/archive/2012/03/29/2424194.html</font>
+
+<font color ="#0000FF">*10.数据流控制 https://www.cnblogs.com/foxting/archive/2012/04/08/2437682.html</font>
+<font color ="#0000FF">*10.1 FORM TABLES itab2...itabn：以表的方式传输数据。</font>
+<font color ="#0000FF">*10.2 FORM TABLES USING [VALUE(p1)...pn]：向子程序中直接传输参数，该传输值在子程序中不改变。</font>
+<font color ="#0000FF">*10.3 FORM CHANGING [value(p1...pn)]：向子程序传输表或参数，程序执行结果可通过该表或参数返回给供主程序</font>
+<font color ="#0000FF">*10.4 调用指定程序中的子程序 PERFORM form IN PROGRAM prog</font>
+<font color ="#0000FF">*10.5 通过TCode调用指定程序中的子程序  CALL TRANSACTION TCode</font>
+<font color ="#0000FF">*10.6 使用SUBMIT方法调用另一个程序</font>
+<font color ="#0000FF">*在ABAP中可以直接调用具体程序来实现该程序的所有功能。</font>
+<font color ="#0000FF">*使用语句SUBMIT可以直接通过程序名来调用该程序，并提供程序执行中所需要输入的字段及参数，其语法及属性如下：</font>
+<font color ="#0000FF">*[Syntax]</font>
+<font color ="#0000FF">*     SUBMIT &lt;程序名&gt;.</font>
+<font color ="#0000FF">*     ...USING SELECTION-SCREEN &lt;SCR&gt;.   "调用子屏幕</font>
+<font color ="#0000FF">*     ...IVA  SELECTION-SCREEN.       "显示所调用程序的初始屏幕</font>
+<font color ="#0000FF">*     ...AND RETURN.    "调用指定程序执行后可返回上一屏幕</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*     调用某一程序语法如：</font>
+<font color ="#0000FF">*SUBMIT ZTEST.</font>
+<font color ="#0000FF">*VIA SELECTION-SCREEN</font>
+<font color ="#0000FF">*USING SELECTION-SCREEN 1000</font>
+<font color ="#0000FF">*AND RETURN.</font>
+
+
+<font color ="#0000FF">*11.ABAP中宏的应用</font>
+<font color ="#0000FF">* 宏（Macros）是一段独立的代码，能实现数据的运算与输出，功能与子程序类似，主要应用于同一程序中某些重复的运算，以简化代码，其定义语法如下：</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*       DEFINE INCREMENT.    "INCREMENT为自定义宏的名称。</font>
+<font color ="#0000FF">*       ......</font>
+<font color ="#0000FF">*       END-OF-DEFINITION.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*       对宏的参数传递通过&N来实现，N为整数，即调该宏的参数顺序。</font>
+<font color ="#0000FF">*       for example：</font>
+
+<font color ="#0000FF">*   DEFINE INCREMENT.   "定义宏</font>
+<font color ="#0000FF">*           ADD 1 TO &1.</font>
+<font color ="#0000FF">*           WRITE: / &1.</font>
+<font color ="#0000FF">*           WRITE: / &2.</font>
+<font color ="#0000FF">*       END-OF-DEFINITION.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*       DATA:number TYPE I VALUE 1,</font>
+<font color ="#0000FF">*                str(10) TYPE C VALUE 'HELLO SAP'.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*       INCREMENT number str.   "调用宏</font>
+<font color ="#0000FF">*   与子程序不同的是，宏通过&N（N为索引）接收传入的参数，不需要定义接收参数的类型及格式。</font>
+<font color ="#0000FF">*宏只能被本程序中定义于宏后面的语名所调用，宏一般定义于程序最开始。</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

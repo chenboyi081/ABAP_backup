@@ -1,0 +1,311 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZFI025</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZFI025</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  现金日记的导出</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  ZFI025</font>
+<font color ="#0000FF">*& 现金日记的导出</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& by 汤浩然  2017.03.01</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  ZFI025 MESSAGE-ID ZPEOPLE.
+
+
+TABLES:TCJ_BALANCE,TCJ_DOCUMENTS,TCJ_POSITIONS,TCJ_TRANS_NAMES.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 类型定义</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">************************************************************************</font>
+
+TYPES:BEGIN OF TY_XJRJ,
+  COMP_CODE   TYPE TCJ_DOCUMENTS-COMP_CODE,       "公司编号
+  CAJO_NUMBER TYPE TCJ_DOCUMENTS-CAJO_NUMBER,     "现金日记编号
+  FISC_YEAR   TYPE TCJ_DOCUMENTS-FISC_YEAR,       "年度
+  TEXT1       TYPE TCJ_DOCUMENTS-TEXT1,           "附加文本1
+  POSTING_NUMBER  TYPE TCJ_DOCUMENTS-POSTING_NUMBER,          "凭证编号
+  H_NET_AMOUNT    TYPE TCJ_DOCUMENTS-H_NET_AMOUNT,            "金额
+  DOCUMENT_NUMBER TYPE TCJ_DOCUMENTS-DOCUMENT_NUMBER,         "参照
+  DOCUMENT_DATE   TYPE TCJ_DOCUMENTS-DOCUMENT_DATE,           "凭证日期
+  TRANSACT_NUMBER TYPE TCJ_POSITIONS-TRANSACT_NUMBER,         "文本交易编号
+  POSITION_TEXT   TYPE TCJ_POSITIONS-POSITION_TEXT,           "文本
+  TRANSACT_NAME   TYPE TCJ_TRANS_NAMES-TRANSACT_NAME,         "文本交易名称
+END OF TY_XJRJ.
+
+
+
+DATA:GT_XJRJ  TYPE STANDARD TABLE OF TY_XJRJ.
+DATA:G_YESTERDAY TYPE SY-DATUM.
+
+
+<font color ="#0000FF">***alv相关内表和工作区定义</font>
+DATA: GT_FCAT  TYPE LVC_T_FCAT,   "定义alv字段目录内表
+      W_FCAT   TYPE LVC_S_FCAT,   "定义alv字段目录工作区
+      W_LAYOUT TYPE LVC_S_LAYO.   "定义alv表单相关属性，格式
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 字段符声明</font>
+<font color ="#0000FF">************************************************************************</font>
+FIELD-SYMBOLS:&lt;FS_XJRJ&gt;  TYPE TY_XJRJ.
+
+<font color ="#0000FF">*************************************************************************</font>
+<font color ="#0000FF">* 定义选择屏幕参数</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*************************************************************************</font>
+SELECTION-SCREEN BEGIN OF BLOCK BBK WITH FRAME TITLE TEXT-001.
+PARAMETERS:P_BUKRS LIKE TCJ_DOCUMENTS-COMP_CODE DEFAULT '1000'.          "公司代码
+SELECT-OPTIONS:S_CJNR FOR TCJ_DOCUMENTS-CAJO_NUMBER .         "现金日记编号
+SELECT-OPTIONS:RJDAT FOR TCJ_DOCUMENTS-DOCUMENT_DATE DEFAULT G_YESTERDAY. "日记日期 多值 必输
+
+SELECTION-SCREEN END OF BLOCK BBK.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* Initialization</font>
+<font color ="#0000FF">************************************************************************</font>
+INITIALIZATION.
+  PERFORM INCREMENT_COUNT_LOG.    "
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*& START-OF-SELECTION</font>
+<font color ="#0000FF">************************************************************************</font>
+START-OF-SELECTION.
+  PERFORM GET_DATA.
+  PERFORM DISPLAY_ALVS.
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* 必须</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INCREMENT_COUNT_LOG .
+  DATA: LW_DB TYPE ZZTTABLOG,
+        L_MINUTE TYPE SY-UZEIT,
+        L_NOW_YEAR TYPE ZZTTABLOG-GJAHR,
+        L_NOW_MONTH TYPE ZZTTABLOG-MONAT.
+
+  L_NOW_YEAR = SY-DATUM+0(4).
+  L_NOW_MONTH = SY-DATUM+4(2).
+
+  " 按每月累加用户使用数
+  SELECT SINGLE *
+    INTO LW_DB
+    FROM ZZTTABLOG
+  WHERE TCODE = SY-TCODE      " 事物代码
+    AND GJAHR = L_NOW_YEAR    " 当前年份
+    AND MONAT = L_NOW_MONTH.  " 当前月份
+
+  IF SY-SUBRC = 0.
+    " 相同的人，如果在10分钟内做相同的操作，算计一次
+    IF LW_DB-ERNAM = SY-UNAME AND
+      LW_DB-ERDAT = SY-DATUM.
+      L_MINUTE = SY-UZEIT - LW_DB-ERZET.
+      IF L_MINUTE &lt; '001000'.
+        RETURN.
+      ENDIF.
+    ENDIF.
+    LW_DB-ZCUNT = LW_DB-ZCUNT + 1.      " 次数加一
+  ELSE.
+    LW_DB-TCODE = SY-TCODE.           " 记录操作的tcode
+    LW_DB-ZCUNT = '1'.                " 初始化次数
+    LW_DB-ZFNAM = SY-UNAME.           " 第一次操作人员
+    LW_DB-ZFDAT = SY-DATUM.           " 第一次操作日期
+    LW_DB-ZFZET = SY-UZEIT.           " 第一次操作时间
+    LW_DB-GJAHR = L_NOW_YEAR.         " 年度
+    LW_DB-MONAT = L_NOW_MONTH.        " 月份
+  ENDIF.
+
+  LW_DB-ERNAM = SY-UNAME.     " 本次操作人员
+  LW_DB-ERDAT = SY-DATUM.     " 本次操作日期
+  LW_DB-ERZET = SY-UZEIT.     " 本次操作时间
+
+  MODIFY ZZTTABLOG FROM LW_DB.
+  COMMIT WORK AND WAIT.
+ENDFORM.                    " INCREMENT_COUNT_LOG
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA .
+  DATA:LCOLOR TYPE LVC_S_SCOL.
+  CLEAR:GT_XJRJ.
+
+  SELECT
+    TCJ_DOCUMENTS~COMP_CODE
+    TCJ_DOCUMENTS~CAJO_NUMBER
+    TCJ_DOCUMENTS~FISC_YEAR
+    TCJ_DOCUMENTS~POSTING_NUMBER
+    TCJ_DOCUMENTS~H_NET_AMOUNT
+    TCJ_DOCUMENTS~DOCUMENT_NUMBER
+    TCJ_DOCUMENTS~DOCUMENT_DATE
+    TCJ_DOCUMENTS~TEXT1
+    TCJ_POSITIONS~TRANSACT_NUMBER
+    TCJ_POSITIONS~POSITION_TEXT
+
+    TCJ_TRANS_NAMES~TRANSACT_NAME
+
+    INTO CORRESPONDING FIELDS OF TABLE GT_XJRJ
+    FROM TCJ_DOCUMENTS INNER JOIN TCJ_POSITIONS
+    ON TCJ_DOCUMENTS~COMP_CODE = TCJ_POSITIONS~COMP_CODE
+    AND TCJ_DOCUMENTS~FISC_YEAR = TCJ_POSITIONS~FISC_YEAR
+    AND TCJ_DOCUMENTS~POSTING_NUMBER = TCJ_POSITIONS~POSTING_NUMBER
+    AND TCJ_DOCUMENTS~CAJO_NUMBER = TCJ_POSITIONS~CAJO_NUMBER
+    LEFT JOIN TCJ_TRANS_NAMES
+    ON  TCJ_POSITIONS~TRANSACT_NUMBER = TCJ_TRANS_NAMES~TRANSACT_NUMBER
+    AND TCJ_POSITIONS~COMP_CODE = TCJ_TRANS_NAMES~COMP_CODE
+    AND TCJ_TRANS_NAMES~LANGU = '1'
+
+    WHERE TCJ_DOCUMENTS~COMP_CODE =  P_BUKRS
+    AND   TCJ_DOCUMENTS~CAJO_NUMBER IN  S_CJNR
+    AND   TCJ_DOCUMENTS~DOCUMENT_DATE IN RJDAT
+    AND  TCJ_DOCUMENTS~DOCUMENT_STATUS &lt;&gt; 'D'
+    .
+
+
+
+
+
+
+
+
+
+
+
+
+ENDFORM.                    " GET_DATA
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  display_alv</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       显示alv</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_ALVS.
+  PERFORM INIT_ALV.
+  PERFORM INIT_FIELDCAT.
+  PERFORM SHOW_ALV.
+ENDFORM.                    "DISPLAY_ALV
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  ALV</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       初始化alv样式</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_ALV .
+  CLEAR:W_LAYOUT.
+  W_LAYOUT-CWIDTH_OPT = 'X'. " 动态宽度
+  W_LAYOUT-ZEBRA = 'X'.      " 斑马线
+ENDFORM.                    "ALV
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FIELDCAT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       初始化字段目录</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_FIELDCAT .
+  CLEAR:GT_FCAT.
+
+  " 编号
+  "CLEAR:W_FCAT.
+  "W_FCAT-FIELDNAME = 'POSTING_NUMBER'.
+  "W_FCAT-COLTEXT = '编号'.
+  "APPEND W_FCAT TO GT_FCAT.
+
+  " 文本交易
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'TRANSACT_NAME'.
+  W_FCAT-COLTEXT = '文本交易'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 金额
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'H_NET_AMOUNT'.
+  W_FCAT-COLTEXT = '金额'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 文本
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'POSITION_TEXT'.
+  W_FCAT-COLTEXT = '文本'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 参照
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'DOCUMENT_NUMBER'.
+  W_FCAT-COLTEXT = '参照'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 附加文本1
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'TEXT1'.
+  W_FCAT-COLTEXT = '附加文本1'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 凭证日期
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'DOCUMENT_DATE'.
+  W_FCAT-COLTEXT = '凭证日期'.
+  APPEND W_FCAT TO GT_FCAT.
+
+ENDFORM.                    " FIELDCAT
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SHOW</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       显示alv</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_ALV.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'
+    EXPORTING
+      I_CALLBACK_PROGRAM = SY-REPID
+      IS_LAYOUT_LVC      = W_LAYOUT
+      IT_FIELDCAT_LVC    = GT_FCAT
+      I_SAVE             = 'A'
+    TABLES
+      T_OUTTAB           = GT_XJRJ
+    EXCEPTIONS
+      PROGRAM_ERROR      = 1
+      OTHERS             = 2.
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+
+ENDFORM.                    " SHOW
+
+
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      LOAD-OF-PROGRAM.</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+LOAD-OF-PROGRAM.
+  G_YESTERDAY = SY-DATUM - 1.
+
+<font color ="#0000FF">*Text elements</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* 001 现金日志</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* P_BUKRS         公司编码</font>
+<font color ="#0000FF">* RJDAT         凭证日期</font>
+<font color ="#0000FF">* S_CJNR         现金日志</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

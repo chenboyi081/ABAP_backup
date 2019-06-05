@@ -1,0 +1,117 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZYC030_PBO_FORM</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZYC030_PBO_FORM</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZYC030_PBO_FORM</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZYC030_PBO_FORM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_domvalue_text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       取状态域的文本描述</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;FU_NAME      text</font>
+<font color ="#0000FF">*      --&gt;FU_STAT      text</font>
+<font color ="#0000FF">*      --&gt;FU_STAT_TXT  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM get_domvalue_text USING fu_name
+                           fu_stat
+                           fu_stat_txt.
+
+  DATA: lw_dd07v TYPE dd07v,
+        l_value  TYPE dd07v-domvalue_l,
+        l_name   TYPE ddobjname.
+
+  CLEAR:lw_dd07v,
+        l_value,
+        l_name.
+
+  l_value = fu_stat.
+  l_name  = fu_name.
+
+  CALL FUNCTION 'DDUT_DOMVALUE_TEXT_GET'
+    EXPORTING
+      name                = l_name
+      value               = l_value
+     langu               = '1'
+<font color ="#0000FF">*     TEXTS_ONLY          = ' '</font>
+   IMPORTING
+     dd07v_wa            = lw_dd07v
+<font color ="#0000FF">*   EXCEPTIONS</font>
+<font color ="#0000FF">*     NOT_FOUND           = 1</font>
+<font color ="#0000FF">*     ILLEGAL_INPUT       = 2</font>
+<font color ="#0000FF">*     OTHERS              = 3</font>
+            .
+  IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+
+  fu_stat_txt = lw_dd07v-ddtext.
+ENDFORM.                    "get_domvalue_text
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  show_cl_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+     "show_cl_data
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_LIST_TYPE_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SET_LIST_TYPE_DATA .
+  CLEAR: gt_list_data,
+         w_list_data.
+
+    w_list_data-key = '0'.
+  w_list_data-text = '物料编码'.
+  APPEND w_list_data TO gt_list_data.
+
+  w_list_data-key = '1'.
+  w_list_data-text = '物料名称'.
+  APPEND w_list_data TO gt_list_data.
+
+  w_list_data-key = '2'.
+  w_list_data-text = '图号'.
+  APPEND w_list_data TO gt_list_data.
+
+  PERFORM fill_list USING c_list_type gt_list_data.
+
+  list_type = '0'.
+ENDFORM.                    " SET_LIST_TYPE_DATA
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FILL_LIST</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       填充界面上链表元素的值</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_ID       元素ID</font>
+<font color ="#0000FF">*      --&gt;P_LIST     值</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM fill_list USING p_id p_list.
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id                    = p_id
+      values                = p_list
+<font color ="#0000FF">*   EXCEPTIONS</font>
+<font color ="#0000FF">*     ID_ILLEGAL_NAME       = 1</font>
+<font color ="#0000FF">*     OTHERS                = 2</font>
+            .
+  IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+
+ENDFORM.                    "FILL_LIST
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

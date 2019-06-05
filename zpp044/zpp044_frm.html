@@ -1,0 +1,404 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZPP044_FRM</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZPP044_FRM</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZPP044_FRM</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZPP044_FRM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      form  f4_help_for_filename</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM F4_HELP_FOR_FILENAME .
+  DATA: L_FILE         TYPE STRING,
+        L_FILE_IMPORT  TYPE STRING,
+        L_PATH_INITIAL TYPE STRING,
+        LT_FILE_TABLE  TYPE FILETABLE,
+        LW_FILE        TYPE FILE_TABLE,
+        L_RC           TYPE I.
+
+  CLEAR: L_FILE,
+         L_FILE_IMPORT,
+         L_PATH_INITIAL,
+         LT_FILE_TABLE,
+         LW_FILE,
+         L_RC.
+
+  L_FILE = P_FILE.
+<font color ="#0000FF">*    CALL FUNCTION 'F4_FILENAME'</font>
+<font color ="#0000FF">*      EXPORTING</font>
+<font color ="#0000FF">*        field_name = 'P_FILE'</font>
+<font color ="#0000FF">*      IMPORTING</font>
+<font color ="#0000FF">*        file_name  = p_file.</font>
+  CALL METHOD CL_GUI_FRONTEND_SERVICES=&gt;FILE_OPEN_DIALOG
+    EXPORTING
+<font color ="#0000FF">*     window_title            =</font>
+<font color ="#0000FF">*     default_extension       =</font>
+<font color ="#0000FF">*     default_filename        =</font>
+      FILE_FILTER             = 'Excel 文件 (*.xls;*xlsx)|*.xls;*.xlsx'
+<font color ="#0000FF">*     with_encoding           =</font>
+<font color ="#0000FF">*     initial_directory       =</font>
+<font color ="#0000FF">*     multiselection          =</font>
+    CHANGING
+      FILE_TABLE              = LT_FILE_TABLE
+      RC                      = L_RC
+<font color ="#0000FF">*     user_action             =</font>
+<font color ="#0000FF">*     file_encoding           =</font>
+    EXCEPTIONS
+      FILE_OPEN_DIALOG_FAILED = 1
+      CNTL_ERROR              = 2
+      ERROR_NO_GUI            = 3
+      NOT_SUPPORTED_BY_GUI    = 4
+      OTHERS                  = 5.
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+               WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+  READ TABLE LT_FILE_TABLE INTO LW_FILE INDEX 1.
+  IF SY-SUBRC EQ 0.
+    P_FILE = LW_FILE-FILENAME.
+  ENDIF.
+
+
+ENDFORM.                    " f4_help_for_filename
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DOWNLOAD_TEMPLATE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       下载模板</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DOWNLOAD_TEMPLATE .
+  CREATE OBJECT G_APPL 'EXCEL.APPLICATION'.
+  SET PROPERTY OF G_APPL 'VISIBLE' = 0.
+
+  CALL METHOD OF
+      G_APPL
+      'WORKBOOKS' = G_WORK.
+  CALL METHOD OF
+      G_WORK
+      'Add'  = G_WORK.
+
+  GET PROPERTY OF G_APPL 'ActiveSheet' = G_ACTIVESHEET.
+
+  SET PROPERTY OF G_ACTIVESHEET 'Name' = 'BOM信息查询表导入 '.
+
+  PERFORM FILL_CELL USING: 1 1 '物料号' 26 1,
+        1 2 '工厂' 26 1,
+        1 3 '可选的 BOM' 26 1.
+
+
+
+  "EXCEL文件别存为
+  CALL METHOD OF
+      G_WORK
+      'SAVEAS'
+
+    EXPORTING
+      #1       = P_FILE.
+
+  "关闭文件
+  CALL METHOD OF
+      G_WORK
+      'close'.
+
+  "退出EXCEL
+  CALL METHOD OF
+      G_APPL
+      'QUIT'.
+  FREE OBJECT G_APPL.
+
+  MESSAGE S000 WITH '文件：' P_FILE ' 下载成功'.
+
+ENDFORM.                    " DOWNLOAD_TEMPLATE
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FILL_CELL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;FU_ROW     text</font>
+<font color ="#0000FF">*      --&gt;FU_COLUMN  text</font>
+<font color ="#0000FF">*      --&gt;FU_VALUE   text</font>
+<font color ="#0000FF">*      --&gt;FU_COLOR   text</font>
+<font color ="#0000FF">*      --&gt;FU_BOLD    text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FILL_CELL USING  FU_ROW
+                      FU_COLUMN
+                      FU_VALUE
+                      FU_COLOR
+                      FU_BOLD.
+
+  DATA: L_CELL  TYPE OLE2_OBJECT,
+        L_COLOR TYPE OLE2_OBJECT,
+        L_BOLD  TYPE OLE2_OBJECT.
+
+  "设置单元格内容
+  CALL METHOD OF
+      G_APPL
+      'Cells' = L_CELL
+    EXPORTING
+      #1      = FU_ROW
+      #2      = FU_COLUMN.
+
+  SET PROPERTY OF L_CELL 'Value'       =  FU_VALUE.
+
+  "设置单元格颜色
+  GET PROPERTY OF L_CELL 'Interior'    = L_COLOR.
+  SET PROPERTY OF L_COLOR 'ColorIndex' = FU_COLOR.
+
+  "设置单元格加粗
+  GET PROPERTY OF L_CELL 'Font' = L_BOLD.
+  SET PROPERTY OF L_BOLD 'Bold' = FU_BOLD.
+ENDFORM.                    "FILL_CELL
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  CONVERT_XLS_TO_ITAB</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CONVERT_XLS_TO_ITAB .
+  CLEAR:LT_EXCEL,LW_CHECKMSG.
+
+  CALL FUNCTION 'TEXT_CONVERT_XLS_TO_SAP'
+    EXPORTING
+<font color ="#0000FF">*     i_field_seperator    =</font>
+      I_LINE_HEADER        = 'x'
+      I_TAB_RAW_DATA       = GT_RAW
+      I_FILENAME           = P_FILE
+    TABLES
+      I_TAB_CONVERTED_DATA = LT_EXCEL
+    EXCEPTIONS
+      CONVERSION_FAILED    = 1
+      OTHERS               = 2.
+
+
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">*   break-point.</font>
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+ENDFORM.                    "CONVERT_XLS_TO_ITAB
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  checkdata</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CHECKDATA.
+  CLEAR:LT_CHECKMSG,
+      G_FLAG.
+
+  IF LT_EXCEL[] IS INITIAL.
+    MESSAGE S000(ZPEOPLE) WITH '上传文件不包含任何有效数据' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  LOOP AT LT_EXCEL ASSIGNING &lt;FS_EXCEL&gt;.
+    CLEAR:G_ERROR.
+
+<font color ="#0000FF">*    &lt;FS_EXCEL&gt;-ZXH = L_ERRNUM.</font>
+
+    IF &lt;FS_EXCEL&gt;-MATNR IS INITIAL.
+      CONCATENATE  G_ERROR  '物料号不能为空.'  INTO  G_ERROR.
+    ELSE.
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          INPUT  = &lt;FS_EXCEL&gt;-MATNR
+        IMPORTING
+          OUTPUT = &lt;FS_EXCEL&gt;-MATNR.
+    ENDIF.
+
+    IF &lt;FS_EXCEL&gt;-WERKS IS INITIAL.
+      CONCATENATE G_ERROR  '工厂不能为空.' INTO  G_ERROR.
+    ENDIF.
+
+<font color ="#0000FF">*    IF &lt;FS_EXCEL&gt;-STLAN IS INITIAL.</font>
+<font color ="#0000FF">*      CONCATENATE  G_ERROR  'BOM 用途不能为空.' INTO  G_ERROR.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+
+    IF &lt;FS_EXCEL&gt;-STLAL IS INITIAL.
+      CONCATENATE  G_ERROR   '可选的 BOM不能为空.' INTO  G_ERROR.
+    ELSE.
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          INPUT  = &lt;FS_EXCEL&gt;-STLAL
+        IMPORTING
+          OUTPUT = &lt;FS_EXCEL&gt;-STLAL.
+    ENDIF.
+
+
+    "导入数据表存在错误
+    IF G_ERROR IS NOT INITIAL.
+      CLEAR:LW_CHECKMSG.
+      "导入文本存在错误信息
+      G_FLAG = 'X'.
+
+      MOVE-CORRESPONDING &lt;FS_EXCEL&gt; TO LW_CHECKMSG.
+
+      LW_CHECKMSG-ERR_MSG = G_ERROR.
+      LW_CHECKMSG-ZXH = SY-TABIX.
+      APPEND LW_CHECKMSG TO LT_CHECKMSG.
+    ENDIF.
+  ENDLOOP.
+
+
+
+
+ENDFORM.                    "checkdata
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DISPLAY_ALV</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       在页面中显示信息</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_ALV .
+  PERFORM INIT_FIELDCAT.    "
+
+  PERFORM INIT_LAYOUT.
+
+  PERFORM SHOW_ALV.
+ENDFORM.                    "DISPLAY_ALV
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  INIT_FIELDCAT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_FIELDCAT .
+  DATA:L_COLPOS TYPE I.
+  CLEAR:GT_FCAT.
+  MARCO:L_COLPOS 'ZXH' '序列' 'X',
+  L_COLPOS 'MATNR' '物料号' 'X',
+  L_COLPOS 'WERKS' '工厂' 'X',
+<font color ="#0000FF">*  L_COLPOS 'STLAN' 'BOM 用途' 'X',</font>
+  L_COLPOS 'STLAL' '可选的 BOM' 'X'.
+
+  IF G_FLAG = 'X'.
+    MARCO:L_COLPOS 'ERR_MSG' '提示信息' ''.
+  ENDIF.
+ENDFORM.                    "INIT_FIELDCAT
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  INIT_LAYOUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_LAYOUT .
+  CLEAR:W_LAYOUT.
+
+  W_LAYOUT-ZEBRA = 'X'.
+  W_LAYOUT-COL_OPT = 'X'.
+ENDFORM.                    "INIT_LAYOUT
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SHOW_ALV</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_ALV .
+  IF G_FLAG = 'X'.
+    CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'
+      EXPORTING
+        I_CALLBACK_PROGRAM = SY-REPID
+        IS_LAYOUT_LVC      = W_LAYOUT
+        IT_FIELDCAT_LVC    = GT_FCAT
+        I_SAVE             = 'A'
+      TABLES
+        T_OUTTAB           = LT_CHECKMSG.
+    IF SY-SUBRC &lt;&gt; 0.
+      MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+                  WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    ENDIF.
+<font color ="#0000FF">*  ELSE.</font>
+<font color ="#0000FF">*    CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'</font>
+<font color ="#0000FF">*     EXPORTING</font>
+<font color ="#0000FF">*       I_CALLBACK_PROGRAM                = SY-REPID</font>
+<font color ="#0000FF">*       IS_LAYOUT_LVC                     = W_LAYOUT</font>
+<font color ="#0000FF">*       IT_FIELDCAT_LVC                   = GT_FCAT</font>
+<font color ="#0000FF">*       I_SAVE                            = 'A'</font>
+<font color ="#0000FF">*      TABLES</font>
+<font color ="#0000FF">*        T_OUTTAB                          = GT_DATA</font>
+<font color ="#0000FF">*              .</font>
+<font color ="#0000FF">*    IF SY-SUBRC &lt;&gt; 0.</font>
+<font color ="#0000FF">*      MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO</font>
+<font color ="#0000FF">*                  WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+
+  ENDIF.
+ENDFORM.                    "SHOW_ALV
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  OPRA_DELETE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      批量删除DOM操作</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM OPRA_DELETE.
+  data counter type i.
+  CLEAR:LT_CHECKMSG,
+      G_FLAG.
+
+
+  LOOP AT LT_EXCEL ASSIGNING &lt;FS_EXCEL&gt;.
+    CLEAR:G_ERROR.
+
+    CALL FUNCTION 'CSAP_MAT_BOM_DELETE'
+<font color ="#0000FF">*    DESTINATION v_rfc_des</font>
+            EXPORTING
+              MATERIAL           = &lt;FS_EXCEL&gt;-MATNR  "物料
+              PLANT              = &lt;FS_EXCEL&gt;-WERKS  "工厂
+              BOM_USAGE          = '1'      "BOM 用途
+              ALTERNATIVE        = &lt;FS_EXCEL&gt;-STLAL    "ALTERNATIVE dom
+              FL_NO_CHANGE_DOC   = 'X'
+              FL_COMMIT_AND_WAIT = 'X'
+            EXCEPTIONS
+              ERROR              = 1
+              OTHERS             = 2.
+    IF SY-SUBRC &lt;&gt; 0.
+      data err_str type string.
+      err_str = sy-SUBRC.
+<font color ="#0000FF">*   Implement suitable error handling here</font>
+      CONCATENATE  '删除失败，数据可能不存在，错误代码：'   err_str  INTO  G_ERROR.
+    ELSE.
+        G_ERROR = '删除成功！' .
+    ENDIF.
+
+     G_FLAG = 'X'.      "这里只做为显示标志
+     CLEAR:LW_CHECKMSG.
+     MOVE-CORRESPONDING &lt;FS_EXCEL&gt; TO LW_CHECKMSG.
+      counter = counter + 1.
+      LW_CHECKMSG-ERR_MSG = G_ERROR.
+      LW_CHECKMSG-ZXH = counter.
+      APPEND LW_CHECKMSG TO LT_CHECKMSG.
+
+  ENDLOOP.
+
+ENDFORM.                    "OPRA_DELETE
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

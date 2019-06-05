@@ -1,0 +1,1365 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZSD015_DATA_FORM</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZSD015_DATA_FORM</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZSD015_DATA_FORM</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZSD015_DATA_FORM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_data_customer</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*     销售组织/客户/物料的取数</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA_CUSTOMER.
+  CLEAR:GT_MARA,G_XH.
+  TYPES:BEGIN OF TY_KNA1,
+        KUNNR TYPE KNA1-KUNNR,
+        ADRNR TYPE KNA1-ADRNR,
+        END OF TY_KNA1,
+
+        BEGIN OF TY_KONP,
+        KBETR TYPE KONP-KBETR,                                "价格
+        KONWA TYPE KONP-KONWA,                                "币种
+        KPEIN TYPE KONP-KPEIN,                                "数量单位
+        KRECH TYPE KONP-KRECH,                                "计算类型
+        KNUMH TYPE KONP-KNUMH,
+        END OF TY_KONP,
+
+        BEGIN OF TY_ADRC,
+        ADDRNUMBER TYPE ADRC-ADDRNUMBER,
+        NAME1 TYPE ADRC-NAME1,
+        NAME2 TYPE ADRC-NAME2,
+        NAME3 TYPE ADRC-NAME3,
+        END OF TY_ADRC,
+
+        BEGIN OF TY_MAKT,
+        MATNR TYPE MAKT-MATNR,
+        MAKTX TYPE MAKT-MAKTX,
+        SPRAS TYPE MAKT-SPRAS,
+        END OF TY_MAKT.
+
+  DATA:LT_KONP TYPE STANDARD TABLE OF TY_KONP,
+       LW_KONP TYPE TY_KONP,
+       LW_KNA1 TYPE TY_KNA1,
+       LT_KNA1 TYPE STANDARD TABLE OF TY_KNA1,
+       LW_MAKT TYPE TY_MAKT,
+       LT_MAKT TYPE STANDARD TABLE OF TY_MAKT,
+       LT_ADRC TYPE STANDARD TABLE OF TY_ADRC,
+       LW_ADRC TYPE TY_ADRC.
+  IF P_CST OR P_YXRQ1 IS INITIAL.
+    MESSAGE S330 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+  SELECT DATBI                                                   "有效期到
+         DATAB                                                   "有效期从
+         KNUMH                                                   "条件记录号
+         VKORG                                                   "销售组织
+         KUNNR                                                   "客户编码
+         KSCHL                                                   "条件类型
+         MATNR                                                   "物料号
+         KNUMH                                                   "条件记录号
+    INTO CORRESPONDING FIELDS OF TABLE GT_CUSTOMER
+    FROM A503
+  WHERE KUNNR IN P_KH_CST
+    AND VKORG IN P_CST
+    AND MATNR IN P_WL_CST
+    AND KSCHL LIKE 'ZK%'
+    AND DATAB &lt;= P_YXRQ1.
+
+  IF GT_CUSTOMER IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  SELECT BISMT                                                 "旧物料号
+         PRDHA                                                 "产品层次
+         MATNR
+         ZWLCD
+    INTO CORRESPONDING FIELDS OF TABLE GT_MARA
+    FROM MARA
+    FOR ALL ENTRIES IN GT_CUSTOMER
+  WHERE MATNR = GT_CUSTOMER-MATNR
+    AND ZWLCD IN P_WLDM.
+
+  LOOP AT GT_CUSTOMER ASSIGNING &lt;FS_CUSTOMER&gt;.
+    READ TABLE GT_MARA INTO W_MARA WITH KEY MATNR = &lt;FS_CUSTOMER&gt;-MATNR.
+    IF SY-SUBRC = 0.
+      &lt;FS_CUSTOMER&gt;-BISMT = W_MARA-BISMT.
+      &lt;FS_CUSTOMER&gt;-PRDHA = W_MARA-PRDHA.
+      &lt;FS_CUSTOMER&gt;-ZWLCD = W_MARA-ZWLCD.
+    ELSE.
+      DELETE GT_CUSTOMER.
+    ENDIF.
+  ENDLOOP.
+
+  SELECT MAKTX                                          "物料描述
+         MATNR
+         SPRAS
+    INTO CORRESPONDING FIELDS OF TABLE LT_MAKT
+    FROM MAKT
+    FOR ALL ENTRIES IN GT_CUSTOMER
+  WHERE MATNR = GT_CUSTOMER-MATNR
+    AND SPRAS = '1'.
+
+  SELECT KUNNR
+         ADRNR
+    INTO CORRESPONDING FIELDS OF TABLE LT_KNA1
+    FROM KNA1
+    FOR ALL ENTRIES IN GT_CUSTOMER
+  WHERE KUNNR = GT_CUSTOMER-KUNNR.
+
+  SELECT ADDRNUMBER
+         NAME1
+         NAME2
+         NAME3
+    INTO CORRESPONDING FIELDS OF TABLE LT_ADRC
+    FROM ADRC
+    FOR ALL ENTRIES IN LT_KNA1
+  WHERE ADDRNUMBER = LT_KNA1-ADRNR.
+
+  SELECT KBETR                                                 "价格
+         KONWA                                                 "币种
+         KPEIN                                                 "数量单位
+         KRECH                                                 "计算类型
+         KNUMH
+    INTO CORRESPONDING FIELDS OF TABLE LT_KONP
+    FROM KONP
+    FOR ALL ENTRIES IN GT_CUSTOMER
+  WHERE KNUMH = GT_CUSTOMER-KNUMH
+    AND LOEVM_KO = SPACE. "add by yetp 2050715
+
+  LOOP AT GT_CUSTOMER ASSIGNING &lt;FS_CUSTOMER&gt;.
+    READ TABLE LT_MAKT INTO LW_MAKT WITH KEY MATNR = &lt;FS_CUSTOMER&gt;-MATNR
+                                             SPRAS = '1'.
+    IF SY-SUBRC = 0.
+      &lt;FS_CUSTOMER&gt;-MAKTX = LW_MAKT-MAKTX.
+    ENDIF.
+
+    READ TABLE LT_KNA1 INTO LW_KNA1 WITH KEY KUNNR = &lt;FS_CUSTOMER&gt;-KUNNR.
+    IF SY-SUBRC = 0.
+      &lt;FS_CUSTOMER&gt;-ADRNR = LW_KNA1-ADRNR.
+    ENDIF.
+
+    READ TABLE LT_ADRC INTO LW_ADRC WITH KEY ADDRNUMBER = &lt;FS_CUSTOMER&gt;-ADRNR.
+    IF SY-SUBRC = 0.
+      CONCATENATE LW_ADRC-NAME1 LW_ADRC-NAME2 LW_ADRC-NAME3 INTO &lt;FS_CUSTOMER&gt;-ZNAME.
+    ENDIF.
+  ENDLOOP.
+
+  SORT GT_CUSTOMER DESCENDING BY MATNR KUNNR KSCHL DATAB.
+  DELETE ADJACENT DUPLICATES FROM GT_CUSTOMER COMPARING MATNR KUNNR KSCHL.
+
+  LOOP AT GT_CUSTOMER INTO W_CUSTOMER.
+    G_XH = G_XH + 1.
+    W_CUSTOMER-ZXH = G_XH.
+    READ TABLE LT_KONP INTO LW_KONP WITH KEY KNUMH = W_CUSTOMER-KNUMH.
+    IF SY-SUBRC = 0.
+      MOVE-CORRESPONDING W_CUSTOMER TO W_ALV_CST.
+      W_ALV_CST-ZDISC = LW_KONP-KBETR / 10.
+      W_ALV_CST-KONWA = LW_KONP-KONWA.
+      W_ALV_CST-KPEIN = LW_KONP-KPEIN.
+      W_ALV_CST-KRECH = LW_KONP-KRECH.
+      APPEND W_ALV_CST TO GT_ALV_CST.
+    ENDIF.
+  ENDLOOP.
+
+  IF GT_ALV_CST IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+ENDFORM.                    "get_data_customer
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_data_price</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       销售组织/价格组/物料定价组</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA_PRICE.
+  CLEAR G_XH.
+  TYPES:BEGIN OF TY_KONP,
+        KBETR TYPE KONP-KBETR,                                "价格
+        KONWA TYPE KONP-KONWA,                                "币种
+        KPEIN TYPE KONP-KPEIN,                                "数量单位
+        KRECH TYPE KONP-KRECH,                                "计算类型
+        KNUMH TYPE KONP-KNUMH,
+        END OF TY_KONP,
+
+        BEGIN OF TY_T178T,
+        KONDM TYPE T178T-KONDM,
+        VTEXT TYPE T178T-VTEXT,
+        END OF TY_T178T.
+
+  DATA:LT_KONP TYPE STANDARD TABLE OF TY_KONP,
+       LW_KONP TYPE TY_KONP,
+       LT_T178T TYPE STANDARD TABLE OF TY_T178T,
+       LW_T178T TYPE TY_T178T.
+  IF P_CST OR P_YXRQ1 IS INITIAL.
+    MESSAGE S330 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+  SELECT DATBI                                             "有效期到
+         DATAB                                             "有效期从
+         KNUMH                                             "条件记录号
+         KONDM                                             "物料定价组
+         KSCHL                                             "条件类型
+         VKORG                                             "销售组织
+         KONDA                                             "价格组
+    INTO CORRESPONDING FIELDS OF TABLE GT_PRICE
+    FROM A502
+  WHERE KONDA IN P_JGZ
+    AND VKORG IN P_CST
+    AND KONDM IN P_DJZ
+    AND KSCHL LIKE 'ZK%'
+    AND DATAB &lt;= P_YXRQ1.
+
+  IF GT_PRICE IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  SELECT KONDM
+         VTEXT
+    INTO CORRESPONDING FIELDS OF TABLE LT_T178T
+    FROM T178T
+    FOR ALL ENTRIES IN GT_PRICE
+  WHERE KONDM = GT_PRICE-KONDM
+    AND SPRAS = '1'.
+
+  SELECT KBETR                                              "价格
+         KONWA                                              "币种
+         KPEIN                                              "数量单位
+         KRECH                                              "计算类型
+         KNUMH
+    APPENDING CORRESPONDING FIELDS OF TABLE LT_KONP
+    FROM KONP
+    FOR ALL ENTRIES IN GT_PRICE
+  WHERE KNUMH = GT_PRICE-KNUMH
+    AND LOEVM_KO = SPACE. "add by yetp 20150725
+
+  LOOP AT GT_PRICE ASSIGNING &lt;FS_PRICE&gt;.
+    READ TABLE LT_T178T INTO LW_T178T WITH KEY KONDM = &lt;FS_PRICE&gt;-KONDM.
+    IF SY-SUBRC = 0.
+      &lt;FS_PRICE&gt;-VTEXT = LW_T178T-VTEXT.
+    ENDIF.
+  ENDLOOP.
+
+  SORT GT_PRICE DESCENDING BY KONDM KONDA KSCHL DATAB.
+  DELETE ADJACENT DUPLICATES FROM GT_PRICE COMPARING KONDM KONDA KSCHL.
+
+  LOOP AT GT_PRICE INTO W_PRICE.
+    G_XH = G_XH + 1.
+    W_PRICE-ZXH = G_XH.
+    READ TABLE LT_KONP INTO LW_KONP WITH KEY KNUMH = W_PRICE-KNUMH.
+    IF SY-SUBRC = 0.
+      MOVE-CORRESPONDING W_PRICE TO W_ALV_PRI.
+      W_ALV_PRI-ZDISC = LW_KONP-KBETR / 10.
+      W_ALV_PRI-KONWA = LW_KONP-KONWA.
+      W_ALV_PRI-KPEIN = LW_KONP-KPEIN.
+      W_ALV_PRI-KRECH = LW_KONP-KRECH.
+      APPEND W_ALV_PRI TO GT_ALV_PRI.
+    ENDIF.
+  ENDLOOP.
+
+  IF GT_ALV_PRI IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+ENDFORM.                    "get_data_price
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_data_tax</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*     客户/物料取数</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA_TAX.
+  CLEAR:GT_TAX,GT_MARM,GT_MARA,G_XH.
+  TYPES:BEGIN OF TY_KNA1,
+        KUNNR TYPE KNA1-KUNNR,
+        ADRNR TYPE KNA1-ADRNR,
+        END OF TY_KNA1,
+
+        BEGIN OF TY_KONP,
+        KBETR TYPE KONP-KBETR,                                "价格
+        KONWA TYPE KONP-KONWA,                                "币种
+        KPEIN TYPE KONP-KPEIN,                                "数量单位
+        KRECH TYPE KONP-KRECH,                                "计算类型
+        KNUMH TYPE KONP-KNUMH,
+        END OF TY_KONP,
+
+        BEGIN OF TY_ADRC,
+        ADDRNUMBER TYPE ADRC-ADDRNUMBER,
+        NAME1 TYPE ADRC-NAME1,
+        NAME2 TYPE ADRC-NAME2,
+        NAME3 TYPE ADRC-NAME3,
+        END OF TY_ADRC,
+
+        BEGIN OF TY_T006A,
+        MSEHI TYPE T006A-MSEHI,
+        MSEHL TYPE T006A-MSEHL,
+        END OF TY_T006A,
+
+        BEGIN OF TY_MAKT,
+        MATNR TYPE MAKT-MATNR,
+        MAKTX TYPE MAKT-MAKTX,
+        SPRAS TYPE MAKT-SPRAS,
+        END OF TY_MAKT.
+
+  DATA:LT_KONP TYPE STANDARD TABLE OF TY_KONP,
+       LW_KONP TYPE TY_KONP,
+       LW_KNA1 TYPE TY_KNA1,
+       LT_KNA1 TYPE STANDARD TABLE OF TY_KNA1,
+       LW_MAKT TYPE TY_MAKT,
+       LT_T006A TYPE STANDARD TABLE OF TY_T006A,
+       LW_T006A TYPE TY_T006A,
+       LT_MAKT TYPE STANDARD TABLE OF TY_MAKT,
+       LT_ADRC TYPE STANDARD TABLE OF TY_ADRC,
+       LW_ADRC TYPE TY_ADRC.
+
+  IF P_TAX OR P_YXRQ2 IS INITIAL.
+    MESSAGE S330 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+  SELECT DATBI                                             "有效期到
+         DATAB                                             "有效期从
+         KNUMH                                             "条件记录号
+         VKORG                                             "销售组织
+         KUNNR                                             "客户编码
+         KSCHL                                             "条件类型
+         MATNR                                             "物料号
+         VTWEG                                             "分销渠道
+    INTO CORRESPONDING FIELDS OF TABLE GT_TAX
+    FROM A005
+  WHERE VTWEG IN P_FXQD
+    AND VKORG IN P_TAX
+    AND KUNNR IN P_KH
+    AND MATNR IN P_WL_TAX
+    AND KSCHL LIKE 'ZR%'
+    AND DATAB &lt;= P_YXRQ2.
+
+  IF GT_TAX IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  SELECT BISMT                                             "旧物料号
+         PRDHA                                             "产品层次
+         MATNR
+         ZWLCD
+         MEINS
+    INTO CORRESPONDING FIELDS OF TABLE GT_MARA
+    FROM MARA
+    FOR ALL ENTRIES IN GT_TAX
+  WHERE MATNR = GT_TAX-MATNR
+    AND ZWLCD IN P_WLDM2.
+
+  SELECT MATNR
+         UMREZ
+         MSEHI
+    INTO CORRESPONDING FIELDS OF TABLE GT_MARM
+    FROM MARM
+    FOR ALL ENTRIES IN GT_TAX
+  WHERE MATNR = GT_TAX-MATNR
+    AND MEINH = 'ST'.
+
+  SELECT MSEHL
+         MSEHI
+    INTO CORRESPONDING FIELDS OF TABLE LT_T006A
+    FROM T006A
+    FOR ALL ENTRIES IN GT_MARA
+  WHERE MSEHI = GT_MARA-MEINS
+    AND SPRAS = '1'.
+
+  LOOP AT GT_MARA ASSIGNING &lt;FS_MARA&gt;.
+    READ TABLE LT_T006A INTO LW_T006A WITH KEY MSEHI = &lt;FS_MARA&gt;-MEINS.
+    IF SY-SUBRC = 0.
+      &lt;FS_MARA&gt;-MSEHL = LW_T006A-MSEHL.
+    ENDIF.
+  ENDLOOP.
+
+  LOOP AT GT_TAX ASSIGNING &lt;FS_TAX&gt;.
+    READ TABLE GT_MARA INTO W_MARA WITH KEY MATNR = &lt;FS_TAX&gt;-MATNR.
+    IF SY-SUBRC = 0.
+      &lt;FS_TAX&gt;-BISMT = W_MARA-BISMT.
+      &lt;FS_TAX&gt;-PRDHA = W_MARA-PRDHA.
+      &lt;FS_TAX&gt;-ZWLCD = W_MARA-ZWLCD.
+      &lt;FS_TAX&gt;-MSEHL = W_MARA-MSEHL.
+    ELSE.
+      DELETE GT_TAX.
+    ENDIF.
+  ENDLOOP.
+
+  SELECT KUNNR
+         ADRNR
+    INTO CORRESPONDING FIELDS OF TABLE LT_KNA1
+    FROM KNA1
+    FOR ALL ENTRIES IN GT_TAX
+  WHERE KUNNR = GT_TAX-KUNNR.
+
+  SELECT ADDRNUMBER
+         NAME1
+         NAME2
+         NAME3
+    INTO CORRESPONDING FIELDS OF TABLE LT_ADRC
+    FROM ADRC
+    FOR ALL ENTRIES IN LT_KNA1
+  WHERE ADDRNUMBER = LT_KNA1-ADRNR.
+
+  SELECT MAKTX                                            "物料描述
+         MATNR
+         SPRAS
+     INTO CORRESPONDING FIELDS OF TABLE LT_MAKT
+     FROM MAKT
+     FOR ALL ENTRIES IN GT_TAX
+   WHERE MATNR = GT_TAX-MATNR
+     AND SPRAS = '1'.
+
+  SELECT KBETR                                              "价格
+         KONWA                                              "币种
+         KPEIN                                              "数量单位
+         KRECH                                              "计算类型
+         KNUMH
+    INTO CORRESPONDING FIELDS OF TABLE LT_KONP
+    FROM KONP
+    FOR ALL ENTRIES IN GT_TAX
+  WHERE KNUMH = GT_TAX-KNUMH.
+
+  LOOP AT GT_TAX ASSIGNING &lt;FS_TAX&gt;.
+    READ TABLE GT_MARM INTO W_MARM WITH KEY MATNR = &lt;FS_TAX&gt;-MATNR.
+    IF SY-SUBRC = 0.
+      &lt;FS_TAX&gt;-UMREZ = W_MARM-UMREZ.
+    ENDIF.
+
+    READ TABLE LT_MAKT INTO LW_MAKT WITH KEY MATNR = &lt;FS_TAX&gt;-MATNR
+                                             SPRAS = '1'.
+    IF SY-SUBRC = 0.
+      &lt;FS_TAX&gt;-MAKTX = LW_MAKT-MAKTX.
+    ENDIF.
+
+    READ TABLE LT_KNA1 INTO LW_KNA1 WITH KEY KUNNR = &lt;FS_TAX&gt;-KUNNR.
+    IF SY-SUBRC = 0.
+      &lt;FS_TAX&gt;-ADRNR = LW_KNA1-ADRNR.
+    ENDIF.
+
+    READ TABLE LT_ADRC INTO LW_ADRC WITH KEY ADDRNUMBER = &lt;FS_TAX&gt;-ADRNR.
+    IF SY-SUBRC = 0.
+      CONCATENATE LW_ADRC-NAME1 LW_ADRC-NAME2 LW_ADRC-NAME3 INTO &lt;FS_TAX&gt;-ZNAME.
+    ENDIF.
+  ENDLOOP.
+
+  SORT GT_TAX DESCENDING BY MATNR KUNNR DATAB.
+  DELETE ADJACENT DUPLICATES FROM GT_TAX COMPARING MATNR KUNNR.
+
+  LOOP AT GT_TAX INTO W_TAX.
+    G_XH = G_XH + 1.
+    W_TAX-ZXH = G_XH.
+    READ TABLE LT_KONP INTO LW_KONP WITH KEY KNUMH = W_TAX-KNUMH.
+    IF SY-SUBRC = 0.
+      MOVE-CORRESPONDING W_TAX TO W_ALV_TAX.
+      W_ALV_TAX-KBETR = LW_KONP-KBETR.
+      W_ALV_TAX-KONWA = LW_KONP-KONWA.
+      W_ALV_TAX-KPEIN = LW_KONP-KPEIN.
+      W_ALV_TAX-KRECH = LW_KONP-KRECH.
+      APPEND W_ALV_TAX TO GT_ALV_TAX.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.                    "get_data_tax
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_data_tax2</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*     销售组织/物料取数</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA_TAX2.
+  CLEAR:GT_TAX,GT_MARM,G_XH.
+  TYPES:BEGIN OF TY_KONP,
+        KBETR TYPE KONP-KBETR,                                "价格
+        KONWA TYPE KONP-KONWA,                                "币种
+        KPEIN TYPE KONP-KPEIN,                                "数量单位
+        KRECH TYPE KONP-KRECH,                                "计算类型
+        KNUMH TYPE KONP-KNUMH,
+        END OF TY_KONP,
+
+        BEGIN OF TY_T006A,
+        MSEHI TYPE T006A-MSEHI,
+        MSEHL TYPE T006A-MSEHL,
+        END OF TY_T006A,
+
+        BEGIN OF TY_MAKT,
+        MATNR TYPE MAKT-MATNR,
+        MAKTX TYPE MAKT-MAKTX,
+        SPRAS TYPE MAKT-SPRAS,
+        END OF TY_MAKT.
+
+  DATA:LT_KONP TYPE STANDARD TABLE OF TY_KONP,
+       LW_KONP TYPE TY_KONP,
+       LT_T006A TYPE STANDARD TABLE OF TY_T006A,
+       LW_T006A TYPE TY_T006A,
+       LW_MAKT TYPE TY_MAKT,
+       LT_MAKT TYPE STANDARD TABLE OF TY_MAKT.
+  IF P_TAX OR P_YXRQ2 IS INITIAL.
+    MESSAGE S330 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+  SELECT DATBI                                             "有效期到
+         DATAB                                             "有效期从
+         KNUMH                                             "条件记录号
+         VKORG                                             "销售组织
+         KSCHL                                             "条件类型
+         MATNR                                             "物料号
+    INTO CORRESPONDING FIELDS OF TABLE GT_TAX
+    FROM A501
+  WHERE VKORG IN P_TAX
+    AND MATNR IN P_WL_TAX
+    AND KSCHL LIKE 'ZR%'
+    AND DATAB &lt;= P_YXRQ2.
+
+  IF GT_TAX IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  SELECT BISMT                                             "旧物料号
+         PRDHA                                             "产品层次
+         MATNR
+         ZWLCD
+         MEINS
+    INTO CORRESPONDING FIELDS OF TABLE GT_MARA
+    FROM MARA
+    FOR ALL ENTRIES IN GT_TAX
+  WHERE MATNR = GT_TAX-MATNR
+    AND ZWLCD IN P_WLDM2
+    AND PRDHA IN S_CPCC
+    AND SPART IN S_CPZ
+    AND MATKL IN S_WLZ.
+
+  SELECT MATNR
+         UMREZ
+         MSEHI
+    INTO CORRESPONDING FIELDS OF TABLE GT_MARM
+    FROM MARM
+    FOR ALL ENTRIES IN GT_TAX
+  WHERE MATNR = GT_TAX-MATNR
+    AND MEINH = 'ST'.
+
+  SELECT MSEHL
+         MSEHI
+    INTO CORRESPONDING FIELDS OF TABLE LT_T006A
+    FROM T006A
+    FOR ALL ENTRIES IN GT_MARA
+  WHERE MSEHI = GT_MARA-MEINS
+    AND SPRAS = '1'.
+
+  LOOP AT GT_MARA ASSIGNING &lt;FS_MARA&gt;.
+    READ TABLE LT_T006A INTO LW_T006A WITH KEY MSEHI = &lt;FS_MARA&gt;-MEINS.
+    IF SY-SUBRC = 0.
+      &lt;FS_MARA&gt;-MSEHL = LW_T006A-MSEHL.
+    ENDIF.
+  ENDLOOP.
+
+  SELECT MAKTX                                            "物料描述
+         MATNR
+         SPRAS
+     INTO CORRESPONDING FIELDS OF TABLE LT_MAKT
+     FROM MAKT
+     FOR ALL ENTRIES IN GT_TAX
+   WHERE MATNR = GT_TAX-MATNR
+     AND SPRAS = '1'.
+
+  LOOP AT GT_TAX ASSIGNING &lt;FS_TAX&gt;.
+    READ TABLE GT_MARA INTO W_MARA WITH KEY MATNR = &lt;FS_TAX&gt;-MATNR.
+    IF SY-SUBRC = 0.
+      &lt;FS_TAX&gt;-BISMT = W_MARA-BISMT.
+      &lt;FS_TAX&gt;-PRDHA = W_MARA-PRDHA.
+      &lt;FS_TAX&gt;-ZWLCD = W_MARA-ZWLCD.
+      &lt;FS_TAX&gt;-MSEHL = W_MARA-MSEHL.
+    ELSE.
+      DELETE GT_TAX.
+    ENDIF.
+  ENDLOOP.
+
+  SELECT KBETR                                              "价格
+         KONWA                                              "币种
+         KPEIN                                              "数量单位
+         KRECH                                             "计算类型
+         KNUMH
+    INTO CORRESPONDING FIELDS OF TABLE LT_KONP
+    FROM KONP
+    FOR ALL ENTRIES IN GT_TAX
+  WHERE KNUMH = GT_TAX-KNUMH.
+
+  LOOP AT GT_TAX ASSIGNING &lt;FS_TAX&gt;.
+    READ TABLE LT_MAKT INTO LW_MAKT WITH KEY MATNR = &lt;FS_TAX&gt;-MATNR
+                                             SPRAS = '1'.
+    IF SY-SUBRC = 0.
+      &lt;FS_TAX&gt;-MAKTX = LW_MAKT-MAKTX.
+    ENDIF.
+
+    READ TABLE GT_MARM INTO W_MARM WITH KEY MATNR = &lt;FS_TAX&gt;-MATNR.
+    IF SY-SUBRC = 0.
+      &lt;FS_TAX&gt;-UMREZ = W_MARM-UMREZ.
+    ENDIF.
+  ENDLOOP.
+
+  SORT GT_TAX DESCENDING BY MATNR DATAB.
+  DELETE ADJACENT DUPLICATES FROM GT_TAX COMPARING MATNR.
+
+  LOOP AT GT_TAX INTO W_TAX.
+    G_XH = G_XH + 1.
+    W_TAX-ZXH = G_XH.
+    READ TABLE LT_KONP INTO LW_KONP WITH KEY KNUMH = W_TAX-KNUMH.
+    IF SY-SUBRC = 0.
+      MOVE-CORRESPONDING W_TAX TO W_ALV_TAX.
+      W_ALV_TAX-KBETR = LW_KONP-KBETR.
+      W_ALV_TAX-KONWA = LW_KONP-KONWA.
+      W_ALV_TAX-KPEIN = LW_KONP-KPEIN.
+      W_ALV_TAX-KRECH = LW_KONP-KRECH.
+      APPEND W_ALV_TAX TO GT_ALV_TAX.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.                    "get_data_tax
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  fill_layout</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FILL_LAYOUT.
+  CLEAR W_LAYOUT.
+  W_LAYOUT-ZEBRA = 'X'.
+  W_LAYOUT-COLWIDTH_OPTIMIZE = 'X'.
+ENDFORM.                    "fill_layout
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_PF_STATUS</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;RT_EXTAB   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SET_PF_STATUS USING RT_EXTAB TYPE SLIS_T_EXTAB.
+  SET PF-STATUS 'STATUS_ALV'.
+ENDFORM.                    "SET_PF_STATUS
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DISPLAY_ALV</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_ALV.
+  PERFORM FILL_LAYOUT.
+  PERFORM FILL_FIELDCAT.
+  IF P_ZK = 'X'.
+    IF P_SKW = 'X'.
+      PERFORM SHOW_CST.
+    ELSE.
+      PERFORM SHOW_PRI.
+    ENDIF.
+  ELSEIF P_ZR = 'X'.
+    IF P_KW = 'X'.
+      PERFORM SHOW_TAX.
+    ELSE.
+      PERFORM SHOW_TAX.
+    ENDIF.
+  ELSEIF P_Z0 = 'X'.
+    PERFORM SHOW_Z0.  "add by yetp 20130104
+  ELSEIF P_XJ = 'X'.
+    PERFORM SHOW_XJFL.  "add by jundi 20150328
+  ELSEIF P_JD = 'X'.
+    PERFORM SHOW_JDFL."add by jundi 20150328
+  ELSE.
+    PERFORM SHOW_NDFL."add by jundi 20150328
+  ENDIF.
+
+ENDFORM.                    "display_alv
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FILL_FIELDCAT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FILL_FIELDCAT.
+  DATA:L_COLPOS TYPE SLIS_FIELDCAT_ALV-COL_POS.
+  CLEAR:GT_FIELDCAT.
+  IF P_ZK = 'X'.
+    IF P_SKW = 'X'.
+      MACRO_FILL_FIELDCAT:
+        L_COLPOS 'ZXH' '序号' '' '',
+        L_COLPOS 'KSCHL' '条件类型' '' '',
+        L_COLPOS 'VKORG' '销售组织' '' '',
+        L_COLPOS 'MATNR' '物料编码' 'X' '',
+        L_COLPOS 'MAKTX' '物料描述' '' '',
+        L_COLPOS 'ZWLCD' '物料代码' 'X' '',
+        L_COLPOS 'DATAB' '有效期从' '' '',
+        L_COLPOS 'DATBI' '有效期到' '' '',
+        L_COLPOS 'KUNNR' '客户编码' 'X' '',
+        L_COLPOS 'ZNAME' '客户名称' '' '',
+        L_COLPOS 'ZDISC' '折扣' '' '',
+        L_COLPOS 'KONWA' '百分比' '' '',
+        L_COLPOS 'KRECH' '计算类型' '' '',
+        L_COLPOS 'KPEIN' '数量单位' '' '==ZZERO1',
+        L_COLPOS 'BISMT' '旧物料编码' 'X' '',
+        L_COLPOS 'PRDHA' '产品层次' '' ''.
+    ELSE.
+      MACRO_FILL_FIELDCAT:
+        L_COLPOS 'ZXH' '序号' '' '',
+        L_COLPOS 'KSCHL' '条件类型' '' '',
+        L_COLPOS 'VKORG' '销售组织' '' '',
+        L_COLPOS 'DATAB' '有效期从' '' '',
+        L_COLPOS 'DATBI' '有效期到' '' '',
+        L_COLPOS 'VTEXT' '物料定价组' '' '',
+        L_COLPOS 'KONDA' '价格组' '' '',
+        L_COLPOS 'ZDISC' '折扣' '' '',
+        L_COLPOS 'KONWA' '百分比' '' '',
+        L_COLPOS 'KRECH' '计算类型' '' '',
+        L_COLPOS 'KPEIN' '数量单位' '' '==ZZERO1'.
+    ENDIF.
+  ELSEIF P_ZR = 'X'.
+    IF P_XW = 'X'.
+      MACRO_FILL_FIELDCAT:
+       L_COLPOS 'ZXH' '序号' '' '',
+       L_COLPOS 'VKORG' '销售组织' '' '',
+       L_COLPOS 'MATNR' '物料编码' 'X' '',
+       L_COLPOS 'MAKTX' '物料描述' '' '',
+       L_COLPOS 'ZWLCD' '物料代码' 'X' '',
+       L_COLPOS 'MSEHL' '单位' '' '',
+       L_COLPOS 'KBETR' '价格' '' '',
+       L_COLPOS 'KONWA' '货币' '' '',
+       L_COLPOS 'UMREZ' '包装规格' '' '',
+       L_COLPOS 'DATAB' '有效期从' '' '',
+       L_COLPOS 'DATBI' '有效期到' '' '',
+       L_COLPOS 'KRECH' '计算类型' '' '',
+       L_COLPOS 'KPEIN' '数量单位' '' '==ZZERO1',
+       L_COLPOS 'BISMT' '旧物料编码' '' '',
+       L_COLPOS 'PRDHA' '产品层次' '' '',
+       L_COLPOS 'KSCHL' '条件类型' '' ''.
+    ELSE.
+      MACRO_FILL_FIELDCAT:
+      L_COLPOS 'ZXH' '序号' ''  '',
+      L_COLPOS 'VKORG' '销售组织' '' '',
+      L_COLPOS 'VTWEG' '分销渠道' '' '',
+      L_COLPOS 'MATNR' '物料编码' 'X' '',
+      L_COLPOS 'MAKTX' '物料描述' '' '',
+      L_COLPOS 'ZWLCD' '物料代码' 'X' '',
+      L_COLPOS 'MSEHL' '单位' '' '',
+      L_COLPOS 'KBETR' '价格' '' '',
+      L_COLPOS 'KONWA' '货币' '' '',
+      L_COLPOS 'UMREZ' '包装规格' '' '',
+      L_COLPOS 'DATAB' '有效期从' '' '',
+      L_COLPOS 'DATBI' '有效期到' '' '',
+      L_COLPOS 'KUNNR' '客户编码' 'X' '',
+      L_COLPOS 'ZNAME' '客户名称' '' '',
+      L_COLPOS 'KRECH' '计算类型' '' '',
+      L_COLPOS 'KPEIN' '数量单位' '' '==ZZERO1',
+      L_COLPOS 'BISMT' '旧物料编码' 'X' '',
+      L_COLPOS 'PRDHA' '产品层次' '' '',
+      L_COLPOS 'KSCHL' '条件类型' '' ''.
+    ENDIF.
+  ELSE.
+    MACRO_FILL_FIELDCAT:
+    L_COLPOS 'ZXH' '序号' '' '',
+    L_COLPOS 'VKORG' '销售组织' '' '',
+    L_COLPOS 'VTWEG' '分销渠道' '' '',
+    L_COLPOS 'KUNNR' '客户' 'X' '',
+    L_COLPOS 'NAME1' '描述' '' '',
+    L_COLPOS 'KBETR' '金额' '' '',
+    L_COLPOS 'KONWA' '单位' '' '',
+    L_COLPOS 'DATAB' '有效期从' '' '',
+    L_COLPOS 'DATBI' '有效期到' '' '',
+    L_COLPOS 'KRECH' '计算类型' '' '',
+    L_COLPOS 'KPEIN' '数量单位' '' '==ZZERO1',
+    L_COLPOS 'KSCHL' '条件类型' '' ''.
+  ENDIF.
+ENDFORM.                    "fill_fieldcat
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SHOW_CST</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      销售组织/客户/物料ALV显示</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_CST.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+<font color ="#0000FF">*     I_INTERFACE_CHECK                 = ' '</font>
+<font color ="#0000FF">*     I_BYPASSING_BUFFER                = ' '</font>
+<font color ="#0000FF">*     I_BUFFER_ACTIVE                   = ' '</font>
+<font color ="#0000FF">*     i_background_id         = 'ALV_BACKGROUND'</font>
+     I_CALLBACK_PROGRAM                = SY-REPID
+     I_CALLBACK_PF_STATUS_SET          = 'SET_PF_STATUS'
+     I_CALLBACK_USER_COMMAND           = 'USER_COMMAND'
+<font color ="#0000FF">*     I_CALLBACK_TOP_OF_PAGE            = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE       = 'ALV_TOP_OF_PAGE'</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_END_OF_LIST       = ' '</font>
+     IS_LAYOUT                         = W_LAYOUT
+     IT_FIELDCAT                       = GT_FIELDCAT
+<font color ="#0000FF">*     I_SAVE                            = ' '</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">*     ES_EXIT_CAUSED_BY_USER            =</font>
+    TABLES
+      T_OUTTAB                          = GT_ALV_CST
+   EXCEPTIONS
+     PROGRAM_ERROR                     = 1
+     OTHERS                            = 2
+            .
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+ENDFORM.                    "show_cst
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SHOW_PRI</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      销售组织/价格组/物料定价组ALV显示</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_PRI.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+<font color ="#0000FF">*     I_INTERFACE_CHECK                 = ' '</font>
+<font color ="#0000FF">*     I_BYPASSING_BUFFER                = ' '</font>
+<font color ="#0000FF">*     I_BUFFER_ACTIVE                   = ' '</font>
+<font color ="#0000FF">*     i_background_id         = 'ALV_BACKGROUND'</font>
+     I_CALLBACK_PROGRAM                = SY-REPID
+     I_CALLBACK_PF_STATUS_SET          = 'SET_PF_STATUS'
+     I_CALLBACK_USER_COMMAND           = 'USER_COMMAND'
+<font color ="#0000FF">*     I_CALLBACK_TOP_OF_PAGE            = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE       = 'ALV_TOP_OF_PAGE'</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_END_OF_LIST       = ' '</font>
+     IS_LAYOUT                         = W_LAYOUT
+     IT_FIELDCAT                       = GT_FIELDCAT
+<font color ="#0000FF">*     I_SAVE                            = ' '</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">*     ES_EXIT_CAUSED_BY_USER            =</font>
+    TABLES
+      T_OUTTAB                          = GT_ALV_PRI
+   EXCEPTIONS
+     PROGRAM_ERROR                     = 1
+     OTHERS                            = 2
+            .
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+ENDFORM.                    "show_pri
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SHOW_TAX</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      客户/物料ALV显示</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_TAX.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+<font color ="#0000FF">*     I_INTERFACE_CHECK                 = ' '</font>
+<font color ="#0000FF">*     I_BYPASSING_BUFFER                = ' '</font>
+<font color ="#0000FF">*     I_BUFFER_ACTIVE                   = ' '</font>
+<font color ="#0000FF">*     i_background_id         = 'ALV_BACKGROUND'</font>
+     I_CALLBACK_PROGRAM                = SY-REPID
+     I_CALLBACK_PF_STATUS_SET          = 'SET_PF_STATUS'
+     I_CALLBACK_USER_COMMAND           = 'USER_COMMAND'
+<font color ="#0000FF">*     I_CALLBACK_TOP_OF_PAGE            = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE       = 'ALV_TOP_OF_PAGE'</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_END_OF_LIST       = ' '</font>
+     IS_LAYOUT                         = W_LAYOUT
+     IT_FIELDCAT                       = GT_FIELDCAT
+<font color ="#0000FF">*     I_SAVE                            = ' '</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">*     ES_EXIT_CAUSED_BY_USER            =</font>
+    TABLES
+      T_OUTTAB                          = GT_ALV_TAX
+   EXCEPTIONS
+     PROGRAM_ERROR                     = 1
+     OTHERS                            = 2
+            .
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+ENDFORM.                    "show_tax
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  user_command</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;UCOMM      text</font>
+<font color ="#0000FF">*      --&gt;SELFIELD   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM USER_COMMAND USING UCOMM LIKE SY-UCOMM
+                       SELFIELD TYPE SLIS_SELFIELD.
+  CASE UCOMM.
+    WHEN '&IC1'.
+      IF P_ZR = 'X'.
+        READ TABLE GT_TAX INTO W_TAX INDEX SELFIELD-TABINDEX.
+        CHECK SY-SUBRC = 0.
+        SET PARAMETER ID 'VKS' FIELD W_TAX-KSCHL.
+        CALL TRANSACTION 'VK12'.
+      ELSEIF P_ZK = 'X' .
+        IF P_SKW = 'X'.
+          READ TABLE GT_ALV_CST INTO W_ALV_CST INDEX SELFIELD-TABINDEX.
+          CHECK SY-SUBRC = 0.
+          SET PARAMETER ID 'VKS' FIELD W_ALV_CST-KSCHL.
+          CALL TRANSACTION 'VK12'.
+        ELSE.
+          READ TABLE GT_ALV_PRI INTO W_ALV_PRI INDEX SELFIELD-TABINDEX.
+          CHECK SY-SUBRC = 0.
+          SET PARAMETER ID 'VKS' FIELD W_ALV_PRI-KSCHL.
+          CALL TRANSACTION 'VK12'.
+        ENDIF.
+      ELSEIF P_Z0 = 'X'. "add by yetp 20130104
+        READ TABLE GT_ALV_Z0 ASSIGNING &lt;FS_ALV&gt; INDEX SELFIELD-TABINDEX.
+        CHECK SY-SUBRC = 0.
+        SET PARAMETER ID 'VKS' FIELD 'Z0YJ'.
+        CALL TRANSACTION 'VK12'.
+      ELSEIF P_XJ = 'X'. "add by JUNDI 20150328
+        READ TABLE GT_ALV_XJ ASSIGNING &lt;FS_XJALV&gt; INDEX SELFIELD-TABINDEX.
+        CHECK SY-SUBRC = 0.
+        SET PARAMETER ID 'VKS' FIELD 'Z0XJ'.
+        CALL TRANSACTION 'VK12'.
+      ELSEIF P_JD = 'X'. "add by JUNDI 20150328
+        READ TABLE GT_ALV_JD ASSIGNING &lt;FS_JDALV&gt; INDEX SELFIELD-TABINDEX.
+        CHECK SY-SUBRC = 0.
+        SET PARAMETER ID 'VKS' FIELD 'Z0JD'.
+        CALL TRANSACTION 'VK12'.
+      ELSE. "add by JUNDI 20150328
+        READ TABLE GT_ALV_ND ASSIGNING &lt;FS_NDALV&gt; INDEX SELFIELD-TABINDEX.
+        CHECK SY-SUBRC = 0.
+        SET PARAMETER ID 'VKS' FIELD 'Z0ND'.
+        CALL TRANSACTION 'VK12'.
+      ENDIF.
+  ENDCASE.
+ENDFORM.                    "user_command
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_DATA_Z0YJ</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       获取vk13 -条件类型为z0yj的数据</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA_Z0YJ.
+  DATA:L_NO TYPE I.
+  "检查输入
+  IF P_VK_Z0 IS INITIAL. "销售机构检查
+    MESSAGE S000 WITH '销售机构不能为空！' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  IF P_VT_Z0 IS INITIAL. "分销渠道检查
+    MESSAGE S000 WITH '分销渠道不能为空！' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  IF P_YXRQ3 IS INITIAL. "有效日期检查
+    MESSAGE S000 WITH '有效日期不能为空！' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  CLEAR:GT_ALV_Z0.
+
+  "获取客户月结返利信息
+  SELECT DATBI                                             "有效期到
+         DATAB                                             "有效期从
+         VKORG                                             "销售组织
+         A307~KUNNR                                        "客户编码
+         VTWEG                                             "分销渠道
+         KNA1~NAME1                                        "客户描述
+         KBETR                                              "价格
+         KONWA                                              "币种
+         KPEIN                                              "数量单位
+         KRECH                                              "计算类型
+         A307~KSCHL
+    INTO CORRESPONDING FIELDS OF TABLE GT_ALV_Z0
+    FROM A307 INNER JOIN KONP
+    ON A307~KNUMH = KONP~KNUMH
+    LEFT JOIN KNA1
+    ON A307~KUNNR = KNA1~KUNNR
+  WHERE VTWEG IN P_VT_Z0
+    AND VKORG IN P_VK_Z0
+    AND A307~KUNNR IN P_KH_Z0
+    AND A307~KSCHL = 'Z0YJ'
+    AND LOEVM_KO = '' "排除已删除
+    AND DATAB &lt;= P_YXRQ3
+    AND DATBI &gt;= P_YXRQ3.
+
+  "数据为空，提示错误
+  IF GT_ALV_Z0 IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  SORT GT_ALV_Z0 BY KUNNR.
+  L_NO = 0.
+
+  LOOP AT GT_ALV_Z0 ASSIGNING &lt;FS_ALV&gt;.
+    L_NO = L_NO + 1.
+    &lt;FS_ALV&gt;-ZXH = L_NO.
+    &lt;FS_ALV&gt;-KBETR = &lt;FS_ALV&gt;-KBETR / 10. "除以10
+  ENDLOOP.
+ENDFORM.                    " GET_DATA_Z0YJ
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SHOW_Z0</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      显示客户月结返利alv</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_Z0 .
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+<font color ="#0000FF">*     I_INTERFACE_CHECK                 = ' '</font>
+<font color ="#0000FF">*     I_BYPASSING_BUFFER                = ' '</font>
+<font color ="#0000FF">*     I_BUFFER_ACTIVE                   = ' '</font>
+<font color ="#0000FF">*     i_background_id         = 'ALV_BACKGROUND'</font>
+     I_CALLBACK_PROGRAM                = SY-REPID
+     I_CALLBACK_PF_STATUS_SET          = 'SET_PF_STATUS'
+     I_CALLBACK_USER_COMMAND           = 'USER_COMMAND'
+<font color ="#0000FF">*     I_CALLBACK_TOP_OF_PAGE            = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE       = 'ALV_TOP_OF_PAGE'</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_END_OF_LIST       = ' '</font>
+     IS_LAYOUT                         = W_LAYOUT
+     IT_FIELDCAT                       = GT_FIELDCAT
+<font color ="#0000FF">*     I_SAVE                            = ' '</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">*     ES_EXIT_CAUSED_BY_USER            =</font>
+    TABLES
+      T_OUTTAB                          = GT_ALV_Z0
+   EXCEPTIONS
+     PROGRAM_ERROR                     = 1
+     OTHERS                            = 2
+            .
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+ENDFORM.                    " SHOW_Z0
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_DATA_XJFL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       现金返利</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA_XJFL .
+  DATA:L_NO TYPE I.
+  "检查输入
+  IF P_VK_XJ IS INITIAL. "销售机构检查
+    MESSAGE S000 WITH '销售机构不能为空！' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  IF P_VT_XJ IS INITIAL. "分销渠道检查
+    MESSAGE S000 WITH '分销渠道不能为空！' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  IF P_YXRQ4 IS INITIAL. "有效日期检查
+    MESSAGE S000 WITH '有效日期不能为空！' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+  CLEAR GT_ALV_XJ.
+
+  "获取客户现金返利信息
+  SELECT DATBI                                             "有效期到
+         DATAB                                             "有效期从
+         VKORG                                             "销售组织
+         A307~KUNNR                                        "客户编码
+         VTWEG                                             "分销渠道
+         KNA1~NAME1                                        "客户描述
+         KBETR                                              "价格
+         KONWA                                              "币种
+         KPEIN                                              "数量单位
+         KRECH                                              "计算类型
+         A307~KSCHL
+    INTO CORRESPONDING FIELDS OF TABLE GT_ALV_XJ
+    FROM A307 INNER JOIN KONP
+    ON A307~KNUMH = KONP~KNUMH
+    LEFT JOIN KNA1
+    ON A307~KUNNR = KNA1~KUNNR
+  WHERE VTWEG IN P_VT_XJ
+    AND VKORG IN P_VK_XJ
+    AND A307~KUNNR IN P_KH_XJ
+    AND A307~KSCHL = 'Z0XJ'
+    AND LOEVM_KO = '' "排除已删除
+    AND DATAB &lt;= P_YXRQ4
+    AND DATBI &gt;= P_YXRQ4.
+
+  "数据为空，提示错误
+  IF GT_ALV_XJ IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  SORT GT_ALV_XJ BY KUNNR.
+  L_NO = 0.
+
+  LOOP AT GT_ALV_XJ ASSIGNING &lt;FS_XJALV&gt;.
+    L_NO = L_NO + 1.
+    &lt;FS_XJALV&gt;-ZXH = L_NO.
+    &lt;FS_XJALV&gt;-KBETR = &lt;FS_XJALV&gt;-KBETR / 10. "除以10
+  ENDLOOP.
+ENDFORM.                    " GET_DATA_XJFL
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SHOW_XJFL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*     显示现金返利</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_XJFL .
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+     EXPORTING
+<font color ="#0000FF">*     I_INTERFACE_CHECK                 = ' '</font>
+<font color ="#0000FF">*     I_BYPASSING_BUFFER                = ' '</font>
+<font color ="#0000FF">*     I_BUFFER_ACTIVE                   = ' '</font>
+<font color ="#0000FF">*     i_background_id         = 'ALV_BACKGROUND'</font>
+       I_CALLBACK_PROGRAM                = SY-REPID
+       I_CALLBACK_PF_STATUS_SET          = 'SET_PF_STATUS'
+       I_CALLBACK_USER_COMMAND           = 'USER_COMMAND'
+<font color ="#0000FF">*     I_CALLBACK_TOP_OF_PAGE            = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE       = 'ALV_TOP_OF_PAGE'</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_END_OF_LIST       = ' '</font>
+       IS_LAYOUT                         = W_LAYOUT
+       IT_FIELDCAT                       = GT_FIELDCAT
+<font color ="#0000FF">*     I_SAVE                            = ' '</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">*     ES_EXIT_CAUSED_BY_USER            =</font>
+      TABLES
+        T_OUTTAB                          = GT_ALV_XJ
+     EXCEPTIONS
+       PROGRAM_ERROR                     = 1
+       OTHERS                            = 2
+              .
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+ENDFORM.                    " SHOW_XJFL
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_DATA_JDFL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       季度返利</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA_JDFL .
+  DATA:L_NO TYPE I.
+  "检查输入
+  IF P_VK_JD IS INITIAL. "销售机构检查
+    MESSAGE S000 WITH '销售机构不能为空！' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  IF P_VT_JD IS INITIAL. "分销渠道检查
+    MESSAGE S000 WITH '分销渠道不能为空！' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  IF P_YXRQ5 IS INITIAL. "有效日期检查
+    MESSAGE S000 WITH '有效日期不能为空！' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+  CLEAR GT_ALV_JD.
+
+  "获取客户季度返利信息
+  SELECT DATBI                                             "有效期到
+         DATAB                                             "有效期从
+         VKORG                                             "销售组织
+         A307~KUNNR                                        "客户编码
+         VTWEG                                             "分销渠道
+         KNA1~NAME1                                        "客户描述
+         KBETR                                              "价格
+         KONWA                                              "币种
+         KPEIN                                              "数量单位
+         KRECH                                              "计算类型
+         A307~KSCHL
+    INTO CORRESPONDING FIELDS OF TABLE GT_ALV_JD
+    FROM A307 INNER JOIN KONP
+    ON A307~KNUMH = KONP~KNUMH
+    LEFT JOIN KNA1
+    ON A307~KUNNR = KNA1~KUNNR
+  WHERE VTWEG IN P_VT_JD
+    AND VKORG IN P_VK_JD
+    AND A307~KUNNR IN P_KH_JD
+    AND A307~KSCHL = 'Z0JD'
+    AND LOEVM_KO = '' "排除已删除
+    AND DATAB &lt;= P_YXRQ5
+    AND DATBI &gt;= P_YXRQ5.
+
+  "数据为空，提示错误
+  IF GT_ALV_JD IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  SORT GT_ALV_JD BY KUNNR.
+  L_NO = 0.
+
+  LOOP AT GT_ALV_JD ASSIGNING &lt;FS_JDALV&gt;.
+    L_NO = L_NO + 1.
+    &lt;FS_JDALV&gt;-ZXH = L_NO.
+    &lt;FS_JDALV&gt;-KBETR = &lt;FS_JDALV&gt;-KBETR / 10. "除以10
+  ENDLOOP.
+ENDFORM.                    " GET_DATA_JDFL
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SHOW_JDFL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       显示季度返利</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_JDFL .
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+     EXPORTING
+<font color ="#0000FF">*     I_INTERFACE_CHECK                 = ' '</font>
+<font color ="#0000FF">*     I_BYPASSING_BUFFER                = ' '</font>
+<font color ="#0000FF">*     I_BUFFER_ACTIVE                   = ' '</font>
+<font color ="#0000FF">*     i_background_id         = 'ALV_BACKGROUND'</font>
+       I_CALLBACK_PROGRAM                = SY-REPID
+       I_CALLBACK_PF_STATUS_SET          = 'SET_PF_STATUS'
+       I_CALLBACK_USER_COMMAND           = 'USER_COMMAND'
+<font color ="#0000FF">*     I_CALLBACK_TOP_OF_PAGE            = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE       = 'ALV_TOP_OF_PAGE'</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_END_OF_LIST       = ' '</font>
+       IS_LAYOUT                         = W_LAYOUT
+       IT_FIELDCAT                       = GT_FIELDCAT
+<font color ="#0000FF">*     I_SAVE                            = ' '</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">*     ES_EXIT_CAUSED_BY_USER            =</font>
+      TABLES
+        T_OUTTAB                          = GT_ALV_JD
+     EXCEPTIONS
+       PROGRAM_ERROR                     = 1
+       OTHERS                            = 2
+              .
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+ENDFORM.                    " SHOW_JDFL
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_DATA_NDFL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       年度返利</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA_NDFL .
+  DATA:L_NO TYPE I.
+  "检查输入
+  IF P_VK_ND IS INITIAL. "销售机构检查
+    MESSAGE S000 WITH '销售机构不能为空！' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  IF P_VT_ND IS INITIAL. "分销渠道检查
+    MESSAGE S000 WITH '分销渠道不能为空！' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  IF P_YXRQ6 IS INITIAL. "有效日期检查
+    MESSAGE S000 WITH '有效日期不能为空！' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+  CLEAR GT_ALV_ND.
+
+  "获取客户季度返利信息
+  SELECT DATBI                                             "有效期到
+         DATAB                                             "有效期从
+         VKORG                                             "销售组织
+         A307~KUNNR                                        "客户编码
+         VTWEG                                             "分销渠道
+         KNA1~NAME1                                        "客户描述
+         KBETR                                              "价格
+         KONWA                                              "币种
+         KPEIN                                              "数量单位
+         KRECH                                              "计算类型
+         A307~KSCHL
+    INTO CORRESPONDING FIELDS OF TABLE GT_ALV_ND
+    FROM A307 INNER JOIN KONP
+    ON A307~KNUMH = KONP~KNUMH
+    LEFT JOIN KNA1
+    ON A307~KUNNR = KNA1~KUNNR
+  WHERE VTWEG IN P_VT_ND
+    AND VKORG IN P_VK_ND
+    AND A307~KUNNR IN P_KH_ND
+    AND A307~KSCHL = 'Z0ND'
+    AND LOEVM_KO = '' "排除已删除
+    AND DATAB &lt;= P_YXRQ6
+    AND DATBI &gt;= P_YXRQ6.
+
+  "数据为空，提示错误
+  IF GT_ALV_ND IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  SORT GT_ALV_ND BY KUNNR.
+  L_NO = 0.
+
+  LOOP AT GT_ALV_ND ASSIGNING &lt;FS_NDALV&gt;.
+    L_NO = L_NO + 1.
+    &lt;FS_NDALV&gt;-ZXH = L_NO.
+    &lt;FS_NDALV&gt;-KBETR = &lt;FS_NDALV&gt;-KBETR / 10. "除以10
+  ENDLOOP.
+ENDFORM.                    " GET_DATA_NDFL
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SHOW_NDFL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      显示年度返利</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_NDFL .
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+     EXPORTING
+<font color ="#0000FF">*     I_INTERFACE_CHECK                 = ' '</font>
+<font color ="#0000FF">*     I_BYPASSING_BUFFER                = ' '</font>
+<font color ="#0000FF">*     I_BUFFER_ACTIVE                   = ' '</font>
+<font color ="#0000FF">*     i_background_id         = 'ALV_BACKGROUND'</font>
+       I_CALLBACK_PROGRAM                = SY-REPID
+       I_CALLBACK_PF_STATUS_SET          = 'SET_PF_STATUS'
+       I_CALLBACK_USER_COMMAND           = 'USER_COMMAND'
+<font color ="#0000FF">*     I_CALLBACK_TOP_OF_PAGE            = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE       = 'ALV_TOP_OF_PAGE'</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_END_OF_LIST       = ' '</font>
+       IS_LAYOUT                         = W_LAYOUT
+       IT_FIELDCAT                       = GT_FIELDCAT
+<font color ="#0000FF">*     I_SAVE                            = ' '</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">*     ES_EXIT_CAUSED_BY_USER            =</font>
+      TABLES
+        T_OUTTAB                          = GT_ALV_ND
+     EXCEPTIONS
+       PROGRAM_ERROR                     = 1
+       OTHERS                            = 2
+              .
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+ENDFORM.                    " SHOW_NDFL
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

@@ -1,0 +1,241 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZYC030_PBO</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZYC030_PBO</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZYC030_PBO</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZYC030_PBO</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&SPWIZARD: OUTPUT MODULE FOR TC 'TAB1'. DO NOT CHANGE THIS LINE!</font>
+<font color ="#0000FF">*&SPWIZARD: UPDATE LINES FOR EQUIVALENT SCROLLBAR</font>
+MODULE tab1_change_tc_attr OUTPUT.
+  DESCRIBE TABLE gt_jm1 LINES tab1-lines.
+ENDMODULE.                    "TAB1_CHANGE_TC_ATTR OUTPUT
+
+<font color ="#0000FF">*&SPWIZARD: OUTPUT MODULE FOR TC 'TAB2'. DO NOT CHANGE THIS LINE!</font>
+<font color ="#0000FF">*&SPWIZARD: UPDATE LINES FOR EQUIVALENT SCROLLBAR</font>
+MODULE tab2_change_tc_attr OUTPUT.
+  DESCRIBE TABLE gt_jm2 LINES tab2-lines.
+ENDMODULE.                    "TAB2_CHANGE_TC_ATTR OUTPUT
+
+<font color ="#0000FF">*&SPWIZARD: OUTPUT MODULE FOR TC 'TAB3'. DO NOT CHANGE THIS LINE!</font>
+<font color ="#0000FF">*&SPWIZARD: UPDATE LINES FOR EQUIVALENT SCROLLBAR</font>
+MODULE TAB3_CHANGE_TC_ATTR OUTPUT.
+  DESCRIBE TABLE GT_JM3 LINES TAB3-lines.
+ENDMODULE.
+<font color ="#0000FF">*&SPWIZARD: OUTPUT MODULE FOR TC 'TAB4'. DO NOT CHANGE THIS LINE!</font>
+<font color ="#0000FF">*&SPWIZARD: UPDATE LINES FOR EQUIVALENT SCROLLBAR</font>
+MODULE TAB4_CHANGE_TC_ATTR OUTPUT.
+  DESCRIBE TABLE GT_JM4 LINES TAB4-LINES.
+ENDMODULE.                    "TAB4_CHANGE_TC_ATTR OUTPUT
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  MODULE status_9001 OUTPUT</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* 9001屏幕的状态</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE status_9001 OUTPUT.
+  IF w_head IS INITIAL.
+    w_head-zdjlx = '600'.
+    w_head-ernam = sy-uname.
+    w_head-zedat = sy-datum.
+    "根据单据类型取相应的状态
+    SELECT zdqzt AS zstat
+      INTO TABLE gt_stat
+      FROM zztdjzt
+    WHERE zdjlx = c_djlx_600.
+
+    "按照状态编号排序，删除重复项
+    SORT gt_stat BY zstat.
+    DELETE ADJACENT DUPLICATES FROM gt_stat COMPARING zstat.
+
+    "设置单据状态的下拉列表值
+    LOOP AT gt_stat ASSIGNING &lt;fs_stat&gt;.
+      PERFORM get_domvalue_text USING c_zstat &lt;fs_stat&gt;-zstat &lt;fs_stat&gt;-text.
+      w_list-key  = &lt;fs_stat&gt;-zstat.
+      w_list-text = &lt;fs_stat&gt;-text.
+      APPEND w_list TO gt_list.
+      CLEAR: w_list.
+    ENDLOOP.
+    "填充包含全部状态的下拉列表
+    w_list-key  = c_stat_all.
+    w_list-text = c_stat_all_text.
+    APPEND w_list TO gt_list.
+    CLEAR:w_list.
+
+<font color ="#0000FF">*    "填充已更新状态的下拉列表</font>
+<font color ="#0000FF">*    w_list-key  = c_stat_change.</font>
+<font color ="#0000FF">*    w_list-text = c_stat_change_text.</font>
+<font color ="#0000FF">*    APPEND w_list TO gt_list.</font>
+<font color ="#0000FF">*    CLEAR:w_list.</font>
+
+    PERFORM set_list_box USING 'G_ZSTAT' gt_list.
+
+    SELECT ztzjg
+      INTO CORRESPONDING FIELDS OF TABLE gt_ycjg
+      FROM zztjgyc_h
+    WHERE zdjlx = c_djlx_600.
+
+    SORT gt_ycjg BY ztzjg.
+    DELETE ADJACENT DUPLICATES FROM gt_ycjg COMPARING ztzjg.
+
+    LOOP AT gt_ycjg ASSIGNING &lt;fs_ycjg&gt;.
+      PERFORM get_domvalue_text USING c_ztzjg &lt;fs_ycjg&gt;-ztzjg &lt;fs_ycjg&gt;-text.
+      w_list-key = &lt;fs_ycjg&gt;-ztzjg.
+      w_list-text = &lt;fs_ycjg&gt;-text.
+      APPEND w_list TO g_list.
+      CLEAR: w_list.
+    ENDLOOP.
+    PERFORM set_list_box USING 'G_ZTZJG' g_list.
+
+    CONCATENATE sy-datum(6) '01' INTO w_head-zbdat.
+
+    CALL FUNCTION 'BKK_GET_MONTH_LASTDAY'
+      EXPORTING
+        i_date = sy-datum
+      IMPORTING
+        e_date = w_head-zedat.
+  ENDIF.
+
+  SET PF-STATUS 'ZSTATUS_9001'.
+  "设置初始状态的标题
+  SET TITLEBAR 'TITLE_9001'.
+
+ENDMODULE.                    "status_9001 OUTPUT
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  MODULE STATUS_9002 OUTPUT</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  9002屏幕的状态</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE status_9002 OUTPUT.
+  SET PF-STATUS 'ZSTATUS_9002'.
+  SET TITLEBAR 'TITLE_9002'.
+ENDMODULE.                    "STATUS_9002 OUTPUT
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  set_list_box</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*     填充下拉框的值</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;VALUE      text</font>
+<font color ="#0000FF">*      --&gt;(FU_ID)    text</font>
+<font color ="#0000FF">*      --&gt;VALUE      text</font>
+<font color ="#0000FF">*      --&gt;(FU_VAL)   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM set_list_box USING value(fu_id) value(fu_val).
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id              = fu_id
+      values          = fu_val
+    EXCEPTIONS
+      id_illegal_name = 1
+      OTHERS          = 2.
+  IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+
+ENDFORM.                    "set_list_box
+
+<font color ="#0000FF">*{   INSERT         DEVK903944                                        1</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  STATUS_9004  OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE STATUS_9004 OUTPUT.
+  SET PF-STATUS 'ZSTATUS_9001'.
+  SET TITLEBAR 'TITLE_9004'.
+
+  "设置核算按钮可用和更新按钮不可用
+  IF G_BTN_FLAG IS INITIAL.
+   LOOP AT SCREEN.
+    IF screen-name = 'B2'.
+      screen-input = 1.
+      MODIFY SCREEN.
+     ENDIF.
+
+     IF screen-name = 'B3'.
+      screen-input = 0.
+      MODIFY SCREEN.
+     ENDIF.
+   ENDLOOP.
+    ENDIF.
+
+  IF G_BTN_FLAG = 'X'.
+   LOOP AT SCREEN.
+    IF screen-name = 'B2'.
+      screen-input = 0.
+      MODIFY SCREEN.
+     ENDIF.
+
+     IF screen-name = 'B3'.
+      screen-input = 1.
+      MODIFY SCREEN.
+     ENDIF.
+   ENDLOOP.
+    ENDIF.
+ENDMODULE.                 " STATUS_9004  OUTPUT
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  STATUS_9003  OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE STATUS_9003 OUTPUT.
+<font color ="#0000FF">*  SET PF-STATUS 'xxxxxxxx'.</font>
+<font color ="#0000FF">*  SET TITLEBAR 'xxx'.</font>
+  "设置核算按钮可用和更新按钮不可用
+  IF G_BTN_FLAG IS INITIAL.
+   LOOP AT SCREEN.
+    IF screen-name = 'B2'.
+      screen-input = 1.
+      MODIFY SCREEN.
+     ENDIF.
+
+     IF screen-name = 'B3'.
+      screen-input = 0.
+      MODIFY SCREEN.
+     ENDIF.
+
+   ENDLOOP.
+    ENDIF.
+
+  IF G_BTN_FLAG = 'X'.
+   LOOP AT SCREEN.
+    IF screen-name = 'B2'.
+      screen-input = 0.
+      MODIFY SCREEN.
+     ENDIF.
+
+     IF screen-name = 'B3'.
+      screen-input = 1.
+      MODIFY SCREEN.
+     ENDIF.
+
+   ENDLOOP.
+    ENDIF.
+ENDMODULE.                 " STATUS_9003  OUTPUT
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  STATUS_9005  OUTPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE STATUS_9005 OUTPUT.
+<font color ="#0000FF">*  SET PF-STATUS 'xxxxxxxx'.</font>
+  SET TITLEBAR 'TITLE_9005'.
+
+   IF LIST_TYPE IS INITIAL.
+    PERFORM SET_LIST_TYPE_DATA.
+  ENDIF.
+ENDMODULE.                 " STATUS_9005  OUTPUT
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

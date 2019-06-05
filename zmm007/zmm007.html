@@ -1,0 +1,1313 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZMM007</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZMM007</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  采购入库单</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& 程序名称       : ZMM007</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 作者           : 陈星烨（人民）</font>
+<font color ="#0000FF">*& 开发日期       : 2012-06-16</font>
+<font color ="#0000FF">*& 请求号         :</font>
+<font color ="#0000FF">*& 申请者         : 陈星烨（人民）</font>
+<font color ="#0000FF">*& 描述           : 采购入库单打印程序</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 变更记录</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">** 修改日期 开发人员  请求号 描述</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  ZMM007 MESSAGE-ID ZPEOPLE.
+
+include <a href ="zmm007_define.html">ZMM007_DEFINE</a>.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 定义选择屏幕参数</font>
+<font color ="#0000FF">************************************************************************</font>
+SELECTION-SCREEN BEGIN OF BLOCK BLK1 WITH FRAME TITLE TEXT-001.
+SELECT-OPTIONS:P_PLANT FOR QALS-WERK NO INTERVALS NO-EXTENSION,
+               S_JYPH FOR QALS-PRUEFLOS,                                                            "检验批号
+               S_WLPZ FOR QALS-MBLNR,                                                               "物料凭证号
+               S_WLH FOR QALS-MATNR,                                                                "物料编码
+               S_CJRQ FOR QALS-ERSTELDAT OBLIGATORY DEFAULT SY-DATUM TO SY-DATUM,                   "创建日期
+               S_KCDD FOR EKPO-LGORT,                                                               "库存地点
+               S_CGZ FOR EKKO-EKGRP,                                                                "采购组
+               S_CGDD FOR QALS-EBELN,                                                               "采购订单号
+               S_LIFNR FOR QALS-LIFNR.  " 供应商账号 add by huangcz 20130529
+
+SELECTION-SCREEN BEGIN OF BLOCK BK1 WITH FRAME TITLE TEXT-002 .
+PARAMETERS:
+            "保持原有打印输出格式
+            P_CB1 TYPE C RADIOBUTTON GROUP G1 DEFAULT 'X',
+            "根据采购订单行项目以及采购入库凭证的物料编号进行排序
+            P_CB2 TYPE C RADIOBUTTON GROUP G1.
+SELECTION-SCREEN END OF BLOCK BK1 .
+
+SELECTION-SCREEN END OF BLOCK BLK1.
+
+INITIALIZATION.
+  PERFORM INCREMENT_COUNT_LOG.  " add by huangcz 20130529
+
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">* START-OF-SELECTION.                                                 *                                                                    *</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+START-OF-SELECTION.
+  PERFORM GET_DATA_ALV.
+
+  PERFORM DISPLAY_BY_ALV.
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_data_alv</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA_ALV.
+  TYPES:BEGIN OF TY_MAKT,
+      MATNR TYPE MAKT-MATNR,
+      MAKTX TYPE MAKT-MAKTX,
+      ZEINR TYPE MARA-ZEINR,
+      END OF TY_MAKT,
+
+      BEGIN OF TY_EKKO,
+      EBELN TYPE EKKO-EBELN,
+      EBELP TYPE EKPO-EBELP,
+      BUKRS TYPE EKPO-BUKRS,
+      LGORT TYPE EKPO-LGORT,
+      LBLKZ TYPE EKPO-LBLKZ,
+      EKGRP TYPE EKKO-EKGRP,
+      END OF TY_EKKO,
+
+      BEGIN OF TY_T001L,
+      LGOBE TYPE T001L-LGOBE,
+      LGORT TYPE T001L-LGORT,
+      WERKS TYPE T001L-WERKS,
+      END OF TY_T001L,
+
+      BEGIN OF TY_LFM1,
+      VERKF TYPE LFM1-VERKF,
+      TELF1 TYPE LFM1-TELF1,
+      ZGYNM TYPE LFA1-NAME1,
+      LIFNR TYPE LFM1-LIFNR,
+      EKORG TYPE LFM1-EKORG,
+      END OF TY_LFM1,
+
+      BEGIN OF TY_T001W,
+      BUKRS TYPE T001K-BUKRS,
+      WERKS TYPE T001W-WERKS,
+      ZGCNM TYPE T001W-NAME1,
+      END OF TY_T001W,
+
+      BEGIN OF TY_T163Y,
+      PTEXT TYPE T163Y-PTEXT,
+      PSTYP TYPE T163Y-PSTYP,
+      END OF TY_T163Y,
+
+      BEGIN OF TY_T001,
+      BUTXT TYPE T001-BUTXT,
+      BUKRS TYPE T001-BUKRS,
+      END OF TY_T001.
+
+  DATA:LT_MAKT TYPE STANDARD TABLE OF TY_MAKT,
+       LW_MAKT TYPE TY_MAKT,
+       LT_T001L TYPE STANDARD TABLE OF TY_T001L,
+       LW_T001L TYPE TY_T001L,
+       LT_LFM1 TYPE STANDARD TABLE OF TY_LFM1,
+       LW_LFM1 TYPE TY_LFM1,
+       LT_T001W TYPE STANDARD TABLE OF TY_T001W,
+       LW_T001W TYPE TY_T001W,
+       LT_EKKO TYPE STANDARD TABLE OF TY_EKKO,
+       LW_EKKO TYPE TY_EKKO,
+       LT_T163Y TYPE STANDARD TABLE OF TY_T163Y,
+       LW_T163Y TYPE TY_T163Y,
+       LT_T001 TYPE STANDARD TABLE OF TY_T001,
+       LW_T001 TYPE TY_T001.
+
+  SELECT PRUEFLOS
+         MJAHR      "  add by yetp 20180725
+         MBLNR
+         ZEILE      "  add by yetp 20180725
+         MATNR
+         LIFNR
+         BUDAT
+         WERK
+         OBJNR
+         EBELN
+         EBELP
+         PSTYP
+         EKORG
+    INTO CORRESPONDING FIELDS OF TABLE GT_QALS
+    FROM QALS
+  WHERE WERK IN P_PLANT
+    AND MBLNR IN S_WLPZ
+    AND PRUEFLOS IN S_JYPH
+    AND MATNR IN S_WLH
+    AND EBELN IN S_CGDD
+    AND ERSTELDAT IN S_CJRQ
+    AND LIFNR IN S_LIFNR      " add by huangcz 20130529
+    AND HERKUNFT = '01'.
+  IF GT_QALS IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+  SELECT EKPO~BUKRS
+         LGORT
+         LBLKZ
+         EKGRP
+         EKPO~EBELN
+         EBELP
+    INTO CORRESPONDING FIELDS OF TABLE LT_EKKO
+    FROM EKPO INNER JOIN EKKO
+    ON EKPO~EBELN = EKKO~EBELN
+    FOR ALL ENTRIES IN GT_QALS
+  WHERE EKPO~EBELP = GT_QALS-EBELP
+    AND EKPO~EBELN = GT_QALS-EBELN
+    AND LGORT IN S_KCDD
+    AND EKGRP IN S_CGZ.
+
+  IF LT_EKKO IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  SORT LT_EKKO BY EBELN EBELP.
+
+  LOOP AT GT_QALS ASSIGNING &lt;FS_QALS&gt;.
+    READ TABLE LT_EKKO INTO LW_EKKO WITH KEY EBELN = &lt;FS_QALS&gt;-EBELN
+                                             EBELP = &lt;FS_QALS&gt;-EBELP BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_QALS&gt;-EKGRP = LW_EKKO-EKGRP.
+      &lt;FS_QALS&gt;-LGORT = LW_EKKO-LGORT.
+      &lt;FS_QALS&gt;-LBLKZ = LW_EKKO-LBLKZ.
+      &lt;FS_QALS&gt;-BUKRS = LW_EKKO-BUKRS.
+    ELSE.
+      DELETE GT_QALS.
+    ENDIF.
+  ENDLOOP.
+
+  SORT GT_QALS BY MJAHR MBLNR ZEILE  MATNR EBELN EBELP.  "modify by yetp 20180725
+
+  SELECT MEINS
+         MENGE
+         BPRME
+         BPMNG
+         SGTXT
+         BWART
+         MJAHR                                            " 物料凭证年度 add by yetp 20180719
+         MBLNR
+         ZEILE                                             " 物料凭证行项目 add by yetp 20180719
+         MATNR
+         EBELN                                             "采购订单号
+         EBELP
+         ERFME                                             "采购单位
+         ERFMG                                             "采购收货数量
+    INTO CORRESPONDING FIELDS OF TABLE GT_MSEG
+    FROM MSEG
+    FOR ALL ENTRIES IN GT_QALS
+  WHERE MJAHR = GT_QALS-MJAHR
+    AND MBLNR = GT_QALS-MBLNR
+    AND ZEILE = GT_QALS-ZEILE
+    AND MATNR = GT_QALS-MATNR
+    AND EBELN = GT_QALS-EBELN
+    AND EBELP = GT_QALS-EBELP.
+
+  " 获取物料描述、文档
+  SELECT MAKTX
+         MAKT~MATNR
+         MARA~ZEINR
+     INTO CORRESPONDING FIELDS OF TABLE LT_MAKT
+     FROM MAKT INNER JOIN MARA
+     ON MAKT~MATNR = MARA~MATNR
+     FOR ALL ENTRIES IN GT_MSEG
+   WHERE MAKT~MATNR = GT_MSEG-MATNR
+     AND SPRAS = '1'.
+
+  SORT LT_MAKT BY MATNR.
+
+  LOOP AT GT_MSEG INTO W_MSEG.
+    MOVE-CORRESPONDING W_MSEG TO W_ALV.
+    READ TABLE LT_MAKT INTO LW_MAKT WITH KEY MATNR = W_MSEG-MATNR BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      W_ALV-MAKTX = LW_MAKT-MAKTX.
+      W_ALV-ZEINR = LW_MAKT-ZEINR.
+    ENDIF.
+
+    READ TABLE GT_QALS ASSIGNING &lt;FS_QALS&gt; WITH KEY MJAHR = W_MSEG-MJAHR
+                                                    MBLNR = W_MSEG-MBLNR
+                                                    ZEILE = W_MSEG-ZEILE
+                                                    MATNR = W_MSEG-MATNR
+                                                    EBELN = W_MSEG-EBELN
+                                                    EBELP = W_MSEG-EBELP BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      W_ALV-PRUEFLOS = &lt;FS_QALS&gt;-PRUEFLOS.
+      W_ALV-OBJNR = &lt;FS_QALS&gt;-OBJNR.
+      W_ALV-MBLNR = &lt;FS_QALS&gt;-MBLNR.
+      W_ALV-LGORT = &lt;FS_QALS&gt;-LGORT.
+      W_ALV-BUKRS = &lt;FS_QALS&gt;-BUKRS.
+      W_ALV-WERKS = &lt;FS_QALS&gt;-WERK.
+      W_ALV-LBLKZ = &lt;FS_QALS&gt;-LBLKZ.
+      W_ALV-PSTYP = &lt;FS_QALS&gt;-PSTYP.
+      W_ALV-EKORG = &lt;FS_QALS&gt;-EKORG.
+      W_ALV-LIFNR = &lt;FS_QALS&gt;-LIFNR.
+      W_ALV-BUDAT = &lt;FS_QALS&gt;-BUDAT.
+    ENDIF.
+
+<font color ="#0000FF">*    PERFORM get_status USING w_alv-objnr CHANGING w_alv-flag w_alv-status.</font>
+    PERFORM DEL_ALPHA CHANGING W_ALV-PRUEFLOS.
+<font color ="#0000FF">*    IF w_alv-flag = '1'.</font>
+<font color ="#0000FF">*      w_alv-mess = icon_green_light.</font>
+<font color ="#0000FF">*    ELSE.</font>
+<font color ="#0000FF">*      w_alv-mess = icon_red_light.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+
+    APPEND W_ALV TO GT_ALV.
+    CLEAR W_ALV.
+  ENDLOOP.
+
+  " 获取订单状态
+  PERFORM SET_STATUS.   " add by huangcz 20130529
+
+<font color ="#0000FF">*把抬头需要的数据也填充到ALV输出的内表中</font>
+  SELECT LGOBE
+         LGORT
+         WERKS
+     INTO CORRESPONDING FIELDS OF TABLE LT_T001L
+     FROM T001L
+     FOR ALL ENTRIES IN GT_ALV
+   WHERE LGORT = GT_ALV-LGORT
+     AND WERKS = GT_ALV-WERKS.
+
+  SORT LT_T001L BY WERKS LGORT.   " add by huangcz 20130529
+
+  SELECT VERKF                                                   "联系人
+         LFM1~TELF1                                                   "联系电话
+         LFA1~NAME1 AS ZGYNM                                     "供应商描述
+         LFM1~LIFNR
+         EKORG
+     INTO CORRESPONDING FIELDS OF TABLE LT_LFM1
+     FROM LFM1 INNER JOIN LFA1
+     ON LFM1~LIFNR = LFA1~LIFNR
+     FOR ALL ENTRIES IN GT_ALV
+   WHERE LFA1~LIFNR = GT_ALV-LIFNR
+     AND EKORG = GT_ALV-EKORG.
+
+  SORT LT_LFM1 BY LIFNR EKORG.    " add by huangcz 20130529
+
+  SELECT NAME1 AS ZGCNM                                    "获取工厂名称
+         WERKS
+    INTO CORRESPONDING FIELDS OF TABLE LT_T001W
+   FROM T001W
+    FOR ALL ENTRIES IN GT_ALV
+  WHERE WERKS = GT_ALV-WERKS.
+
+  SORT LT_T001W BY WERKS.     " add by huangcz 20130529
+
+  SELECT PTEXT
+         PSTYP
+       INTO CORRESPONDING FIELDS OF TABLE LT_T163Y
+       FROM T163Y
+       FOR ALL ENTRIES IN GT_ALV
+     WHERE PSTYP = GT_ALV-PSTYP
+       AND SPRAS = '1'.
+
+  SORT LT_T163Y BY PSTYP.   " add by huangcz 20130529
+
+  SELECT BUTXT                                             "公司名称
+         BUKRS
+     INTO CORRESPONDING FIELDS OF TABLE LT_T001
+     FROM T001
+     FOR ALL ENTRIES IN GT_ALV
+  WHERE BUKRS = GT_ALV-BUKRS.
+
+  SORT LT_T001 BY BUKRS. " add by huangcz 20130529
+
+  LOOP AT GT_ALV ASSIGNING &lt;FS_ALV&gt;.
+    READ TABLE LT_T001L INTO LW_T001L WITH KEY WERKS = &lt;FS_ALV&gt;-WERKS
+                                               LGORT = &lt;FS_ALV&gt;-LGORT BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_ALV&gt;-LGOBE = LW_T001L-LGOBE.
+    ENDIF.
+
+    READ TABLE LT_LFM1 INTO LW_LFM1 WITH KEY LIFNR = &lt;FS_ALV&gt;-LIFNR
+                                            EKORG = &lt;FS_ALV&gt;-EKORG BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_ALV&gt;-VERKF = LW_LFM1-VERKF.
+      &lt;FS_ALV&gt;-TELF1 = LW_LFM1-TELF1.
+      &lt;FS_ALV&gt;-ZGYNM = LW_LFM1-ZGYNM.
+    ENDIF.
+
+    READ TABLE LT_T001W INTO LW_T001W WITH KEY WERKS = &lt;FS_ALV&gt;-WERKS BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_ALV&gt;-ZGCNM = LW_T001W-ZGCNM.
+    ENDIF.
+
+    READ TABLE LT_T163Y INTO LW_T163Y WITH KEY PSTYP = &lt;FS_ALV&gt;-PSTYP BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_ALV&gt;-PTEXT = LW_T163Y-PTEXT.
+    ENDIF.
+
+    READ TABLE LT_T001 INTO LW_T001 WITH KEY BUKRS = &lt;FS_ALV&gt;-BUKRS BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_ALV&gt;-BUTXT = LW_T001-BUTXT.
+    ENDIF.
+
+    IF &lt;FS_ALV&gt;-LBLKZ IS NOT INITIAL AND &lt;FS_ALV&gt;-LIFNR IS NOT INITIAL.
+      &lt;FS_ALV&gt;-PTEXT = '直发外协'.
+    ENDIF.
+
+    " 这个还可继续优化
+    call function <a href ="zget_user_name/zget_user_name.html">'ZGET_USER_NAME'</a>
+      EXPORTING
+        SYSNAME   = SY-UNAME
+      IMPORTING
+        USERNAME  = &lt;FS_ALV&gt;-ZZDNM
+      EXCEPTIONS
+        NOT_FOUND = 1
+        OTHERS    = 2.
+    IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+    ENDIF.
+
+    CALL FUNCTION 'CONVERSION_EXIT_ALPHA_OUTPUT'
+      EXPORTING
+        INPUT  = &lt;FS_ALV&gt;-EBELP
+      IMPORTING
+        OUTPUT = &lt;FS_ALV&gt;-EBELP.
+  ENDLOOP.
+  PERFORM GET_PRINTINFO.
+ENDFORM.                    "get_data_alv
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DISPLAY_BY_ALV</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_BY_ALV.
+  DATA:GS_GRID_SETTINGS TYPE LVC_S_GLAY.
+  GS_GRID_SETTINGS-EDT_CLL_CB = 'X'.
+
+  PERFORM FILL_FIELDCAT.
+
+  PERFORM FILL_LAYOUT.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+<font color ="#0000FF">*     I_INTERFACE_CHECK                 = ' '</font>
+<font color ="#0000FF">*     I_BYPASSING_BUFFER                = ' '</font>
+<font color ="#0000FF">*     I_BUFFER_ACTIVE                   = ' '</font>
+     I_CALLBACK_PROGRAM                = SY-REPID
+     I_CALLBACK_PF_STATUS_SET          = 'SET_PF_STATUS'
+     I_CALLBACK_USER_COMMAND           = 'USER_COMMAND'
+<font color ="#0000FF">*     I_CALLBACK_TOP_OF_PAGE            = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE       = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_END_OF_LIST       = ' '</font>
+<font color ="#0000FF">*     I_STRUCTURE_NAME                  =</font>
+<font color ="#0000FF">*     I_BACKGROUND_ID                   = ' '</font>
+<font color ="#0000FF">*     I_GRID_TITLE                      =</font>
+     I_GRID_SETTINGS                   = GS_GRID_SETTINGS
+     IS_LAYOUT                         = W_LAYOUT
+     IT_FIELDCAT                       = GT_FIELDCAT
+<font color ="#0000FF">*     IT_EXCLUDING                      =</font>
+<font color ="#0000FF">*     IT_SPECIAL_GROUPS                 =</font>
+<font color ="#0000FF">*     IT_SORT                           =</font>
+<font color ="#0000FF">*     IT_FILTER                         =</font>
+<font color ="#0000FF">*     IS_SEL_HIDE                       =</font>
+<font color ="#0000FF">*     I_DEFAULT                         = 'X'</font>
+<font color ="#0000FF">*     I_SAVE                            = ' '</font>
+<font color ="#0000FF">*     IS_VARIANT                        =</font>
+<font color ="#0000FF">*     IT_EVENTS                         =</font>
+<font color ="#0000FF">*     IT_EVENT_EXIT                     =</font>
+<font color ="#0000FF">*     IS_PRINT                          =</font>
+<font color ="#0000FF">*     IS_REPREP_ID                      =</font>
+<font color ="#0000FF">*     I_SCREEN_START_COLUMN             = 0</font>
+<font color ="#0000FF">*     I_SCREEN_START_LINE               = 0</font>
+<font color ="#0000FF">*     I_SCREEN_END_COLUMN               = 0</font>
+<font color ="#0000FF">*     I_SCREEN_END_LINE                 = 0</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_TOP                 = 0</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_END                 = 0</font>
+<font color ="#0000FF">*     IT_ALV_GRAPHICS                   =</font>
+<font color ="#0000FF">*     IT_HYPERLINK                      =</font>
+<font color ="#0000FF">*     IT_ADD_FIELDCAT                   =</font>
+<font color ="#0000FF">*     IT_EXCEPT_QINFO                   =</font>
+<font color ="#0000FF">*     IR_SALV_FULLSCREEN_ADAPTER        =</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">*     ES_EXIT_CAUSED_BY_USER            =</font>
+    TABLES
+      T_OUTTAB                          = GT_ALV
+<font color ="#0000FF">*   EXCEPTIONS</font>
+<font color ="#0000FF">*     PROGRAM_ERROR                     = 1</font>
+<font color ="#0000FF">*     OTHERS                            = 2</font>
+            .
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+
+ENDFORM.                    "DISPLAY_BY_ALV
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  fill_fieldcat</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FILL_FIELDCAT.
+  CLEAR W_FIELDCAT.
+  W_FIELDCAT-FIELDNAME = 'SEL'.
+  W_FIELDCAT-SELTEXT_L = '选择列'.
+  W_FIELDCAT-CHECKBOX = 'X'.
+  W_FIELDCAT-EDIT = 'X'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+  CLEAR W_FIELDCAT.
+  W_FIELDCAT-FIELDNAME = 'MESS'.
+  W_FIELDCAT-SELTEXT_L = '红绿灯'.
+  W_FIELDCAT-ICON = 'X'.
+  W_FIELDCAT-JUST = 'C'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+  CLEAR W_FIELDCAT.
+  W_FIELDCAT-FIELDNAME = 'MBLNR'.
+  W_FIELDCAT-SELTEXT_L = '物料凭证号'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+  CLEAR W_FIELDCAT.
+  W_FIELDCAT-FIELDNAME = 'ZEINR'.
+  W_FIELDCAT-SELTEXT_L = '图号'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+  CLEAR W_FIELDCAT.
+  W_FIELDCAT-FIELDNAME = 'PRUEFLOS'.
+  W_FIELDCAT-SELTEXT_L = '检验批号'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+  CLEAR W_FIELDCAT.
+  W_FIELDCAT-FIELDNAME = 'MATNR'.
+  W_FIELDCAT-SELTEXT_L = '物料编码'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+  CLEAR W_FIELDCAT.
+  W_FIELDCAT-FIELDNAME = 'MAKTX'.
+  W_FIELDCAT-SELTEXT_L = '物料描述'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+  CLEAR W_FIELDCAT.
+  W_FIELDCAT-FIELDNAME = 'MENGE'.
+  W_FIELDCAT-SELTEXT_L = '送货数量'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+  CLEAR W_FIELDCAT.
+  W_FIELDCAT-FIELDNAME = 'MEINS'.
+  W_FIELDCAT-SELTEXT_L = '基本单位'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+  CLEAR W_FIELDCAT.
+  W_FIELDCAT-FIELDNAME = 'ERFME'.
+  W_FIELDCAT-SELTEXT_L = '采购单位'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+  CLEAR W_FIELDCAT.
+  W_FIELDCAT-FIELDNAME = 'ERFMG'.
+  W_FIELDCAT-SELTEXT_L = '采购收货单位数量'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+  CLEAR W_FIELDCAT.
+  W_FIELDCAT-FIELDNAME = 'BPRME'.
+  W_FIELDCAT-SELTEXT_L = '结算单位'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+  CLEAR W_FIELDCAT.
+  W_FIELDCAT-FIELDNAME = 'BPMNG'.
+  W_FIELDCAT-SELTEXT_L = '结算数量'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+  CLEAR W_FIELDCAT.
+  W_FIELDCAT-FIELDNAME = 'BWART'.
+  W_FIELDCAT-SELTEXT_L = '移动类型'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+  CLEAR W_FIELDCAT.
+  W_FIELDCAT-FIELDNAME = 'STATUS'.
+  W_FIELDCAT-SELTEXT_L = '系统状态'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+ENDFORM.                    "fill_fieldcat
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  fill_layout</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FILL_LAYOUT.
+  W_LAYOUT-ZEBRA = 'X'.
+  W_LAYOUT-COLWIDTH_OPTIMIZE = 'X'.
+<font color ="#0000FF">*  w_layout-info_fieldname = 'COLOR'.  "行颜色</font>
+  W_LAYOUT-COLTAB_FIELDNAME = 'CELLCOLOR'. "单元格颜色字段
+ENDFORM.                    "fill_layout
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_PF_STATUS</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;RT_EXTAB   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SET_PF_STATUS USING RT_EXTAB TYPE SLIS_T_EXTAB.
+  SET PF-STATUS 'STANDARD_FULLSCREEN'.
+ENDFORM.                    "SET_PF_STATUS
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  user_command</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;UCOMM      text</font>
+<font color ="#0000FF">*      --&gt;SELFIELD   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM USER_COMMAND USING UCOMM LIKE SY-UCOMM
+                       SELFIELD TYPE SLIS_SELFIELD.
+  CASE UCOMM.
+    WHEN '&DATA_SAVE'.
+      CLEAR:GT_PRINT,G_MBLNR.
+      LOOP AT GT_ALV INTO W_ALV WHERE SEL = 'X'.
+        IF W_ALV-FLAG = '1'.
+          IF W_ALV-MBLNR &lt;&gt; G_MBLNR.
+            G_MBLNR = W_ALV-MBLNR.
+            LOOP AT GT_ALV INTO W_ALV WHERE MBLNR = G_MBLNR.
+              IF W_ALV-FLAG = '1'.
+                MOVE-CORRESPONDING W_ALV TO W_PRINT.
+                APPEND W_PRINT TO GT_PRINT.
+              ENDIF.
+            ENDLOOP.
+          ENDIF.
+        ELSEIF W_ALV-FLAG = '2'.
+          MESSAGE S246 WITH W_ALV-PRUEFLOS DISPLAY LIKE 'E'.
+        ELSEIF W_ALV-FLAG = '3'.
+          MESSAGE S247 WITH W_ALV-PRUEFLOS DISPLAY LIKE 'E'.
+        ENDIF.
+      ENDLOOP.
+<font color ="#0000FF">*      PERFORM DISPLAY_BY_SMART.   "del by yetp 20190425</font>
+      PERFORM DISPLAY_BY_SMART_NEW. "add by yetp 20190425
+    WHEN '&S_ALL'.
+      PERFORM SEL_ITEM USING '1'.
+    WHEN '&S_SAL'.
+      PERFORM SEL_ITEM USING '2'.
+  ENDCASE.
+ENDFORM.                    "user_command
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DISPLAY_BY_SMART</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_BY_SMART.
+  DATA:SSFCRESCL TYPE SSFCRESCL,
+       LS_STABLE TYPE LVC_S_STBL,
+       L_MBLNR TYPE MBLNR,
+       LW_DB TYPE ZZTCJRKD,
+       COLOR TYPE SLIS_T_SPECIALCOL_ALV WITH HEADER LINE,
+       LW_CELLCOL TYPE LVC_S_SCOL,
+       G_ERROR TYPE C.
+
+  IF GT_PRINT IS INITIAL.
+    MESSAGE S020 DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+  "2014-02-26 打印排序功能增加 by huangbw start
+
+  "从smartform里拷贝的代码，保持跟远程序一直
+  SORT GT_PRINT[] BY MBLNR EBELN EBELP.
+  DELETE ADJACENT DUPLICATES FROM GT_PRINT COMPARING ALL FIELDS.
+
+  IF P_CB2 IS NOT INITIAL.
+    SORT GT_PRINT BY EBELN MATNR.
+  ENDIF.
+  "2014-02-26 打印排序功能增加 by huangbw end
+
+<font color ="#0000FF">* 获取打印FORM函数名称</font>
+  CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+    EXPORTING
+      FORMNAME           = 'ZSMART_007'
+<font color ="#0000FF">*     VARIANT            = ' '</font>
+<font color ="#0000FF">*     DIRECT_CALL        = ' '</font>
+    IMPORTING
+      FM_NAME            = FM_NAME
+    EXCEPTIONS
+      NO_FORM            = 1
+      NO_FUNCTION_MODULE = 2
+      OTHERS             = 3.
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+<font color ="#0000FF">*调用打印</font>
+  CALL FUNCTION FM_NAME
+    IMPORTING
+      JOB_OUTPUT_INFO  = SSFCRESCL
+    TABLES
+      IT_DATA          = GT_PRINT
+    EXCEPTIONS
+      FORMATTING_ERROR = 1
+      INTERNAL_ERROR   = 2
+      SEND_ERROR       = 3
+      USER_CANCELED    = 4
+      OTHERS           = 5.
+
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+  "判断是否真实打印
+  IF SSFCRESCL-OUTPUTDONE = 'X'.
+    G_ERROR = 'S'.
+    LOOP AT GT_PRINT INTO W_PRINT.
+      IF L_MBLNR &lt;&gt; W_PRINT-MBLNR.
+        LW_DB-MBLNR = W_PRINT-MBLNR.
+        LW_DB-ZFLAG = 'X'.
+      ENDIF.
+      L_MBLNR = W_PRINT-MBLNR.
+      MODIFY ZZTCJRKD FROM LW_DB.
+      LOOP AT GT_ALV ASSIGNING &lt;FS_ALV&gt; WHERE MBLNR = LW_DB-MBLNR.
+        LW_CELLCOL-FNAME = 'MBLNR'.
+        LW_CELLCOL-COLOR-COL = '3'.
+        LW_CELLCOL-COLOR-INT = '1'.
+        LW_CELLCOL-COLOR-INV = '0'.
+        APPEND LW_CELLCOL TO &lt;FS_ALV&gt;-CELLCOLOR.
+        CLEAR LW_CELLCOL.
+      ENDLOOP.
+    ENDLOOP.
+
+    " 刷新alv界面显示
+    IF G_ALV_GRID IS INITIAL.
+      CALL FUNCTION 'GET_GLOBALS_FROM_SLVC_FULLSCR'
+        IMPORTING
+          E_GRID = G_ALV_GRID.
+    ENDIF.
+    " 刷新数据
+    CALL METHOD G_ALV_GRID-&gt;REFRESH_TABLE_DISPLAY
+      EXPORTING
+        IS_STABLE      =  LS_STABLE
+<font color ="#0000FF">*          I_SOFT_REFRESH =</font>
+<font color ="#0000FF">*        EXCEPTIONS</font>
+<font color ="#0000FF">*          FINISHED       = 1</font>
+<font color ="#0000FF">*          others         = 2</font>
+             .
+  ELSE.
+    G_ERROR = 'E'.
+  ENDIF.
+
+ENDFORM.                    "display_by_smart
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_status</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;FU_OBJNR   text</font>
+<font color ="#0000FF">*      --&gt;FU_FLAG    text</font>
+<font color ="#0000FF">*      --&gt;FU_STATUS  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_STATUS USING FU_OBJNR CHANGING FU_FLAG FU_STATUS.
+  DATA:LT_STATUS TYPE STANDARD TABLE OF JSTAT,
+       L_STSMA TYPE JSTO-STSMA,
+       L_NO1 TYPE I,
+       L_NO2 TYPE I,
+       L_NO3 TYPE I.
+  FIELD-SYMBOLS:&lt;FS_STATUS&gt; TYPE JSTAT.
+  CALL FUNCTION 'STATUS_READ'
+    EXPORTING
+<font color ="#0000FF">*     CLIENT                 = SY-MANDT</font>
+      OBJNR                  = FU_OBJNR
+<font color ="#0000FF">*     ONLY_ACTIVE            = ' '</font>
+   IMPORTING
+<font color ="#0000FF">*     OBTYP                  =</font>
+     STSMA                  = L_STSMA
+<font color ="#0000FF">*     STONR                  =</font>
+   TABLES
+     STATUS                 = LT_STATUS
+<font color ="#0000FF">*   EXCEPTIONS</font>
+<font color ="#0000FF">*     OBJECT_NOT_FOUND       = 1</font>
+<font color ="#0000FF">*     OTHERS                 = 2</font>
+            .
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+
+  SELECT ISTAT
+    TXT04
+    INTO CORRESPONDING FIELDS OF TABLE GT_TJ02T
+    FROM TJ02T
+    FOR ALL ENTRIES IN LT_STATUS
+  WHERE ISTAT = LT_STATUS-STAT
+    AND SPRAS = '1'.
+
+  LOOP AT GT_TJ02T ASSIGNING &lt;FS_TJ02T&gt;.
+    READ TABLE LT_STATUS ASSIGNING &lt;FS_STATUS&gt; WITH KEY STAT = &lt;FS_TJ02T&gt;-ISTAT.
+    IF SY-SUBRC = 0.
+      &lt;FS_TJ02T&gt;-INACT = &lt;FS_STATUS&gt;-INACT.
+    ENDIF.
+
+    IF &lt;FS_TJ02T&gt;-INACT = ''.
+      IF FU_STATUS IS INITIAL.
+        FU_STATUS = &lt;FS_TJ02T&gt;-TXT04.
+      ELSE.
+        CONCATENATE FU_STATUS &lt;FS_TJ02T&gt;-TXT04 INTO FU_STATUS SEPARATED BY SPACE.
+      ENDIF.
+
+      IF &lt;FS_TJ02T&gt;-TXT04 = 'REL'.
+        L_NO1 = L_NO1 + 1.
+      ENDIF.
+      IF &lt;FS_TJ02T&gt;-TXT04 = 'CALC'.
+        L_NO1 = L_NO1 + 1.
+      ENDIF.
+      IF &lt;FS_TJ02T&gt;-TXT04 = 'SPRQ'.
+        L_NO1 = L_NO1 + 1.
+      ENDIF.
+      IF &lt;FS_TJ02T&gt;-TXT04 = 'UD'.
+        L_NO2 = L_NO2 + 1.
+      ENDIF.
+      IF &lt;FS_TJ02T&gt;-TXT04 = 'ICCO'.
+        L_NO2 = L_NO2 + 1.
+      ENDIF.
+      IF &lt;FS_TJ02T&gt;-TXT04 = 'SPCO'.
+        L_NO2 = L_NO2 + 1.
+      ENDIF.
+      IF &lt;FS_TJ02T&gt;-TXT04 = 'STUP'.
+        L_NO2 = L_NO2 + 1.
+      ENDIF.
+      IF &lt;FS_TJ02T&gt;-TXT04 = 'LTCA'.
+        L_NO3 = L_NO3 + 1.
+      ENDIF.
+      IF &lt;FS_TJ02T&gt;-TXT04 = 'CALC'.
+        L_NO3 = L_NO3 + 1.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+
+  IF L_NO1 = 3.
+    FU_FLAG = '1'.
+  ELSEIF L_NO2 = 4.
+    FU_FLAG = '2'.
+  ELSEIF L_NO3 = 2.
+    FU_FLAG = '3'.
+  ENDIF.
+
+ENDFORM.                    "get_status
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  del_alpha</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;FU_ID      text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DEL_ALPHA CHANGING FU_ID.
+  CALL FUNCTION 'CONVERSION_EXIT_ALPHA_OUTPUT'
+    EXPORTING
+      INPUT  = FU_ID
+    IMPORTING
+      OUTPUT = FU_ID.
+ENDFORM.                    "del_alpha
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SEL_ITEM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_0848   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SEL_ITEM USING P_FLAG.
+  DATA LS_STABLE TYPE LVC_S_STBL.
+<font color ="#0000FF">*  ls_stable-row = 'X'.</font>
+<font color ="#0000FF">*  ls_stable-col = 'X'.</font>
+  IF P_FLAG = '1'.
+    LOOP AT GT_ALV ASSIGNING &lt;FS_ALV&gt; WHERE SEL = SPACE.
+      &lt;FS_ALV&gt;-SEL = 'X'.
+    ENDLOOP.
+  ELSEIF P_FLAG = '2'.
+    LOOP AT GT_ALV ASSIGNING &lt;FS_ALV&gt; WHERE SEL = 'X'.
+      &lt;FS_ALV&gt;-SEL = SPACE.
+    ENDLOOP.
+  ENDIF.
+  IF G_ALV_GRID IS INITIAL.
+    CALL FUNCTION 'GET_GLOBALS_FROM_SLVC_FULLSCR'
+      IMPORTING
+        E_GRID = G_ALV_GRID.
+  ENDIF.
+
+  CALL METHOD G_ALV_GRID-&gt;REFRESH_TABLE_DISPLAY
+    EXPORTING
+      IS_STABLE      =  LS_STABLE
+<font color ="#0000FF">*          I_SOFT_REFRESH =</font>
+<font color ="#0000FF">*        EXCEPTIONS</font>
+<font color ="#0000FF">*          FINISHED       = 1</font>
+<font color ="#0000FF">*          others         = 2</font>
+          .
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">*       MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO</font>
+<font color ="#0000FF">*                  WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.</font>
+  ENDIF.
+ENDFORM.                    " SEL_ITEM
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_printinfo</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       获取自建表中已经打印的单号信息</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_PRINTINFO.
+  DATA:LT_DB TYPE STANDARD TABLE OF ZZTCJRKD,
+       LW_DB TYPE ZZTCJRKD,
+       COLOR TYPE SLIS_T_SPECIALCOL_ALV WITH HEADER LINE,
+       LW_CELLCOL TYPE LVC_S_SCOL.
+  IF GT_ALV IS NOT INITIAL.
+    SELECT *
+      INTO TABLE LT_DB
+      FROM ZZTCJRKD
+      FOR ALL ENTRIES IN GT_ALV
+    WHERE MBLNR = GT_ALV-MBLNR.
+
+<font color ="#0000FF">*    loop at lt_db into lw_db.</font>
+<font color ="#0000FF">*      loop at gt_alv assigning &lt;fs_alv&gt; where mblnr = lw_db-mblnr.</font>
+<font color ="#0000FF">*        lw_cellcol-fname = 'MBLNR'.</font>
+<font color ="#0000FF">*        lw_cellcol-color-col = '3'.</font>
+<font color ="#0000FF">*        lw_cellcol-color-int = '1'.</font>
+<font color ="#0000FF">*        lw_cellcol-color-inv = '0'.</font>
+<font color ="#0000FF">*        append lw_cellcol to &lt;fs_alv&gt;-cellcolor.</font>
+<font color ="#0000FF">*        clear lw_cellcol.</font>
+<font color ="#0000FF">*      endloop.</font>
+<font color ="#0000FF">*    endloop.</font>
+
+    " 设置颜色，修改 by huangcz 20130529
+    IF LT_DB IS NOT INITIAL.
+      SORT LT_DB BY MBLNR.
+      LOOP AT GT_ALV ASSIGNING &lt;FS_ALV&gt;.
+        READ TABLE LT_DB INTO LW_DB WITH KEY MBLNR = &lt;FS_ALV&gt;-MBLNR BINARY SEARCH.
+        IF SY-SUBRC = 0.
+          LW_CELLCOL-FNAME = 'MBLNR'.
+          LW_CELLCOL-COLOR-COL = '3'.
+          LW_CELLCOL-COLOR-INT = '1'.
+          LW_CELLCOL-COLOR-INV = '0'.
+          APPEND LW_CELLCOL TO &lt;FS_ALV&gt;-CELLCOLOR.
+          CLEAR LW_CELLCOL.
+        ENDIF.
+      ENDLOOP.
+    ENDIF.
+  ENDIF.
+ENDFORM.                    "get_printinfo
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  INCREMENT_COUNT_LOG</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INCREMENT_COUNT_LOG .
+  DATA: LW_DB TYPE ZZTTABLOG,
+        L_MINUTE TYPE SY-UZEIT,
+        L_NOW_YEAR TYPE ZZTTABLOG-GJAHR,
+        L_NOW_MONTH TYPE ZZTTABLOG-MONAT.
+
+  L_NOW_YEAR = SY-DATUM+0(4).
+  L_NOW_MONTH = SY-DATUM+4(2).
+
+  " 按每月累加用户使用数
+  SELECT SINGLE *
+    INTO LW_DB
+    FROM ZZTTABLOG
+  WHERE TCODE = 'ZMM07'      " 事物代码
+    AND GJAHR = L_NOW_YEAR    " 当前年份
+    AND MONAT = L_NOW_MONTH.  " 当前月份
+
+  IF SY-SUBRC = 0.
+    " 相同的人，如果在10分钟内做相同的操作，算计一次
+    IF LW_DB-ERNAM = SY-UNAME AND
+      LW_DB-ERDAT = SY-DATUM.
+      L_MINUTE = SY-UZEIT - LW_DB-ERZET.
+      IF L_MINUTE &lt; '001000'.
+        RETURN.
+      ENDIF.
+    ENDIF.
+    LW_DB-ZCUNT = LW_DB-ZCUNT + 1.      " 次数加一
+  ELSE.
+    LW_DB-TCODE = 'ZMM07'.           " 记录操作的tcode
+    LW_DB-ZCUNT = '1'.                " 初始化次数
+    LW_DB-ZFNAM = SY-UNAME.           " 第一次操作人员
+    LW_DB-ZFDAT = SY-DATUM.           " 第一次操作日期
+    LW_DB-ZFZET = SY-UZEIT.           " 第一次操作时间
+    LW_DB-GJAHR = L_NOW_YEAR.         " 年度
+    LW_DB-MONAT = L_NOW_MONTH.        " 月份
+  ENDIF.
+
+  LW_DB-ERNAM = SY-UNAME.     " 本次操作人员
+  LW_DB-ERDAT = SY-DATUM.     " 本次操作日期
+  LW_DB-ERZET = SY-UZEIT.     " 本次操作时间
+
+  MODIFY ZZTTABLOG FROM LW_DB.
+  COMMIT WORK AND WAIT.
+ENDFORM.                    " INCREMENT_COUNT_LOG
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_STATUS</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       设置订单状态</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SET_STATUS .
+  TYPES: BEGIN OF TY_JEST,
+          OBJNR TYPE JEST-OBJNR,  " 对象号
+          STAT TYPE JEST-STAT,    " 对象状态
+          TXT04 TYPE TJ02T-TXT04, " 系统状态文本
+         END OF TY_JEST,
+
+         BEGIN OF TY_CALC,
+           OBJNR TYPE JEST-OBJNR,  " 对象号
+           NO1 TYPE I,
+           NO2 TYPE I,
+           NO3 TYPE I,
+           TXT TYPE C LENGTH 50,
+         END OF TY_CALC.
+
+  DATA: LT_JEST TYPE STANDARD TABLE OF TY_JEST,
+        LW_JEST TYPE TY_JEST,
+        LT_CALC TYPE STANDARD TABLE OF TY_CALC,
+        LW_CALC TYPE TY_CALC.
+
+  FIELD-SYMBOLS: &lt;FS_JEST&gt; TYPE TY_JEST.
+
+  " 无数据则返回
+  IF GT_ALV IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  SORT GT_ALV BY OBJNR.
+
+  " 获取订单对应的状态
+  SELECT OBJNR
+    STAT
+    TXT04
+    INTO TABLE LT_JEST
+    FROM JEST
+    LEFT JOIN TJ02T
+    ON JEST~STAT = TJ02T~ISTAT
+    AND TJ02T~SPRAS = '1'
+    FOR ALL ENTRIES IN GT_ALV
+  WHERE OBJNR = GT_ALV-OBJNR
+    AND INACT = SPACE.
+
+  SORT LT_JEST BY OBJNR.
+
+  " 针对订单号汇总
+  LOOP AT LT_JEST ASSIGNING &lt;FS_JEST&gt;.
+    IF LW_CALC-OBJNR &lt;&gt; &lt;FS_JEST&gt;-OBJNR.
+      IF LW_CALC IS NOT INITIAL.
+        APPEND LW_CALC TO LT_CALC.
+        CLEAR LW_CALC.
+      ENDIF.
+
+      LW_CALC-OBJNR = &lt;FS_JEST&gt;-OBJNR.
+    ENDIF.
+
+    IF LW_CALC-TXT IS INITIAL.
+      LW_CALC-TXT = &lt;FS_JEST&gt;-TXT04.
+    ELSE.
+      CONCATENATE LW_CALC-TXT &lt;FS_JEST&gt;-TXT04 INTO LW_CALC-TXT SEPARATED BY SPACE.
+    ENDIF.
+
+    CASE &lt;FS_JEST&gt;-TXT04.
+      WHEN 'REL'.
+        LW_CALC-NO1 = LW_CALC-NO1 + 1.
+      WHEN 'CALC'.
+        LW_CALC-NO1 = LW_CALC-NO1 + 1.
+      WHEN 'SPRQ'.
+        LW_CALC-NO1 = LW_CALC-NO1 + 1.
+      WHEN 'UD'.
+        LW_CALC-NO2 = LW_CALC-NO2 + 1.
+      WHEN 'ICCO'.
+        LW_CALC-NO2 = LW_CALC-NO2 + 1.
+      WHEN 'SPCO'.
+        LW_CALC-NO2 = LW_CALC-NO2 + 1.
+      WHEN 'STUP'.
+        LW_CALC-NO2 = LW_CALC-NO2 + 1.
+      WHEN 'LTCA'.
+        LW_CALC-NO3 = LW_CALC-NO3 + 1.
+      WHEN 'CALC'.
+        LW_CALC-NO3 = LW_CALC-NO3 + 1.
+    ENDCASE.
+  ENDLOOP.
+
+  IF LW_CALC IS NOT INITIAL.
+    APPEND LW_CALC TO LT_CALC.
+  ENDIF.
+
+  SORT LT_CALC BY OBJNR.
+
+  LOOP AT GT_ALV ASSIGNING &lt;FS_ALV&gt;.
+    READ TABLE LT_CALC INTO LW_CALC WITH KEY OBJNR = &lt;FS_ALV&gt;-OBJNR BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      " 设置标志位
+      IF LW_CALC-NO1 = 3.
+        &lt;FS_ALV&gt;-FLAG = '1'.
+      ELSEIF LW_CALC-NO2 = 4.
+        &lt;FS_ALV&gt;-FLAG = '2'.
+      ELSEIF LW_CALC-NO3 = 2.
+        &lt;FS_ALV&gt;-FLAG = '3'.
+      ENDIF.
+
+      " 设置状态名称
+      &lt;FS_ALV&gt;-STATUS = LW_CALC-TXT.
+
+      " 设置颜色
+      IF &lt;FS_ALV&gt;-FLAG = '1'.
+        &lt;FS_ALV&gt;-MESS = ICON_GREEN_LIGHT.
+      ELSE.
+        &lt;FS_ALV&gt;-MESS = ICON_RED_LIGHT.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.                    " SET_STATUS
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DISPLAY_BY_SMART_NEW</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_BY_SMART_NEW .
+  DATA: LV_CONTROL_PARAMETERS TYPE SSFCTRLOP,
+        LV_OUTPUT_OPTIONS     TYPE SSFCOMPOP.
+  DATA: LS_JOB_OUT_INFO         TYPE SSFCRESCL,
+        LS_DOCUMENT_OUTPUT_INFO TYPE SSFCRESPD,
+        LS_JOB_OUT_OPTIONS      TYPE SSFCRESOP.
+  DATA:SSFCRESCL TYPE SSFCRESCL.
+  DATA:LT_PRINT TYPE STANDARD TABLE OF ZMM007_CGRK,
+       LW_PIRNT TYPE ZMM007_CGRK.
+  DATA:LT_HEAD TYPE STANDARD TABLE OF ZMM007_CGRK,
+       LW_HEAD TYPE ZMM007_CGRK.
+  DATA:L_MBLNR TYPE ZMM007_CGRK-MBLNR.
+  DATA:LW_DB TYPE ZZTCJRKD.
+  DATA:LW_CELLCOL TYPE LVC_S_SCOL,
+        LS_STABLE TYPE LVC_S_STBL.
+
+  FIELD-SYMBOLS:&lt;FS_PRINT&gt; TYPE ZMM007_CGRK.
+
+  IF GT_PRINT IS INITIAL.
+    MESSAGE S020 DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  SORT GT_PRINT[] BY MBLNR EBELN EBELP.
+  DELETE ADJACENT DUPLICATES FROM GT_PRINT COMPARING ALL FIELDS.
+
+  IF P_CB2 IS NOT INITIAL.
+    SORT GT_PRINT BY EBELN MATNR.
+  ENDIF.
+
+  "获取所需要打印的所有抬头数据
+  CLEAR: LT_HEAD,L_MBLNR.
+  LOOP AT GT_PRINT ASSIGNING &lt;FS_PRINT&gt;.
+    CLEAR: LW_HEAD.
+    IF &lt;FS_PRINT&gt;-MBLNR &lt;&gt; L_MBLNR.
+      LW_HEAD-MBLNR = &lt;FS_PRINT&gt;-MBLNR.
+      LW_HEAD-WERKS = &lt;FS_PRINT&gt;-WERKS.
+      LW_HEAD-LGORT = &lt;FS_PRINT&gt;-LGORT.
+      LW_HEAD-LGOBE = &lt;FS_PRINT&gt;-LGOBE.
+      LW_HEAD-BUDAT = &lt;FS_PRINT&gt;-BUDAT.
+      LW_HEAD-ZZDNM = &lt;FS_PRINT&gt;-ZZDNM.
+      LW_HEAD-ZGYNM = &lt;FS_PRINT&gt;-ZGYNM.
+      LW_HEAD-ZGCNM = &lt;FS_PRINT&gt;-ZGCNM.
+      LW_HEAD-VERKF = &lt;FS_PRINT&gt;-VERKF.
+      LW_HEAD-TELF1 = &lt;FS_PRINT&gt;-TELF1.
+      LW_HEAD-LIFNR = &lt;FS_PRINT&gt;-LIFNR.
+      LW_HEAD-BUTXT = &lt;FS_PRINT&gt;-BUTXT.
+      LW_HEAD-PTEXT = &lt;FS_PRINT&gt;-PTEXT.
+      L_MBLNR = LW_HEAD-MBLNR.
+      APPEND LW_HEAD TO LT_HEAD.
+    ENDIF.
+  ENDLOOP.
+
+  "open
+  LV_CONTROL_PARAMETERS-NO_OPEN   = 'X'.
+  LV_CONTROL_PARAMETERS-NO_CLOSE  = 'X'.
+  LV_OUTPUT_OPTIONS-TDIMMED       = 'X'.
+  LV_OUTPUT_OPTIONS-TDDELETE      = 'X'.
+  LV_OUTPUT_OPTIONS-TDNEWID       = 'X'.
+  LV_OUTPUT_OPTIONS-TDDEST        = 'LP01'.
+
+  CALL FUNCTION 'SSF_OPEN'
+    EXPORTING
+      CONTROL_PARAMETERS = LV_CONTROL_PARAMETERS
+      OUTPUT_OPTIONS     = LV_OUTPUT_OPTIONS
+    EXCEPTIONS
+      FORMATTING_ERROR   = 1
+      INTERNAL_ERROR     = 2
+      SEND_ERROR         = 3
+      USER_CANCELED      = 4
+      OTHERS             = 5.
+
+  "call
+  CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+    EXPORTING
+      FORMNAME           = 'ZSMART_007_NEW'"SMARTFORMS名
+    IMPORTING
+      FM_NAME            = FM_NAME
+    EXCEPTIONS
+      NO_FORM            = 1
+      NO_FUNCTION_MODULE = 2
+      OTHERS             = 3.
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+             WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+  CHECK FM_NAME IS NOT INITIAL.
+
+  "物料凭证调一次SMARTFORMS
+  LOOP AT LT_HEAD INTO LW_HEAD.
+    CLEAR:LT_PRINT.
+    LOOP AT GT_PRINT INTO W_PRINT WHERE MBLNR = LW_HEAD-MBLNR.
+
+      W_PRINT-ZSJSL = W_PRINT-MENGE. " 结算数量
+      W_PRINT-ZJSSL = W_PRINT-BPMNG. "送检数量
+      SHIFT W_PRINT-ZSJSL RIGHT DELETING TRAILING  '0 '.
+      SHIFT W_PRINT-ZSJSL RIGHT DELETING TRAILING '.'.
+      SHIFT W_PRINT-ZJSSL RIGHT DELETING TRAILING  '0 '.
+      SHIFT W_PRINT-ZJSSL RIGHT DELETING TRAILING '.'.
+
+      REPLACE ALL OCCURRENCES OF SUBSTRING '-' IN W_PRINT-maktx WITH '‐'.
+      CONDENSE W_PRINT-maktx .
+      CONDENSE W_PRINT-ZEINR .
+      REPLACE ' ' WITH '　' INTO W_PRINT-maktx.
+
+      APPEND W_PRINT TO LT_PRINT.
+
+    CLEAR:W_PRINT.
+    ENDLOOP.
+
+    SORT lt_print by PRUEFLOS.
+
+    CALL FUNCTION FM_NAME
+      EXPORTING
+        CONTROL_PARAMETERS   = LV_CONTROL_PARAMETERS
+        OUTPUT_OPTIONS       = LV_OUTPUT_OPTIONS
+        GS_HEADER            = LW_HEAD
+      IMPORTING
+        DOCUMENT_OUTPUT_INFO = LS_DOCUMENT_OUTPUT_INFO
+        JOB_OUTPUT_INFO      = LS_JOB_OUT_INFO
+        JOB_OUTPUT_OPTIONS   = LS_JOB_OUT_OPTIONS
+      TABLES
+        GT_ITEM              = LT_PRINT
+      EXCEPTIONS
+        FORMATTING_ERROR     = 1
+        INTERNAL_ERROR       = 2
+        SEND_ERROR           = 3
+        USER_CANCELED        = 4
+        OTHERS               = 5.
+    IF SY-SUBRC &lt;&gt; 0.
+      MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    ENDIF.
+
+    CLEAR:LW_HEAD.
+
+  ENDLOOP.
+
+  "close
+  CALL FUNCTION 'SSF_CLOSE'
+    IMPORTING
+      JOB_OUTPUT_INFO  = LS_JOB_OUT_INFO
+    EXCEPTIONS
+      FORMATTING_ERROR = 1
+      INTERNAL_ERROR   = 2
+      SEND_ERROR       = 3
+      OTHERS           = 4.
+
+
+  "判断是否真实打印
+  IF LS_JOB_OUT_INFO-OUTPUTDONE = 'X'.
+    CLEAR:L_MBLNR.
+    LOOP AT GT_PRINT INTO W_PRINT.
+      IF L_MBLNR &lt;&gt; W_PRINT-MBLNR.
+        LW_DB-MBLNR = W_PRINT-MBLNR.
+        LW_DB-ZFLAG = 'X'.
+      ENDIF.
+      L_MBLNR = W_PRINT-MBLNR.
+      MODIFY ZZTCJRKD FROM LW_DB.
+      LOOP AT GT_ALV ASSIGNING &lt;FS_ALV&gt; WHERE MBLNR = LW_DB-MBLNR.
+        LW_CELLCOL-FNAME = 'MBLNR'.
+        LW_CELLCOL-COLOR-COL = '3'.
+        LW_CELLCOL-COLOR-INT = '1'.
+        LW_CELLCOL-COLOR-INV = '0'.
+        APPEND LW_CELLCOL TO &lt;FS_ALV&gt;-CELLCOLOR.
+        CLEAR LW_CELLCOL.
+      ENDLOOP.
+    ENDLOOP.
+
+    " 刷新alv界面显示
+    IF G_ALV_GRID IS INITIAL.
+      CALL FUNCTION 'GET_GLOBALS_FROM_SLVC_FULLSCR'
+        IMPORTING
+          E_GRID = G_ALV_GRID.
+    ENDIF.
+    " 刷新数据
+    CALL METHOD G_ALV_GRID-&gt;REFRESH_TABLE_DISPLAY
+      EXPORTING
+        IS_STABLE      =  LS_STABLE
+<font color ="#0000FF">*          I_SOFT_REFRESH =</font>
+<font color ="#0000FF">*        EXCEPTIONS</font>
+<font color ="#0000FF">*          FINISHED       = 1</font>
+<font color ="#0000FF">*          others         = 2</font>
+  .
+  ENDIF.
+
+ENDFORM.                    " DISPLAY_BY_SMART_NEW
+
+<font color ="#0000FF">*Text elements</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* 001 查询条件</font>
+<font color ="#0000FF">* 002 打印方式</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* P_CB1         按采购订单打印</font>
+<font color ="#0000FF">* P_CB2         按物料编码排序打印</font>
+<font color ="#0000FF">* P_PLANT         工厂</font>
+<font color ="#0000FF">* S_CGDD         采购订单</font>
+<font color ="#0000FF">* S_CGZ         采购组</font>
+<font color ="#0000FF">* S_CJRQ         创建日期</font>
+<font color ="#0000FF">* S_JYPH         检验批号</font>
+<font color ="#0000FF">* S_KCDD         库存地点</font>
+<font color ="#0000FF">* S_LIFNR         供应商账号</font>
+<font color ="#0000FF">* S_WLH         物料编码</font>
+<font color ="#0000FF">* S_WLPZ         物料凭证号</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPEOPLE</font>
+<font color ="#0000FF">*020   没有选择条件的数据！</font>
+<font color ="#0000FF">*050   没有满足查询条件的数据!</font>
+<font color ="#0000FF">*246   检验批&已经处理完成，不可以打印</font>
+<font color ="#0000FF">*247   检验批&无法处理，不可以打印</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

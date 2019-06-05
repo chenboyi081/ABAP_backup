@@ -1,0 +1,598 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZPP041</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZPP041</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  工艺路线变更汇总查询表</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& 程序名称       : ZPP041</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 作者           : 汤浩然（人民）</font>
+<font color ="#0000FF">*& 开发日期       : 2015-5-27.</font>
+<font color ="#0000FF">*& 请求号         :</font>
+<font color ="#0000FF">*& 申请者         :</font>
+<font color ="#0000FF">*& 描述           : 工艺路线变更汇总查询表</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 变更记录</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">** 修改日期 开发人员  请求号 描述</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  ZPP041 MESSAGE-ID ZPEOPLE..
+
+TABLES:MAPL,MAKT,MARC,CDPOS,CDHDR,CRHD,T024D.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 类型定义</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">************************************************************************</font>
+
+TYPES:BEGIN OF TY_GYLXBG,
+  MATNR TYPE MAPL-MATNR,          "物料编号
+  MAKTX TYPE MAKT-MAKTX,          "物料描述
+  WERKS TYPE MAPL-WERKS,          "工厂
+  DISPO TYPE MARC-DISPO,          "MRP控制者
+  DSNAM TYPE T024D-DSNAM,         "MRP控制者名称
+  FEVOR TYPE MARC-FEVOR,          "生产管理员
+  PLNNR TYPE MAPL-PLNNR,          "工艺路线组
+  PLNAL TYPE MAPL-PLNAL,          "组计数器
+  PLNKN TYPE PLPO-PLNKN,          "结点
+  ZAEHL TYPE PLPO-ZAEHL,          "计数器
+  VORNR TYPE PLPO-VORNR,          "工序号
+  LTXA1 TYPE PLPO-LTXA1,          "工序描述
+  ARBPL TYPE CRHD-ARBPL,          "工作中心
+  UDATE     TYPE CDHDR-UDATE,     "更改日期
+  USERNAME  TYPE CDHDR-USERNAME,  "更改者
+  VALUE_OLD TYPE CDPOS-VALUE_OLD, "旧值
+  VALUE_NEW TYPE CDPOS-VALUE_NEW, "新值
+  FNAME     TYPE CDPOS-FNAME,     "修改对象
+  TABNAME   TYPE CDPOS-TABNAME,   "所在表名
+  CHNGIND   TYPE CDPOS-CHNGIND,   "操作
+  TABKEY    TYPE CDPOS-TABKEY,    "表按钮
+  OBJECTID  TYPE CDPOS-OBJECTID,  "对象值
+  CHANGENR  TYPE CDPOS-CHANGENR,
+  OPERA(20) TYPE C ,              "操作-替代项
+END OF TY_GYLXBG.
+
+TYPES:BEGIN OF TY_PLPO,
+  PLNNR  TYPE PLPO-PLNNR,
+  PLNKN  TYPE PLPO-PLNKN,
+  PLNAL  TYPE PLAS-PLNAL,
+  ZAEHL  TYPE PLPO-ZAEHL,
+  VORNR  TYPE PLPO-VORNR,
+  LTXA1  TYPE PLPO-LTXA1,
+END OF TY_PLPO.
+
+TYPES:BEGIN OF TY_MATNR,
+  MATNR TYPE MAPL-MATNR,
+  MAKTX TYPE MAKT-MAKTX,
+  WERKS TYPE MAPL-WERKS,
+  DISPO TYPE MARC-DISPO,
+  DSNAM TYPE T024D-DSNAM,         "MRP控制者名称
+  FEVOR TYPE MARC-FEVOR,
+  PLNNR TYPE MAPL-PLNNR,
+  PLNAL TYPE MAPL-PLNAL,
+  OBJECTID TYPE CDPOS-OBJECTID,
+END OF TY_MATNR.
+
+TYPES:BEGIN OF TY_CDHDR,
+  CHANGENR  TYPE  CDHDR-CHANGENR,
+  UDATE     TYPE CDHDR-UDATE,
+  USERNAME  TYPE CDHDR-USERNAME,
+  OBJECTID  TYPE CDHDR-OBJECTID,
+END OF TY_CDHDR.
+
+TYPES:BEGIN OF TY_CRHD,
+  OBJID TYPE  CRHD-OBJID,
+  ARBPL TYPE  CRHD-ARBPL,
+END OF TY_CRHD.
+
+DATA:GT_MATNR  TYPE STANDARD TABLE OF TY_MATNR.
+DATA:GT_CDHDR  TYPE STANDARD TABLE OF TY_CDHDR.
+DATA:GT_GYLXBG TYPE STANDARD TABLE OF TY_GYLXBG.
+DATA:GT_PLPO   TYPE STANDARD TABLE OF TY_PLPO.
+DATA:GT_CRHD   TYPE STANDARD TABLE OF TY_CRHD.
+DATA:G_YESTERDAY TYPE SY-DATUM.
+DATA: NUM TYPE I.
+
+<font color ="#0000FF">***alv相关内表和工作区定义</font>
+DATA: GT_FCAT  TYPE LVC_T_FCAT,   "定义alv字段目录内表
+      W_FCAT   TYPE LVC_S_FCAT,   "定义alv字段目录工作区
+      W_LAYOUT TYPE LVC_S_LAYO.   "定义alv表单相关属性，格式
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 字段符声明</font>
+<font color ="#0000FF">************************************************************************</font>
+FIELD-SYMBOLS:&lt;FS_MATNR&gt;   TYPE TY_MATNR,
+               &lt;FS_CDHDR&gt;  TYPE TY_CDHDR,
+               &lt;FS_GYLXBG&gt; TYPE TY_GYLXBG,
+               &lt;FS_PLPO&gt;   TYPE TY_PLPO,
+               &lt;FS_CRHD&gt;   TYPE TY_CRHD.
+
+<font color ="#0000FF">*************************************************************************</font>
+<font color ="#0000FF">* 定义选择屏幕参数</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*************************************************************************</font>
+SELECTION-SCREEN BEGIN OF BLOCK BBK WITH FRAME TITLE TEXT-001.
+SELECT-OPTIONS:SMATNR FOR MAPL-MATNR OBLIGATORY.  "物料编号  多值 必输
+PARAMETERS:SWERKS LIKE MAPL-WERKS DEFAULT '1010'. "工厂  单值 默认值-1010
+SELECT-OPTIONS:SDISPO FOR MARC-DISPO OBLIGATORY.             "MRP控制者 多值
+SELECT-OPTIONS:SFEVOR FOR MARC-FEVOR.             "生产管理员 多值
+SELECT-OPTIONS:SUDATE FOR CDHDR-UDATE DEFAULT G_YESTERDAY TO SY-DATUM OBLIGATORY. "更改日期 多值 必输
+SELECT-OPTIONS:SPLNNR FOR MAPL-PLNNR.             "工艺路线组 多值
+SELECT-OPTIONS:SPLNAL FOR MAPL-PLNAL.             "工艺路线组计数器 多值
+SELECTION-SCREEN END OF BLOCK BBK.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* Initialization</font>
+<font color ="#0000FF">************************************************************************</font>
+INITIALIZATION.
+  PERFORM INCREMENT_COUNT_LOG.    "
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*& START-OF-SELECTION</font>
+<font color ="#0000FF">************************************************************************</font>
+START-OF-SELECTION.
+  PERFORM GET_DATA.
+  PERFORM DISPLAY_ALVS.
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  INCREMENT_COUNT_LOG</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       每次访问后增加次数, 每次返回到查询页面，都会进入这个函数</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INCREMENT_COUNT_LOG .
+  DATA: LW_DB TYPE ZZTTABLOG,
+        L_MINUTE TYPE SY-UZEIT,
+        L_NOW_YEAR TYPE ZZTTABLOG-GJAHR,
+        L_NOW_MONTH TYPE ZZTTABLOG-MONAT.
+
+  L_NOW_YEAR = SY-DATUM+0(4).
+  L_NOW_MONTH = SY-DATUM+4(2).
+
+  " 按每月累加用户使用数
+  SELECT SINGLE *
+    INTO LW_DB
+    FROM ZZTTABLOG
+  WHERE TCODE = SY-TCODE      " 事物代码
+    AND GJAHR = L_NOW_YEAR    " 当前年份
+    AND MONAT = L_NOW_MONTH.  " 当前月份
+
+  IF SY-SUBRC = 0.
+    " 相同的人，如果在10分钟内做相同的操作，算计一次
+    IF LW_DB-ERNAM = SY-UNAME AND
+      LW_DB-ERDAT = SY-DATUM.
+      L_MINUTE = SY-UZEIT - LW_DB-ERZET.
+      IF L_MINUTE &lt; '001000'.
+        RETURN.
+      ENDIF.
+    ENDIF.
+    LW_DB-ZCUNT = LW_DB-ZCUNT + 1.      " 次数加一
+  ELSE.
+    LW_DB-TCODE = SY-TCODE.           " 记录操作的tcode
+    LW_DB-ZCUNT = '1'.                " 初始化次数
+    LW_DB-ZFNAM = SY-UNAME.           " 第一次操作人员
+    LW_DB-ZFDAT = SY-DATUM.           " 第一次操作日期
+    LW_DB-ZFZET = SY-UZEIT.           " 第一次操作时间
+    LW_DB-GJAHR = L_NOW_YEAR.         " 年度
+    LW_DB-MONAT = L_NOW_MONTH.        " 月份
+  ENDIF.
+
+  LW_DB-ERNAM = SY-UNAME.     " 本次操作人员
+  LW_DB-ERDAT = SY-DATUM.     " 本次操作日期
+  LW_DB-ERZET = SY-UZEIT.     " 本次操作时间
+
+  MODIFY ZZTTABLOG FROM LW_DB.
+  COMMIT WORK AND WAIT.
+ENDFORM.                    " INCREMENT_COUNT_LOG
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       获取主数据</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA .
+  DATA:LCOLOR TYPE LVC_S_SCOL.
+  CLEAR:GT_MATNR.
+
+  SELECT
+    MAPL~MATNR
+    MAKT~MAKTX
+    MAPL~WERKS
+    MAPL~PLNNR
+    MAPL~PLNAL
+    MARC~DISPO
+    T024D~DSNAM
+    INTO CORRESPONDING FIELDS OF TABLE GT_MATNR
+    FROM MAPL INNER JOIN MARC
+    ON MAPL~MATNR = MARC~MATNR
+    AND MAPL~WERKS = MARC~WERKS
+    LEFT JOIN MAKT
+    ON MAPL~MATNR = MAKT~MATNR
+    AND SPRAS = '1'
+    LEFT JOIN T024D
+    ON MARC~DISPO = T024D~DISPO
+    AND MARC~WERKS = T024D~WERKS
+    WHERE MAPL~MATNR IN SMATNR
+    AND   MAPL~WERKS =  SWERKS
+    AND   MARC~DISPO IN SDISPO
+    AND   MARC~FEVOR IN SFEVOR
+    AND   MAPL~PLNNR IN SPLNNR
+    AND   MAPL~PLNAL IN SPLNAL.
+
+  IF GT_MATNR IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+
+  LOOP AT GT_MATNR ASSIGNING &lt;FS_MATNR&gt;.
+    CONCATENATE SY-MANDT 'N' &lt;FS_MATNR&gt;-PLNNR INTO &lt;FS_MATNR&gt;-OBJECTID.
+    "将 三个字段 合成 一个字段
+  ENDLOOP.
+
+  SORT GT_MATNR BY OBJECTID.
+
+  SELECT
+    CDHDR~OBJECTID
+    CDHDR~CHANGENR
+    CDHDR~UDATE
+    CDHDR~USERNAME
+    INTO CORRESPONDING FIELDS OF TABLE GT_CDHDR
+    FROM CDHDR
+    FOR ALL ENTRIES IN GT_MATNR
+  WHERE  CDHDR~OBJECTID = GT_MATNR-OBJECTID
+    AND  OBJECTCLAS = 'PLAN'
+    AND  CDHDR~UDATE IN SUDATE.
+
+  SORT GT_CDHDR BY OBJECTID CHANGENR.
+
+  IF GT_CDHDR IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  SELECT
+    CDPOS~OBJECTID
+    CDPOS~CHANGENR
+    CDPOS~VALUE_OLD
+    CDPOS~VALUE_NEW
+    CDPOS~FNAME
+    CDPOS~CHNGIND
+    CDPOS~TABNAME
+    CDPOS~TABKEY
+   " CRHD~ARBPL
+    INTO CORRESPONDING FIELDS OF TABLE GT_GYLXBG
+    FROM CDPOS
+  "  LEFT JOIN CRHD
+  "  ON CDPOS~VALUE_OLD = CRHD~OBJID
+  "  AND CDPOS~VALUE_NEW = CRHD~OBJID
+    FOR ALL ENTRIES IN GT_CDHDR
+  WHERE CDPOS~OBJECTID = GT_CDHDR-OBJECTID
+    AND CDPOS~CHANGENR = GT_CDHDR-CHANGENR
+    AND OBJECTCLAS = 'PLAN'
+    AND TABNAME IN ('PLPO','PLAS').
+  "AND FNAME IN ('LTXA1','VGW01','VGW02').
+
+  IF GT_GYLXBG IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  "删除plas修改中非删除的记录
+  DELETE GT_GYLXBG WHERE TABNAME = 'PLAS' AND FNAME &lt;&gt; 'LOEKZ'.
+  DELETE GT_GYLXBG WHERE TABNAME = 'PLPO' AND FNAME &lt;&gt; 'LTXA1' AND FNAME &lt;&gt;  'VGW01' AND FNAME &lt;&gt;'VGW02' AND FNAME &lt;&gt;'BMSCH' AND FNAME &lt;&gt;'ARBID' AND FNAME &lt;&gt;'KEY'.
+
+
+
+  IF GT_GYLXBG IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  LOOP AT GT_GYLXBG ASSIGNING &lt;FS_GYLXBG&gt;.
+    IF &lt;FS_GYLXBG&gt;-TABNAME = 'PLPO'.
+      &lt;FS_GYLXBG&gt;-PLNKN = &lt;FS_GYLXBG&gt;-TABKEY+12(8).  "截取第12以后的8个字段
+      &lt;FS_GYLXBG&gt;-ZAEHL = &lt;FS_GYLXBG&gt;-TABKEY+20(8).  "截取第20以后的8个字段
+    ELSEIF &lt;FS_GYLXBG&gt;-TABNAME = 'PLAS'.
+      &lt;FS_GYLXBG&gt;-PLNAL = &lt;FS_GYLXBG&gt;-TABKEY+12(2).
+      &lt;FS_GYLXBG&gt;-PLNKN = &lt;FS_GYLXBG&gt;-TABKEY+20(8).  "截取第12以后的8个字段
+      &lt;FS_GYLXBG&gt;-ZAEHL = &lt;FS_GYLXBG&gt;-TABKEY+28(8).  "截取第20以后的8个字段
+    ENDIF.
+
+
+    READ TABLE GT_CDHDR ASSIGNING &lt;FS_CDHDR&gt; WITH  KEY  OBJECTID = &lt;FS_GYLXBG&gt;-OBJECTID CHANGENR = &lt;FS_GYLXBG&gt;-CHANGENR BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      "将2个字段添加到&lt;FS_GYLXBG&gt;中
+      &lt;FS_GYLXBG&gt;-UDATE = &lt;FS_CDHDR&gt;-UDATE.
+      &lt;FS_GYLXBG&gt;-USERNAME = &lt;FS_CDHDR&gt;-USERNAME.
+    ENDIF.
+
+    READ TABLE GT_MATNR ASSIGNING &lt;FS_MATNR&gt; WITH KEY  OBJECTID = &lt;FS_GYLXBG&gt;-OBJECTID BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_GYLXBG&gt;-MATNR = &lt;FS_MATNR&gt;-MATNR.
+      &lt;FS_GYLXBG&gt;-MAKTX = &lt;FS_MATNR&gt;-MAKTX.
+      &lt;FS_GYLXBG&gt;-WERKS = &lt;FS_MATNR&gt;-WERKS.
+      &lt;FS_GYLXBG&gt;-PLNNR = &lt;FS_MATNR&gt;-PLNNR.
+      &lt;FS_GYLXBG&gt;-DISPO = &lt;FS_MATNR&gt;-DISPO.
+      &lt;FS_GYLXBG&gt;-DSNAM = &lt;FS_MATNR&gt;-DSNAM.
+    ENDIF.
+  ENDLOOP.
+
+
+  SELECT PLPO~PLNNR
+    PLAS~PLNAL
+    PLPO~PLNKN
+    PLPO~ZAEHL
+    PLPO~VORNR
+    PLPO~LTXA1
+    INTO CORRESPONDING FIELDS OF TABLE GT_PLPO
+    FROM PLPO INNER JOIN PLAS
+    ON PLPO~PLNNR = PLAS~PLNNR
+    AND PLPO~PLNTY = PLAS~PLNTY
+    AND PLPO~PLNKN = PLAS~PLNKN
+    AND PLPO~ZAEHL = PLAS~ZAEHL
+    FOR ALL ENTRIES IN GT_GYLXBG
+  WHERE PLPO~PLNTY = 'N'
+    AND PLPO~PLNNR = GT_GYLXBG-PLNNR
+    AND PLPO~PLNKN = GT_GYLXBG-PLNKN
+    AND PLPO~ZAEHL = GT_GYLXBG-ZAEHL
+    AND PLAS~PLNAL IN SPLNAL.
+
+  IF GT_PLPO IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  SELECT
+    CRHD~OBJID
+    CRHD~ARBPL
+    INTO CORRESPONDING FIELDS OF TABLE GT_CRHD
+    FROM CRHD.
+
+  SORT GT_CRHD BY OBJID.
+  SORT GT_PLPO BY PLNNR PLNKN ZAEHL.
+
+  LOOP AT GT_GYLXBG ASSIGNING &lt;FS_GYLXBG&gt;.
+    READ TABLE GT_PLPO ASSIGNING &lt;FS_PLPO&gt; WITH KEY PLNNR = &lt;FS_GYLXBG&gt;-PLNNR  PLNKN = &lt;FS_GYLXBG&gt;-PLNKN ZAEHL = &lt;FS_GYLXBG&gt;-ZAEHL BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_GYLXBG&gt;-VORNR = &lt;FS_PLPO&gt;-VORNR.
+      &lt;FS_GYLXBG&gt;-LTXA1 = &lt;FS_PLPO&gt;-LTXA1.
+      &lt;FS_GYLXBG&gt;-PLNAL = &lt;FS_PLPO&gt;-PLNAL.
+    ELSE.
+      DELETE    GT_GYLXBG.
+      CONTINUE.
+    ENDIF.
+
+
+    IF &lt;FS_GYLXBG&gt;-FNAME = 'ARBID'.
+      READ TABLE GT_CRHD ASSIGNING &lt;FS_CRHD&gt; WITH KEY OBJID = &lt;FS_GYLXBG&gt;-VALUE_OLD BINARY SEARCH.
+      IF SY-SUBRC = 0.
+        &lt;FS_GYLXBG&gt;-VALUE_OLD = &lt;FS_CRHD&gt;-ARBPL.
+      ENDIF.
+
+      READ TABLE GT_CRHD ASSIGNING &lt;FS_CRHD&gt; WITH KEY OBJID = &lt;FS_GYLXBG&gt;-VALUE_NEW BINARY SEARCH.
+      IF SY-SUBRC = 0.
+        &lt;FS_GYLXBG&gt;-VALUE_NEW = &lt;FS_CRHD&gt;-ARBPL.
+      ENDIF.
+    ENDIF.
+
+
+    IF
+      &lt;FS_GYLXBG&gt;-CHNGIND = 'U'.
+      &lt;FS_GYLXBG&gt;-OPERA = '更新'.
+    ELSEIF
+      &lt;FS_GYLXBG&gt;-CHNGIND = 'I'.
+      &lt;FS_GYLXBG&gt;-OPERA = '插入'.
+    ENDIF.
+    "替换文本
+    IF
+      &lt;FS_GYLXBG&gt;-FNAME = 'LTXA1'.
+      &lt;FS_GYLXBG&gt;-FNAME = '工序短文本'.
+    ELSEIF
+      &lt;FS_GYLXBG&gt;-FNAME = 'VGW01'.
+      &lt;FS_GYLXBG&gt;-FNAME = '直接人工'.
+    ELSEIF
+      &lt;FS_GYLXBG&gt;-FNAME = 'VGW02'.
+      &lt;FS_GYLXBG&gt;-FNAME = '制造费用'.
+    ELSEIF
+      &lt;FS_GYLXBG&gt;-FNAME = 'LOEKZ'.
+      &lt;FS_GYLXBG&gt;-FNAME = '工序删除'.
+    ELSEIF
+    &lt;FS_GYLXBG&gt;-FNAME = 'BMSCH'.
+      &lt;FS_GYLXBG&gt;-FNAME = '基本数量'.
+    ELSEIF
+    &lt;FS_GYLXBG&gt;-FNAME = 'ARBID'.
+      &lt;FS_GYLXBG&gt;-FNAME = '工作中心'.
+    ELSEIF
+    &lt;FS_GYLXBG&gt;-FNAME = 'KEY'.
+      &lt;FS_GYLXBG&gt;-FNAME = '已创建'.
+    ENDIF.
+
+
+
+  ENDLOOP.
+
+  IF GT_GYLXBG IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+ENDFORM.                    " GET_DATA
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  display_alv</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       显示alv</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_ALVS.
+  PERFORM INIT_ALV.
+  PERFORM INIT_FIELDCAT.
+  PERFORM SHOW_ALV.
+ENDFORM.                    "DISPLAY_ALV
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  ALV</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       初始化alv样式</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_ALV .
+  CLEAR:W_LAYOUT.
+  W_LAYOUT-CWIDTH_OPT = 'X'. " 动态宽度
+  W_LAYOUT-ZEBRA = 'X'.      " 斑马线
+ENDFORM.                    "ALV
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FIELDCAT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       初始化字段目录</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_FIELDCAT .
+  CLEAR:GT_FCAT.
+  " 工厂
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'WERKS'.
+  W_FCAT-COLTEXT = '工厂'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 物料编码
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'MATNR'.
+  W_FCAT-COLTEXT = '物料编码'.
+  W_FCAT-NO_ZERO = 'X'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 物料描述
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'MAKTX'.
+  W_FCAT-COLTEXT = '物料描述'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 工艺路线组
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'PLNNR'.
+  W_FCAT-COLTEXT = '工艺路线组'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 组计数器
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'PLNAL'.
+  W_FCAT-COLTEXT = '组计数器'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 工序
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'VORNR'.
+  W_FCAT-COLTEXT = '工序号'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 工序描述
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'LTXA1'.
+  W_FCAT-COLTEXT = '工序描述'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 修改对象
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'FNAME'.
+  W_FCAT-COLTEXT = '修改对象'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 旧值
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'VALUE_OLD'.
+  W_FCAT-COLTEXT = '旧值'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 新值
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'VALUE_NEW'.
+  W_FCAT-COLTEXT = '新值'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 更改日期
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'UDATE'.
+  W_FCAT-COLTEXT = '更改日期'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 更改者
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'USERNAME'.
+  W_FCAT-COLTEXT = '更改账号'.
+  APPEND W_FCAT TO GT_FCAT.
+  " 操作
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'OPERA'.
+  W_FCAT-COLTEXT = '操作'.
+  APPEND W_FCAT TO GT_FCAT.
+  " MRP控制者
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'DISPO'.
+  W_FCAT-COLTEXT = 'MRP控制者'.
+  APPEND W_FCAT TO GT_FCAT.
+  " MRP控制者名称
+  CLEAR:W_FCAT.
+  W_FCAT-FIELDNAME = 'DSNAM'.
+  W_FCAT-COLTEXT = 'MRP控制者名称'.
+  APPEND W_FCAT TO GT_FCAT.
+
+
+ENDFORM.                    " FIELDCAT
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SHOW</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       显示alv</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_ALV.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'
+    EXPORTING
+      I_CALLBACK_PROGRAM = SY-REPID
+      IS_LAYOUT_LVC      = W_LAYOUT
+      IT_FIELDCAT_LVC    = GT_FCAT
+      I_SAVE             = 'A'
+    TABLES
+      T_OUTTAB           = GT_GYLXBG
+    EXCEPTIONS
+      PROGRAM_ERROR      = 1
+      OTHERS             = 2.
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+
+ENDFORM.                    " SHOW
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      LOAD-OF-PROGRAM.</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+LOAD-OF-PROGRAM.
+  G_YESTERDAY = SY-DATUM - 1.
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* SDISPO         MRP控制者</font>
+<font color ="#0000FF">* SFEVOR         生产管理员</font>
+<font color ="#0000FF">* SMATNR         物料编码</font>
+<font color ="#0000FF">* SPLNAL         工艺路线组计数器</font>
+<font color ="#0000FF">* SPLNNR         工艺路线组</font>
+<font color ="#0000FF">* SUDATE         更改日期</font>
+<font color ="#0000FF">* SWERKS         工厂</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPEOPLE</font>
+<font color ="#0000FF">*050   没有满足查询条件的数据!</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

@@ -1,0 +1,886 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZPP035</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZPP035</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  集团-浙江采购需求计划执行表</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& 程序名称       : ZPP035</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 作者           : tanghr</font>
+<font color ="#0000FF">*& 开发日期       : 2014-09-011</font>
+<font color ="#0000FF">*& 请求号         :</font>
+<font color ="#0000FF">*& 申请者         : 薛鹏程</font>
+<font color ="#0000FF">*& 描述           : 集团-浙江采购需求计划执行表</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 变更记录</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">** 修改日期 开发人员  请求号 描述</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  ZPP035 MESSAGE-ID ZPEOPLE.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 表</font>
+<font color ="#0000FF">************************************************************************</font>
+TABLES:MARA,
+  MARC,
+  ZZT_ZPP033,
+  ZZT_ZPP033_2,
+  EKKO.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 类型定义</font>
+<font color ="#0000FF">************************************************************************</font>
+TYPES:BEGIN OF TY_XSYC,
+      MATNR TYPE ZZT_ZPP033-MATNR,  "物料编码
+      MAKTX TYPE ZZT_ZPP033-MAKTX,  "物料描述
+      WERKS TYPE ZZT_ZPP033-WERKS,  "工厂
+      PLNMG TYPE ZZT_ZPP033-PLNMG,  "计划数量
+      PDATU TYPE ZZT_ZPP033-PDATU,  "预测日期
+      VERSB TYPE ZZT_ZPP033-VERSB,  "计划版本
+      MWYBS TYPE ZZT_ZPP033-MWYBS,  "唯一标识
+      MBDZT TYPE ZZT_ZPP033_2-MBDZT, "状态
+      MZXKC TYPE ZZT_ZPP033_2-MZXKC, "执行期末库存
+      MABST TYPE ZZT_ZPP033_2-MABST, "最大库存
+      MZXSL type zzt_zpp033_2-MZXSL, "执行数量
+      MEINS TYPE MARA-MEINS,         "单位
+      ZTXT(128) TYPE C,              "
+      END  OF TY_XSYC.
+
+TYPES:BEGIN OF TY_PBIM,   " 已经存在的独立需求计划
+        MATNR TYPE PBIM-MATNR,
+        WERKS TYPE PBIM-WERKS,
+        VERSB TYPE PBIM-VERSB,  " 独立需求的版本号
+        BEDAE TYPE PBIM-BEDAE,  " 需求类型
+        PBDNR TYPE PBIM-PBDNR,  " 需求计划编号
+        ENTLI TYPE PBED-ENTLI,  " 日期类型(日， 星期， 月， 间隔 )
+        PDATU TYPE PBED-PDATU,  " 交货/订单完成日期
+        MEINS TYPE PBED-MEINS,  " 基本计量单位
+        PLNMG TYPE PBED-PLNMG,  " 计划数量
+        SERNR TYPE PBED-SERNR,  " BOM展开号
+        VERID TYPE PBED-VERID,  " 生产版本
+      END OF TY_PBIM.
+
+TYPES:BEGIN OF TY_CGDD,
+       MATNR TYPE ZZT_ZPP033-MATNR,
+       WERKS TYPE ZZT_ZPP033-WERKS,
+       MAKTX TYPE ZZT_ZPP033-MAKTX,
+       MCGDD TYPE ZZT_ZPP033_2-MCGDD, "采购订单号
+       MCGHX TYPE ZZT_ZPP033_2-MCGHX,  "采购订单行项目
+       PLNMG TYPE ZZT_ZPP033-PLNMG,
+       MWYBS TYPE ZZT_ZPP033-MWYBS,  "唯一标识
+       ZTXT(128) TYPE C,
+      END OF TY_CGDD.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 内表声明</font>
+<font color ="#0000FF">************************************************************************</font>
+DATA:GT_XSYC TYPE STANDARD TABLE OF TY_XSYC,
+      W_XSYC TYPE TY_XSYC.
+
+DATA:GT_PBIM TYPE STANDARD TABLE OF TY_PBIM,
+      W_PBIM TYPE TY_PBIM.
+
+DATA:GT_ERROR TYPE STANDARD TABLE OF TY_XSYC,
+      W_ERROR TYPE TY_XSYC.
+
+DATA:GT_CGDD TYPE STANDARD TABLE OF TY_CGDD,
+      W_CGDD TYPE TY_CGDD.
+
+DATA: GT_FCAT     TYPE LVC_T_FCAT,
+      W_FCAT      TYPE LVC_S_FCAT,
+      W_LAYOUT    TYPE LVC_S_LAYO.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 全局变量声明</font>
+<font color ="#0000FF">************************************************************************</font>
+DATA: BDCDATA LIKE BDCDATA    OCCURS 0 WITH HEADER LINE,
+      IM_MODE TYPE CTU_MODE VALUE 'N',
+      GT_MESTAB TYPE STANDARD TABLE OF BDCMSGCOLL,
+      W_MESTAB TYPE BDCMSGCOLL.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 常数</font>
+<font color ="#0000FF">************************************************************************</font>
+CONSTANTS:c_no type i VALUE 20.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 字段符声明</font>
+<font color ="#0000FF">************************************************************************</font>
+FIELD-SYMBOLS:&lt;FS_XSYC&gt; TYPE TY_XSYC,
+               &lt;FS_CGDD&gt; TYPE TY_CGDD,
+               &lt;FS_ERROR&gt; TYPE TY_XSYC.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*      宏定义</font>
+<font color ="#0000FF">************************************************************************</font>
+DEFINE MACRO_FILL_FIELDCAT.
+  CLEAR W_FCAT.
+  W_FCAT-FIELDNAME      = &1.
+  W_FCAT-COLTEXT        = &2.
+  W_FCAT-NO_ZERO        = &3.
+  W_FCAT-NO_OUT        = &4.
+  W_FCAT-DO_SUM       = &5.
+  W_FCAT-EDIT_MASK     = &6.
+  W_FCAT-REF_TABLE  = &7.
+  W_FCAT-REF_FIELD = &8.
+  APPEND W_FCAT TO GT_FCAT.
+END-OF-DEFINITION.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*      选择屏幕</font>
+<font color ="#0000FF">************************************************************************</font>
+SELECTION-SCREEN BEGIN OF BLOCK BK1 WITH FRAME TITLE TEXT-000.
+PARAMETERS:P_WERKS TYPE MARC-WERKS OBLIGATORY DEFAULT '1000'. "工厂
+PARAMETERS:S_EKGRP TYPE EKKO-EKGRP OBLIGATORY."采购组
+SELECT-OPTIONS:S_MATNR FOR MARA-MATNR. "物料编号
+SELECT-OPTIONS:S_PRDHA FOR MARA-PRDHA. "产品层次
+SELECT-OPTIONS:S_JHBDH FOR ZZT_ZPP033_2-JHBDH. "计划表单号
+PARAMETERS:P_XSYC TYPE C RADIOBUTTON GROUP G1 DEFAULT 'X'.
+PARAMETERS:P_XSYC1 TYPE C RADIOBUTTON GROUP G1 MODIF ID M1.  "不要删除
+SELECTION-SCREEN END OF BLOCK BK1.
+
+
+SELECTION-SCREEN BEGIN OF BLOCK BK2 WITH FRAME TITLE TEXT-001.
+SELECTION-SCREEN  BEGIN  OF LINE.
+SELECTION-SCREEN: COMMENT 1(79) WARNING1.
+SELECTION-SCREEN  END  OF LINE.
+
+SELECTION-SCREEN  BEGIN  OF LINE.
+SELECTION-SCREEN: COMMENT 1(79) WARNING2.
+SELECTION-SCREEN  END  OF LINE.
+
+
+SELECTION-SCREEN END  OF BLOCK BK2.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 屏幕输出之前处理</font>
+<font color ="#0000FF">************************************************************************</font>
+AT  SELECTION-SCREEN  OUTPUT .
+  LOOP  AT  SCREEN .
+    CASE  SCREEN-GROUP1.                    "屏幕组
+      WHEN  'M1' .
+        SCREEN-ACTIVE = 0 .                "设置屏幕显示
+    ENDCASE .
+    MODIFY  SCREEN .                        "修改选择屏幕属性
+  ENDLOOP .
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* Initialization</font>
+<font color ="#0000FF">************************************************************************</font>
+INITIALIZATION.
+  WARNING1 = '1.采购组为必输条件，使用为采购订单中的组织级别'.
+  WARNING2 = '2.只能对自己创建且已审核/审批通过的计划表进行执行'.
+
+<font color ="#0000FF">*  PERFORM set_start_date.</font>
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* event Start of Selection</font>
+<font color ="#0000FF">************************************************************************</font>
+START-OF-SELECTION.
+
+  PERFORM GET_DATA.
+
+  PERFORM ZX_XSYC. "执行销售预测
+
+  IF GT_ERROR IS NOT INITIAL. "销售导入出错
+    PERFORM DISPLAY_XSYC_ERROR.
+  ELSE.
+    PERFORM ZX_MD01.
+
+    PERFORM DISPLAY_XSYC.
+  ENDIF.
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       根据选择屏幕条件从数据库读取数据</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA .
+  "获取销售预测数据
+  CLEAR :GT_XSYC.
+
+  SELECT ZZT_ZPP033~MATNR "物料编码
+    MAKT~MAKTX "物料描述
+    ZZT_ZPP033~WERKS "工厂
+    ZZT_ZPP033_2~MTZYC AS  PLNMG"计划数量
+    ZZT_ZPP033~PDATU "预测日期
+    ZZT_ZPP033~VERSB "计划版本
+    ZZT_ZPP033~MWYBS "唯一标识
+    ZZT_ZPP033_2~MBDZT "状态
+    ZZT_ZPP033_2~MZXKC "执行期末库存
+    ZZT_ZPP033_2~MABST "最大库存
+    zzt_zpp033_2~MZXSL
+    MARA~MEINS
+    INTO CORRESPONDING FIELDS OF TABLE GT_XSYC
+    FROM ZZT_ZPP033 INNER JOIN ZZT_ZPP033_2
+    ON ZZT_ZPP033~MATNR = ZZT_ZPP033_2~MATNR
+    AND ZZT_ZPP033~WERKS = ZZT_ZPP033_2~WERKS
+    AND ZZT_ZPP033~MWYBS = ZZT_ZPP033_2~JHBDH
+    LEFT JOIN MAKT
+    ON ZZT_ZPP033~MATNR = MAKT~MATNR
+    AND MAKT~SPRAS = '1'
+    LEFT JOIN MARA
+    ON ZZT_ZPP033~MATNR = MARA~MATNR
+   WHERE ZZT_ZPP033~WERKS = P_WERKS
+    AND ZZT_ZPP033~MATNR IN S_MATNR
+    AND ZZT_ZPP033_2~PRDHA IN S_PRDHA
+    AND ZZT_ZPP033_2~JHBDH IN S_JHBDH
+    AND ZZT_ZPP033_2~MCJZH = SY-UNAME
+    and zzt_zpp033_2~zdel = space
+    AND ZZT_ZPP033_2~MBDZT IN ('1','2').
+
+  IF GT_XSYC IS   INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+
+  "删除不可执行的单据
+  LOOP AT GT_XSYC ASSIGNING &lt;FS_XSYC&gt;.
+    IF &lt;FS_XSYC&gt;-MBDZT = '1'. "删除审核状态而且需要审批的单据
+      IF &lt;FS_XSYC&gt;-MZXKC &gt; &lt;FS_XSYC&gt;-MABST.
+        DELETE GT_XSYC.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+
+  IF GT_XSYC IS   INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+ENDFORM.                    "get_data
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  ZX_XSYC</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       执行销售预测</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM ZX_XSYC .
+  DATA: LW_HEAD TYPE BAPISITEMR,
+        LT_ITEM TYPE STANDARD TABLE OF BAPISSHDIN,
+        LW_ITEM TYPE BAPISSHDIN,
+        LT_RET TYPE STANDARD TABLE OF BAPIRETURN1,
+        LW_RET TYPE BAPIRETURN1,
+        LW_RETURN TYPE BAPIRET2.
+
+  CLEAR:GT_ERROR.
+  CLEAR GT_PBIM.
+  "从数据库获取已存在的独立需求计划
+  SELECT MATNR
+    PBIM~WERKS
+    PBIM~VERSB   " 独立需求的版本号
+    PBIM~BEDAE   " 需求类型
+    PBIM~PBDNR   " 需求计划编号
+    PBED~ENTLI  " 日期类型
+    PBED~PDATU  " 交货/订单完成日期
+    PBED~MEINS  " 基本计量单位
+    PBED~PLNMG  " 计划数量
+    PBED~SERNR  " BOM展开号
+    PBED~VERID  " 生产版本
+    INTO TABLE GT_PBIM
+    FROM PBIM LEFT JOIN PBED
+    ON PBIM~BDZEI = PBED~BDZEI
+    AND PBED~LOEVR = SPACE
+    FOR ALL ENTRIES IN GT_XSYC
+  WHERE MATNR = GT_XSYC-MATNR
+    AND WERKS = GT_XSYC-WERKS
+    AND VERSB = GT_XSYC-VERSB
+    AND PBIM~LOEVR = SPACE.
+
+  IF GT_PBIM IS NOT INITIAL.
+    SORT GT_PBIM BY MATNR WERKS.
+  ENDIF.
+
+
+  "导入销售预测数据
+  LOOP AT GT_XSYC ASSIGNING &lt;FS_XSYC&gt;.
+    " 设置抬头数据
+    CLEAR LW_HEAD.
+    LW_HEAD-MATERIAL = &lt;FS_XSYC&gt;-MATNR.     " 物料号
+    LW_HEAD-PLANT = &lt;FS_XSYC&gt;-WERKS.        " 工厂
+    LW_HEAD-VERS_ACTIV = 'X'.   " 标识：版本激活
+    LW_HEAD-VERSION = &lt;FS_XSYC&gt;-VERSB.
+
+    " 设置行项目数据
+    CLEAR LT_ITEM.
+    CLEAR LW_ITEM.
+    LW_ITEM-DATE_TYPE = '1'.    " 天
+    LW_ITEM-REQ_DATE = &lt;FS_XSYC&gt;-PDATU.
+    LW_ITEM-REQ_QTY = &lt;FS_XSYC&gt;-PLNMG.
+    LW_ITEM-UNIT = &lt;FS_XSYC&gt;-MEINS.
+    APPEND LW_ITEM TO LT_ITEM.
+
+    " 先判断是否存在对应版本的独立需求计划，如果存在，则修改，如果不存在则创建
+    READ TABLE GT_PBIM INTO W_PBIM WITH KEY MATNR = &lt;FS_XSYC&gt;-MATNR
+                                            WERKS = &lt;FS_XSYC&gt;-WERKS BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      " 将其他行项目加入进来
+      LOOP AT GT_PBIM INTO W_PBIM WHERE MATNR = &lt;FS_XSYC&gt;-MATNR
+                                    AND WERKS = &lt;FS_XSYC&gt;-WERKS
+                                    AND PDATU &lt;&gt; &lt;FS_XSYC&gt;-PDATU.
+        IF W_PBIM-ENTLI IS INITIAL.
+          CONTINUE.
+        ENDIF.
+        CLEAR LW_ITEM.
+        LW_ITEM-DATE_TYPE = W_PBIM-ENTLI.
+        LW_ITEM-REQ_DATE = W_PBIM-PDATU.
+        LW_ITEM-REQ_QTY = W_PBIM-PLNMG.
+        LW_ITEM-UNIT = W_PBIM-MEINS.
+        LW_ITEM-BOMEXPL = W_PBIM-SERNR.
+        LW_ITEM-PROD_VES = W_PBIM-VERID.
+        APPEND LW_ITEM TO LT_ITEM.
+      ENDLOOP.
+    ENDIF.
+
+    CLEAR:LT_RET.
+    CALL FUNCTION 'BAPI_REQUIREMENTS_CHANGE'
+        EXPORTING
+          MATERIAL                       = LW_HEAD-MATERIAL
+          PLANT                          = LW_HEAD-PLANT
+          REQUIREMENTSTYPE               = W_PBIM-BEDAE
+          VERSION                        = LW_HEAD-VERSION
+          REQMTSPLANNUMBER               = W_PBIM-PBDNR
+          VERS_ACTIV                     = LW_HEAD-VERS_ACTIV
+<font color ="#0000FF">*         REQUIREMENT_PARAM              =</font>
+<font color ="#0000FF">*         MRP_AREA                       =</font>
+<font color ="#0000FF">*         DO_COMMIT                      = 'X'</font>
+<font color ="#0000FF">*         UPDATE_MODE                    = 'X'</font>
+          DELETE_OLD                     = 'X'
+<font color ="#0000FF">*         NO_WITHDR                      = ' '</font>
+<font color ="#0000FF">*         MATERIAL_EVG                   =</font>
+<font color ="#0000FF">*       IMPORTING</font>
+<font color ="#0000FF">*         REQUIREMENT_ITEM_OUT           =</font>
+        TABLES
+         REQUIREMENTS_SCHEDULE_IN       = LT_ITEM
+<font color ="#0000FF">*         REQUIREMENTS_CHAR_IN           =</font>
+          RETURN                         = LT_RET
+                .
+
+    CLEAR W_ERROR.
+
+    LOOP AT LT_RET INTO LW_RET.
+      IF LW_RET-TYPE = 'E' OR LW_RET-TYPE = 'A'.
+<font color ="#0000FF">*        CALL FUNCTION 'BAPI_TRANSACTION_ROLLBACK'.</font>
+        W_ERROR-MATNR = &lt;FS_XSYC&gt;-MATNR.
+        W_ERROR-WERKS = &lt;FS_XSYC&gt;-WERKS.
+        W_ERROR-MAKTX = &lt;FS_XSYC&gt;-MAKTX.
+        W_ERROR-PLNMG = &lt;FS_XSYC&gt;-PLNMG.
+        W_ERROR-PDATU = &lt;FS_XSYC&gt;-PDATU.
+        W_ERROR-VERSB = &lt;FS_XSYC&gt;-VERSB.
+        W_ERROR-MWYBS = &lt;FS_XSYC&gt;-MWYBS.
+        W_ERROR-ZTXT = LW_RET-MESSAGE.
+        APPEND W_ERROR TO GT_ERROR.
+      ENDIF.
+    ENDLOOP.
+
+    IF W_ERROR-MATNR IS NOT INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    &lt;FS_XSYC&gt;-ZTXT = '导入成功'.
+  ENDLOOP.
+
+  IF GT_ERROR IS  INITIAL.
+
+    " 提交修改
+    CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+      EXPORTING
+        WAIT   = 'X'
+      IMPORTING
+        RETURN = LW_RETURN.
+
+  ENDIF.
+
+
+
+
+ENDFORM.                    " ZX_XSYC
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DISPLAY_XSYC_ERROR</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_XSYC_ERROR .
+  CLEAR:GT_FCAT.
+  MACRO_FILL_FIELDCAT:
+'MATNR'   '物料编码' 'X'  '' '' '' 'MARA' 'MATNR',
+'MAKTX'   '物料描述' 'X'  '' '' '' 'MAKT' 'MAKTX',
+'WERKS'   '工厂' 'X'  '' '' '' '' '',
+'PLNMG'   '预测数量'  'X'  '' '' '' '' '',
+'PDATU'   '预测日期' '' '' '' '' '' '',
+'VERSB'   '计划版本' '' '' '' '' '' '',
+'MWYBS'   '计划表单号' '' '' '' '' '' '',
+'ZTXT'    '描述' ''  '' '' '' '' ''.
+
+  CLEAR:W_LAYOUT.
+  W_LAYOUT-ZEBRA = 'X'.              "ALV 控制: 可选行颜色 (带)
+  W_LAYOUT-CWIDTH_OPT = 'X'.         "ALV 控制: 优化列宽度
+  W_LAYOUT-INFO_FNAME = 'COLOR'.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'
+    EXPORTING
+      I_CALLBACK_PROGRAM          = SY-REPID
+      IS_LAYOUT_LVC               = W_LAYOUT
+      IT_FIELDCAT_LVC             = GT_FCAT
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE = 'HTML_TOP_OF_PAGE'</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_TOP           = 15</font>
+      I_SAVE                      = 'A'
+<font color ="#0000FF">*     IS_VARIANT                  = V_STRU_DISVAR</font>
+<font color ="#0000FF">*     IT_SORT_LVC                 = GT_SORT</font>
+    TABLES
+      T_OUTTAB                    = GT_ERROR
+    EXCEPTIONS
+      PROGRAM_ERROR               = 1
+      OTHERS                      = 2.
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+ENDFORM.                    " DISPLAY_XSYC_ERROR
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  ZX_MD01</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       运行md01</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM ZX_MD01 .
+  DATA :L_WRONG_FLAG TYPE C.
+
+  CLEAR:BDCDATA,GT_MESTAB,GT_MESTAB[],BDCDATA[].
+
+
+  PERFORM BDC_DYNPRO      USING 'SAPMM61X' '0100'.
+
+  PERFORM BDC_FIELD       USING 'BDC_CURSOR'
+                                'RM61X-UXKEY'.
+
+  PERFORM BDC_FIELD       USING 'BDC_OKCODE'
+                                '/00'.
+
+  PERFORM BDC_FIELD       USING 'RM61X-WERKS'
+                                '1000'.
+
+  PERFORM BDC_FIELD       USING 'RM61X-VERSL'
+                                'NETCH'.
+
+  PERFORM BDC_FIELD       USING 'RM61X-BANER'
+                                '3'.
+
+  PERFORM BDC_FIELD       USING 'RM61X-LIFKZ'
+                                '3'.
+
+  PERFORM BDC_FIELD       USING 'RM61X-DISER'
+                                '1'.
+
+  PERFORM BDC_FIELD       USING 'RM61X-PLMOD'
+                                '3'.
+
+  PERFORM BDC_FIELD       USING 'RM61X-TRMPL'
+                                '1'.
+
+  PERFORM BDC_FIELD       USING 'RM61X-DISPD'
+                                SY-DATUM.
+
+
+  PERFORM BDC_DYNPRO      USING 'SAPMSSY0' '0120'.
+
+  PERFORM BDC_FIELD       USING 'BDC_OKCODE'
+                                '=XBAC'.
+
+  "运行MRP
+  CALL TRANSACTION 'MD01' USING BDCDATA
+                          MODE IM_MODE
+                          MESSAGES INTO GT_MESTAB
+                          UPDATE 'S'.
+
+  CLEAR L_WRONG_FLAG.
+  " 将处理结果加入到信息日志中
+  LOOP AT GT_MESTAB INTO W_MESTAB WHERE MSGTYP = 'A'
+                                       OR MSGTYP = 'E'
+                                       OR MSGTYP = 'W'.
+
+  ENDLOOP.
+ENDFORM.                    " ZX_MD01
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*        Start new screen                                              *</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM BDC_DYNPRO USING PROGRAM DYNPRO.
+  CLEAR BDCDATA.
+  BDCDATA-PROGRAM  = PROGRAM.
+  BDCDATA-DYNPRO   = DYNPRO.
+  BDCDATA-DYNBEGIN = 'X'.
+  APPEND BDCDATA.
+ENDFORM.                    "BDC_DYNPRO
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*        Insert field                                                  *</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM BDC_FIELD USING FNAM FVAL.
+  CLEAR BDCDATA.
+  BDCDATA-FNAM = FNAM.
+  BDCDATA-FVAL = FVAL.
+  CONDENSE BDCDATA-FVAL.
+  APPEND BDCDATA.
+ENDFORM.                    "BDC_FIELD
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DISPLAY_XSYC</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_XSYC .
+  CLEAR:GT_FCAT.
+  MACRO_FILL_FIELDCAT:
+'MATNR'   '物料编码' 'X'  '' '' '' 'MARA' 'MATNR',
+'MAKTX'   '物料描述' 'X'  '' '' '' 'MAKT' 'MAKTX',
+'WERKS'   '工厂' 'X'  '' '' '' '' '',
+'PLNMG'   '预测数量'  'X'  '' '' '' '' '',
+'PDATU'   '预测日期' '' '' '' '' '' '',
+'VERSB'   '计划版本' '' '' '' '' '' '',
+'MWYBS'   '计划表单号' '' '' '' '' '' '',
+'ZTXT'    '描述' ''  '' '' '' '' ''.
+
+  CLEAR:W_LAYOUT.
+  W_LAYOUT-ZEBRA = 'X'.              "ALV 控制: 可选行颜色 (带)
+  W_LAYOUT-CWIDTH_OPT = 'X'.         "ALV 控制: 优化列宽度
+  W_LAYOUT-INFO_FNAME = 'COLOR'.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'
+    EXPORTING
+      I_CALLBACK_PROGRAM          = SY-REPID
+      IS_LAYOUT_LVC               = W_LAYOUT
+      IT_FIELDCAT_LVC             = GT_FCAT
+      I_CALLBACK_PF_STATUS_SET    = 'SET_PF_STATUS'
+      I_CALLBACK_USER_COMMAND     = 'USER_COMMAND'
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE = 'HTML_TOP_OF_PAGE'</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_TOP           = 15</font>
+      I_SAVE                      = 'A'
+<font color ="#0000FF">*     IS_VARIANT                  = V_STRU_DISVAR</font>
+<font color ="#0000FF">*     IT_SORT_LVC                 = GT_SORT</font>
+    TABLES
+      T_OUTTAB                    = GT_XSYC
+    EXCEPTIONS
+      PROGRAM_ERROR               = 1
+      OTHERS                      = 2.
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+
+ENDFORM.                    " DISPLAY_XSYC
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  MODIFY_STATUS</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       修改状态</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM MODIFY_STATUS .
+
+  LOOP AT GT_CGDD ASSIGNING &lt;FS_CGDD&gt;.
+    UPDATE ZZT_ZPP033_2 SET MBDZT = '3'  MCGDD = &lt;FS_CGDD&gt;-MCGDD MCGHX = &lt;FS_CGDD&gt;-MCGHX WHERE JHBDH = &lt;FS_CGDD&gt;-MWYBS AND WERKS = &lt;FS_CGDD&gt;-WERKS AND MATNR = &lt;FS_CGDD&gt;-MATNR .
+    IF SY-SUBRC &lt;&gt; 0.
+      ROLLBACK WORK.
+      MESSAGE A002 WITH 'ZZT_ZPP033_2'.
+      STOP.
+    ENDIF.
+  ENDLOOP.
+
+  COMMIT  WORK AND WAIT.
+ENDFORM.                    " MODIFY_STATUS
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_PF_STATUS</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       设置标准工具栏按钮，并添加一个打印按钮</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;RT_EXTAB   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SET_PF_STATUS USING RT_EXTAB TYPE SLIS_T_EXTAB.
+  SET PF-STATUS 'STATUS_ALV'.
+ENDFORM.                    "SET_PF_STATUS
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  USER_COMMAND</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       响应ALV点击自定义按钮之后的事件</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;R_UCOMM      text</font>
+<font color ="#0000FF">*      --&gt;RS_SELFIELD  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM USER_COMMAND USING R_UCOMM     LIKE SY-UCOMM
+                        RS_SELFIELD TYPE SLIS_SELFIELD.
+
+
+  CASE R_UCOMM.
+    WHEN '&CGDD'.
+      PERFORM SET_CGDD."生成公司间采购订单
+
+      PERFORM MODIFY_STATUS. "修改状态和回写采购单号
+
+      PERFORM DISPLAY_DATA. "显示数据
+  ENDCASE.
+
+ENDFORM.                    "USER_COMMAND
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_CGDD</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SET_CGDD .
+  TYPES:BEGIN OF TY_TMP,
+        MCGDD TYPE ZZT_ZPP033_2-MCGDD, "采购订单号
+        END OF TY_TMP.
+  DATA:  LT_RETURN LIKE TABLE OF BAPIRET2 WITH HEADER LINE.
+  DATA:POTEXTITEM LIKE TABLE OF BAPIMEPOTEXT WITH HEADER LINE.
+  DATA: LT_CGDD TYPE STANDARD TABLE OF TY_CGDD,
+        LW_CGDD TYPE TY_CGDD.
+  DATA:L_PO TYPE BAPIMEPOHEADER-PO_NUMBER.
+  DATA: LT_TMP TYPE STANDARD TABLE OF TY_TMP,
+        LW_TMP TYPE TY_TMP.
+
+
+  DATA:L_INDEX TYPE I .
+  DATA:L_MOD TYPE NUM2.
+  DATA:L_FNAM TYPE DYNFNAM.
+  DATA:L_LEN TYPE I.
+  DATA:L_NO(4) TYPE N .
+<font color ="#0000FF">*  DATA:L_FLAG TYPE C. "错误标识</font>
+
+  CLEAR:GT_CGDD.
+  L_LEN = LINES( GT_XSYC ).
+  CLEAR:BDCDATA[].
+  CLEAR:GT_MESTAB[].
+
+DELETE gt_xsyc WHERE MZXSL is INITIAL.
+
+IF gt_xsyc is INITIAL.
+    MESSAGE e000 WITH '没有可以创建采购订单的预测表!'.
+return.
+ENDIF.
+
+  LOOP AT GT_XSYC ASSIGNING &lt;FS_XSYC&gt;.
+    L_INDEX = L_INDEX + 1. "记录当前正在处理的行的行号
+
+    IF BDCDATA[] IS INITIAL.
+      PERFORM BDC_DYNPRO      USING 'SAPLMEGUI' '0014'.
+      PERFORM BDC_FIELD       USING 'BDC_OKCODE'
+                                      '=MEDOCTYPE'.
+
+      PERFORM BDC_FIELD       USING 'MEPO_TOPLINE-BSART'
+                                     'ZGS'.
+      PERFORM BDC_FIELD       USING 'MEPO_TOPLINE-SUPERFIELD'
+                                     '111010'.
+
+
+      PERFORM BDC_DYNPRO      USING 'SAPLMEGUI' '0014'.
+      PERFORM BDC_FIELD       USING 'BDC_OKCODE'
+                                      '=MEV4001BUTTON'.
+
+
+      PERFORM BDC_FIELD       USING 'MEPO1222-EKORG'
+                                      '1001'.
+      PERFORM BDC_FIELD       USING 'MEPO1222-EKGRP'
+                                      S_EKGRP.
+      PERFORM BDC_FIELD       USING 'MEPO1222-BUKRS'
+                                      '1000'.
+
+      PERFORM BDC_DYNPRO      USING 'SAPLMEGUI' '0014'.
+      PERFORM BDC_FIELD       USING 'BDC_OKCODE'
+                                '=MEV4000BUTTON'.
+
+
+      PERFORM BDC_DYNPRO      USING 'SAPLMEGUI' '0014'.
+      PERFORM BDC_FIELD       USING 'BDC_OKCODE'
+                                     '=MESAVE'.
+    ENDIF.
+
+    L_MOD = L_INDEX MOD c_no.
+
+    IF L_MOD = 0.
+      L_MOD = c_no.   "l_mod为零时，是行项目第20行
+    ENDIF.
+    "填充行项目
+    "物料
+    CLEAR:L_FNAM.
+    CONCATENATE 'MEPO1211-EMATN(' L_MOD ')' INTO L_FNAM.
+    CONDENSE L_FNAM.
+    PERFORM BDC_FIELD       USING L_FNAM
+                                &lt;FS_XSYC&gt;-MATNR.
+    "数量
+    CLEAR:L_FNAM.
+    CONCATENATE 'MEPO1211-MENGE(' L_MOD ')' INTO L_FNAM.
+    CONDENSE L_FNAM.
+    PERFORM BDC_FIELD       USING L_FNAM
+                                &lt;FS_XSYC&gt;-MZXSL.
+
+    "工厂
+    CLEAR:L_FNAM.
+    CONCATENATE 'MEPO1211-NAME1(' L_MOD ')' INTO L_FNAM.
+    CONDENSE L_FNAM.
+    PERFORM BDC_FIELD       USING L_FNAM
+                                '1000'.
+
+    "将数据保存到临时表中
+    L_NO = L_NO + '10'.
+    CLEAR LW_CGDD.
+    LW_CGDD-MATNR = &lt;FS_XSYC&gt;-MATNR.
+    LW_CGDD-WERKS = &lt;FS_XSYC&gt;-WERKS.
+    LW_CGDD-MAKTX = &lt;FS_XSYC&gt;-MAKTX.
+    LW_CGDD-PLNMG = &lt;FS_XSYC&gt;-MZXSL.
+    LW_CGDD-MWYBS = &lt;FS_XSYC&gt;-MWYBS.
+    LW_CGDD-MCGHX = L_NO.
+    APPEND LW_CGDD TO LT_CGDD.
+
+    IF L_MOD = c_no OR L_INDEX = L_LEN .
+      PERFORM BDC_DYNPRO      USING 'SAPLSPO2' '0100'.
+      PERFORM BDC_FIELD       USING 'BDC_OKCODE'
+                                 '=OPT1'.
+
+      CLEAR GT_MESTAB[].
+      CALL TRANSACTION 'ME21N' USING BDCDATA
+                            MODE IM_MODE
+                            MESSAGES INTO GT_MESTAB
+                            UPDATE 'S'.
+
+      " 将处理结果加入到信息日志中
+      LOOP AT GT_MESTAB INTO W_MESTAB WHERE MSGTYP = 'A'
+                                           OR MSGTYP = 'E'.
+        MESSAGE E000 WITH '创建公司间采购订单失败！'.
+      ENDLOOP.
+
+      "获取采购订单号
+      READ TABLE GT_MESTAB INTO W_MESTAB WITH KEY MSGID =  '06'  MSGTYP = 'S'.
+      IF SY-SUBRC = 0.
+        "创建成功，回写采购单号
+        LOOP AT LT_CGDD  ASSIGNING &lt;FS_CGDD&gt;.
+          CLEAR:W_CGDD.
+          MOVE-CORRESPONDING &lt;FS_CGDD&gt; TO W_CGDD.
+          W_CGDD-MCGDD = W_MESTAB-MSGV2.
+          W_CGDD-ZTXT = '转换成功'.
+          APPEND W_CGDD TO GT_CGDD.
+
+          CLEAR:LW_TMP.
+          LW_TMP-MCGDD = W_MESTAB-MSGV2.
+          COLLECT LW_TMP INTO LT_TMP.
+        ENDLOOP.
+
+        CLEAR: LT_CGDD.
+      ELSE.
+        MESSAGE E000 WITH '创建公司间采购订单失败！'.
+      ENDIF.
+
+      CLEAR:BDCDATA[].
+      CLEAR:GT_MESTAB[].
+      CLEAR:L_NO.
+    ENDIF.
+  ENDLOOP.
+
+  "修改文本
+  LOOP AT LT_TMP INTO LW_TMP.
+    CLEAR:LT_RETURN[].
+    CLEAR:POTEXTITEM[].
+
+    LOOP AT GT_CGDD ASSIGNING &lt;FS_CGDD&gt; WHERE MCGDD = LW_TMP-MCGDD.
+      CLEAR POTEXTITEM.
+      POTEXTITEM-PO_ITEM =  &lt;FS_CGDD&gt;-MCGHX. "采购凭证的项目编号
+      POTEXTITEM-TEXT_ID = 'F02'."  RFQ Reference
+      POTEXTITEM-TEXT_LINE = &lt;FS_CGDD&gt;-MWYBS."行项目文本- RFQ Reference
+      APPEND  POTEXTITEM.
+    ENDLOOP.
+
+    L_PO = LW_TMP-MCGDD.
+
+    CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+      EXPORTING
+        INPUT  = L_PO
+      IMPORTING
+        OUTPUT = L_PO.
+
+    CALL FUNCTION 'BAPI_PO_CHANGE'
+      EXPORTING
+        PURCHASEORDER = L_PO
+      TABLES
+        RETURN        = LT_RETURN
+        POTEXTITEM    = POTEXTITEM[].
+
+    CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+      EXPORTING
+        WAIT = 'X'.
+  ENDLOOP.
+ENDFORM.                    " SET_CGDD
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DISPLAY_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_DATA .
+  CLEAR:GT_FCAT.
+  MACRO_FILL_FIELDCAT:
+'MATNR'   '物料编码' 'X'  '' '' '' 'MARA' 'MATNR',
+'MAKTX'   '物料描述' 'X'  '' '' '' 'MAKT' 'MAKTX',
+'WERKS'   '工厂' 'X'  '' '' '' '' '',
+'MCGDD'   '采购订单号'  'X'  '' '' '' '' '',
+'MCGHX'   '行项目号' '' '' '' '' '' '',
+'PLNMG'   '采购订单数量' '' '' '' '' '' '',
+'MWYBS'   '计划表单号' '' '' '' '' '' '',
+'ZTXT'    '描述' ''  '' '' '' '' ''.
+
+  CLEAR:W_LAYOUT.
+  W_LAYOUT-ZEBRA = 'X'.              "ALV 控制: 可选行颜色 (带)
+  W_LAYOUT-CWIDTH_OPT = 'X'.         "ALV 控制: 优化列宽度
+  W_LAYOUT-INFO_FNAME = 'COLOR'.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'
+    EXPORTING
+      I_CALLBACK_PROGRAM          = SY-REPID
+      IS_LAYOUT_LVC               = W_LAYOUT
+      IT_FIELDCAT_LVC             = GT_FCAT
+<font color ="#0000FF">*     I_CALLBACK_PF_STATUS_SET    = 'SET_PF_STATUS1'</font>
+<font color ="#0000FF">*     I_CALLBACK_USER_COMMAND     = 'USER_COMMAND1'</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE = 'HTML_TOP_OF_PAGE'</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_TOP           = 15</font>
+      I_SAVE                      = 'A'
+<font color ="#0000FF">*     IS_VARIANT                  = V_STRU_DISVAR</font>
+<font color ="#0000FF">*     IT_SORT_LVC                 = GT_SORT</font>
+    TABLES
+      T_OUTTAB                    = GT_CGDD
+    EXCEPTIONS
+      PROGRAM_ERROR               = 1
+      OTHERS                      = 2.
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+ENDFORM.                    " DISPLAY_DATA
+
+<font color ="#0000FF">*Text elements</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* 000 集团-浙江采购需求计划执行表</font>
+<font color ="#0000FF">* 001 注意</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* P_WERKS         工厂</font>
+<font color ="#0000FF">* P_XSYC         调整销售预测</font>
+<font color ="#0000FF">* S_EKGRP         采购组</font>
+<font color ="#0000FF">* S_ERNAM         编制账号</font>
+<font color ="#0000FF">* S_JHBDH         计划表单号</font>
+<font color ="#0000FF">* S_MATNR         物料编号</font>
+<font color ="#0000FF">* S_PRDHA         产品层次</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPEOPLE</font>
+<font color ="#0000FF">*000   &1 &2 &3 &4</font>
+<font color ="#0000FF">*002   系统错误：在表 & 中修改时有错误</font>
+<font color ="#0000FF">*050   没有满足查询条件的数据!</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

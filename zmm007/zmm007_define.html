@@ -1,0 +1,139 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZMM007_DEFINE</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZMM007_DEFINE</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZMM007_DEFINE</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZMM007_DEFINE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">***********************************************************************</font>
+<font color ="#0000FF">* 类型池</font>
+<font color ="#0000FF">************************************************************************</font>
+TYPE-POOLS SLIS.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 表声明</font>
+<font color ="#0000FF">************************************************************************</font>
+tables:qals,
+       ekko,
+       ekpo.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 类型定义</font>
+<font color ="#0000FF">************************************************************************</font>
+types:begin of ty_qals,
+      PRUEFLOS type qals-PRUEFLOS,
+      MATNR type qals-MATNR,
+      MJAHR type qals-MJAHR ,                                             " add by yetp 20180725
+      mblnr type qals-mblnr,                                             "物料凭证号
+      ZEILE type qals-ZEILE,                                              " add by yetp 20180725
+      EBELN type qals-EBELN,                                             "采购订单
+      EBELP type qals-EBELP,
+      lifnr type qals-lifnr,
+      bukrs type qals-bukrs,
+      OBJNR type qals-OBJNR,
+      werk type qals-werk,
+      lgort type ekpo-lgort,
+      LBLKZ type ekpo-lblkz,
+      PSTYP type qals-pstyp,
+      ekorg type qals-ekorg,
+      ekgrp type marc-ekgrp,
+      budat type qals-budat,
+      end of ty_qals.
+
+types:BEGIN OF ty_mseg,
+      matnr type mseg-matnr,
+      MEINS type MSEG-MEINS,                                             " 基本单位
+      MENGE type mseg-MENGE,                                             " 送货数量
+      BPRME type mseg-BPRME,                                             " 结算单位
+      BPMNG type mseg-BPMNG,                                             " 结算数量
+      EBELN type mseg-EBELN,                                             " 采购订单
+      EBELP type mseg-EBELP,                                             " 项目
+      mjahr type mseg-mjahr,                                             " 物料凭证年度
+      mblnr type mseg-mblnr,                                             " 物料凭证号
+      zeile type mseg-zeile,
+      ERFME type mseg-erfme,                                             " 采购单位
+      ERFMG type mseg-ERFMG,                                             " 采购收货数量
+      BWART type mseg-bwart,                                             " 移动类型
+      SGTXT type mseg-SGTXT,                                             " 备注
+     end of ty_mseg.
+
+types:begin of ty_head,
+      butxt type t001-BUTXT,                                             "公司名称
+      PTEXT type t163y-ptext,                                            "采购类型
+      EKORG type qals-EKORG,                                             "采购组织
+      lgobe type t001l-lgobe,                                            "库存地点描述
+      VERKF type lfm1-VERKF,                                             "联系人
+      TELF1 type lfm1-TELF1,                                             "联系电话
+      zzdnm type c LENGTH 80,                                            "制单员
+      zgynm type lfa1-name1,                                             "供应商名称
+      zgcnm type t001w-name1,                                            "工厂名称
+        INCLUDE TYPE ty_qals.
+types:end of ty_head.
+
+types:begin of ty_item,
+      PRUEFLOS type qals-PRUEFLOS,                                       "检验批号
+      MAKTX type MAKT-MAKTX.                                             "物料描述
+        INCLUDE TYPE ty_mseg.
+types:end of ty_item.
+
+types:begin of ty_alv,
+      sel type c,
+      mess type string,                                                  "红绿灯
+      status type c length 50,                                           "系统状态文本
+      flag type c,                                                       "是否可以打印
+      OBJNR type qals-OBJNR,
+      ERFME type mseg-erfme,                                             "采购单位
+      ERFMG type mseg-ERFMG,                                             "采购收货数量
+      BWART type mseg-bwart,                                             "移动类型
+      bukrs type qals-bukrs,
+      pstyp type qals-pstyp,
+      ekorg type qals-ekorg,
+<font color ="#0000FF">*      COLOR(4) TYPE C,                                                   "行颜色</font>
+      CELLCOLOR TYPE LVC_T_SCOL,                                         "单元格颜色
+      lblkz type ekpo-lblkz.
+        include structure <a href ="zmm007_cgrk/dictionary-zmm007_cgrk.html">ZMM007_CGRK</a>.
+types:end of ty_alv.
+
+TYPES:BEGIN OF ty_tj02t,
+      istat type tj02t-istat,     "系统状态
+      txt04 type tj02t-txt04,     "对象状态
+      inact type j_inact,
+      END OF  ty_tj02t.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 内表声明</font>
+<font color ="#0000FF">************************************************************************</font>
+data:gt_alv type STANDARD TABLE OF ty_alv,
+      w_alv type ty_alv,
+     gt_qals type STANDARD TABLE OF ty_qals,
+      w_qals type ty_qals,
+     gt_mseg type STANDARD TABLE OF ty_mseg,
+      w_mseg type ty_mseg,
+     g_mblnr type mblnr,
+     gt_fieldcat TYPE slis_t_fieldcat_alv,
+      w_fieldcat  TYPE slis_fieldcat_alv,
+      w_layout    TYPE slis_layout_alv,
+     G_ALV_GRID TYPE REF TO CL_GUI_ALV_GRID,
+     gt_tj02t type STANDARD TABLE OF ty_tj02t,
+     gt_print type STANDARD TABLE OF ZMM007_CGRK,
+     w_print type ZMM007_CGRK.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 字段符声明</font>
+<font color ="#0000FF">************************************************************************</font>
+FIELD-SYMBOLS:&lt;fs_tj02t&gt; type ty_tj02t,
+              &lt;fs_alv&gt; type ty_alv,
+              &lt;fs_qals&gt; type ty_qals.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 全局变量声明</font>
+<font color ="#0000FF">************************************************************************</font>
+data FM_NAME TYPE RS38L_FNAM.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

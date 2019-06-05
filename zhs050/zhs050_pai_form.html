@@ -1,0 +1,477 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZHS050_PAI_FORM</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZHS050_PAI_FORM</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZHS050_PAI_FORM</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZHS050_PAI_FORM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  PROCESS_COMMAND_9000</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       处理屏幕9000的按钮</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM PROCESS_COMMAND_9000.
+  SAVE_CODE = OK_CODE.
+  CLEAR OK_CODE.
+
+  IF G_NEW_CODE IS NOT INITIAL.
+    SAVE_CODE = G_NEW_CODE.
+    CLEAR G_NEW_CODE.
+  ENDIF.
+
+  CASE SAVE_CODE.
+    WHEN 'B1'.
+      PERFORM SHOW_DATA.
+    WHEN 'B2'.
+      PERFORM ADD_RECORD.
+    WHEN 'B3'.
+      PERFORM DEL_RECORD.
+    WHEN 'B4'.
+      PERFORM SAVE_RECORD.
+    WHEN 'B5'.
+      PERFORM SAVE_FILE.
+    WHEN 'SELECT_ALL'.  "add by yetp 20160922
+      PERFORM SELECT_ALL.
+    WHEN 'UNSELECT_ALL'. "add by yetp 20160922
+      PERFORM UNSELECT_ALL.
+  ENDCASE.
+ENDFORM.                    "process_command_9000
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  ADD_RECORD</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       增加空行并设置默认状态和可输入属性</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM ADD_RECORD .
+  CLEAR W_YCLXJ.
+  W_YCLXJ-ZSTAU = '编制'.
+  W_YCLXJ-ZXJRQ = SY-DATUM.
+  W_YCLXJ-ERDAT = SY-DATUM.
+  W_YCLXJ-ERNAM = SY-UNAME.
+
+  APPEND W_YCLXJ TO GT_YCLXJ.
+
+
+ENDFORM.                    " ADD_RECORD
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  del_record</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">* 删除记录,如果有流水号同时从数据库表和内表中删除。如果无流水号只从内表中删除</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DEL_RECORD.
+  DATA: L_ANSWER TYPE C.
+  DATA: LT_DEL TYPE STANDARD TABLE OF ZZYCLXJ,
+        LW_DEL TYPE ZZYCLXJ.
+  CLEAR:L_ANSWER.
+
+  READ TABLE GT_YCLXJ ASSIGNING &lt;FS_YCLXJ&gt; WITH KEY SEL = 'X'.
+  IF SY-SUBRC NE 0.
+    MESSAGE E030(ZPEOPLE).
+  ENDIF.
+
+  "弹出删除确认窗口
+  PERFORM CONFIRM_WINDOW USING TEXT-002 TEXT-003 CHANGING L_ANSWER.
+  IF L_ANSWER &lt;&gt; '1'.
+    EXIT.
+  ENDIF.
+
+  LOOP AT GT_YCLXJ INTO W_YCLXJ WHERE SEL = 'X'.
+<font color ="#0000FF">*    MOVE-CORRESPONDING w_yclxj TO lw_del.</font>
+    IF W_YCLXJ-ZHSNR IS INITIAL.
+      DELETE GT_YCLXJ WHERE SEL = 'X'.
+      IF SY-SUBRC = 0 .
+        MESSAGE S032(ZPEOPLE).
+      ENDIF.
+    ELSEIF W_YCLXJ-ZHSNR IS NOT INITIAL AND W_YCLXJ-ZSTAU = '编制'.
+      SELECT SINGLE *
+        INTO CORRESPONDING FIELDS OF W_XJ
+      FROM ZZYCLXJ
+        WHERE ZHSNR = W_YCLXJ-ZHSNR
+          AND ZSTAU = '编制'.
+      MOVE-CORRESPONDING W_XJ TO LW_DEL.
+      APPEND LW_DEL TO LT_DEL.
+      DELETE ZZYCLXJ FROM TABLE LT_DEL.
+      DELETE GT_YCLXJ WHERE SEL = 'X'.
+      IF SY-SUBRC = 0 .
+        MESSAGE S033(ZPEOPLE).
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+
+ENDFORM.                    "del_record
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  confirm_window</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       确认窗口</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;FU_TITLE   弹出确认窗口标题</font>
+<font color ="#0000FF">*      --&gt;FU_TEXT    弹出确认文本</font>
+<font color ="#0000FF">*      --&gt;FC_ANSW    确认返回</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CONFIRM_WINDOW USING FU_TITLE FU_TEXT CHANGING FC_ANSW.
+
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      TITLEBAR      = FU_TITLE
+      TEXT_QUESTION = FU_TEXT
+    IMPORTING
+      ANSWER        = FC_ANSW.
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO</font>
+<font color ="#0000FF">*         WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.</font>
+  ENDIF.
+ENDFORM.                    "confirm_window
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  show_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       显示符合查询条件的记录</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_DATA.
+  DATA:L_ANSWER TYPE C.
+  IF G_ZCLID = 0 AND G_ZPHCD IS INITIAL.
+    CLEAR GT_YCLXJ.
+    SELECT *
+      INTO CORRESPONDING FIELDS OF TABLE GT_YCLXJ
+    FROM ZZYCLXJ
+      WHERE ZXJRQ BETWEEN FIRSTDAY AND LASTDAY.
+    IF SY-SUBRC NE 0.
+      MESSAGE E062(ZPEOPLE).
+    ENDIF.
+  ENDIF.
+  IF G_ZCLID NE 0 AND G_ZPHCD IS INITIAL.
+    CLEAR GT_YCLXJ.
+    SELECT *
+       INTO CORRESPONDING FIELDS OF TABLE GT_YCLXJ
+    FROM ZZYCLXJ
+       WHERE ZCLID = G_ZCLID
+       AND ZXJRQ BETWEEN FIRSTDAY AND LASTDAY.
+    IF SY-SUBRC NE 0.
+      MESSAGE E062(ZPEOPLE).
+    ENDIF.
+  ENDIF.
+  IF G_ZCLID NE 0 AND G_ZPHCD IS NOT INITIAL.
+    CLEAR GT_YCLXJ.
+    SELECT *
+       INTO CORRESPONDING FIELDS OF TABLE GT_YCLXJ
+    FROM ZZYCLXJ
+       WHERE ZCLID = G_ZCLID
+       AND ZPHCD = G_ZPHCD
+       AND ZXJRQ BETWEEN FIRSTDAY AND LASTDAY.
+    IF SY-SUBRC NE 0.
+      MESSAGE E062(ZPEOPLE).
+    ENDIF.
+  ENDIF.
+  IF SY-DATAR = 'X' OR G_CHANGE = 'X'.                             "误点查询按钮的时候提示是否保存数据
+    PERFORM CONFIRM_WINDOW USING TEXT-005 TEXT-006 CHANGING L_ANSWER.
+    IF L_ANSWER = '1'.
+      PERFORM SAVE_RECORD.
+    ELSEIF L_ANSWER = '2'.
+      CLEAR G_CHANGE.
+    ENDIF.
+  ENDIF.
+
+ENDFORM.                    "show_data
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  save_record</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      点击保存按钮，如果询价记录单号为空就保存流水号到数据库表</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SAVE_RECORD.
+  DATA:L_XJSN TYPE ZZYCLXJ-ZHSNR,
+       LT_CHECK TYPE STANDARD TABLE OF TY_PH,
+       LW_CHECK TYPE TY_PH.
+
+  LOOP AT GT_YCLXJ INTO W_YCLXJ WHERE ZSTAU = '编制' AND SEL = 'X'.
+    "已选择，编制状态，没有流水号
+    IF W_YCLXJ-ZHSNR IS INITIAL.
+      PERFORM GET_SN CHANGING L_XJSN.
+      W_YCLXJ-ZHSNR = L_XJSN.
+    ENDIF.
+    "已选择，编制状态，有流水号,检查数据的有效性判断是否在数据库中已存在，就删除原记录再做插入操作
+    SELECT ZPHCD
+         ZCLID
+      INTO CORRESPONDING FIELDS OF TABLE LT_CHECK
+      FROM ZZTCLPH
+    WHERE ZPHCD = W_YCLXJ-ZPHCD.
+    READ TABLE LT_CHECK INTO LW_CHECK WITH KEY ZCLID = W_YCLXJ-ZCLID.
+    IF SY-SUBRC &lt;&gt; 0.
+      MESSAGE E341(ZPEOPLE).
+    ENDIF.
+    PERFORM CHECK_FILED_INPUT.
+    MODIFY GT_YCLXJ FROM W_YCLXJ.
+    MOVE-CORRESPONDING W_YCLXJ TO W_XJ.
+    SELECT SINGLE ZCLNM
+      INTO CORRESPONDING FIELDS OF W_XJ
+      FROM ZZTCLLB WHERE ZCLID = W_XJ-ZCLID.
+    DELETE FROM ZZYCLXJ WHERE ZHSNR = W_XJ-ZHSNR.
+    INSERT ZZYCLXJ FROM W_XJ.
+    IF SY-SUBRC EQ 0.
+      MESSAGE S036(ZPEOPLE).
+    ENDIF.
+  ENDLOOP.
+  "判断是否存在没有选中的数据，如果有就执行下面的代码
+  READ TABLE GT_YCLXJ INTO W_YCLXJ WITH KEY SEL = 'X'.
+  IF SY-SUBRC &lt;&gt; 0.
+    LOOP AT GT_YCLXJ INTO W_YCLXJ.
+      "没选中，无流水号，生成流水号，修改内表和数据库表
+      IF W_YCLXJ-ZHSNR IS INITIAL.
+        PERFORM GET_SN CHANGING L_XJSN.
+        W_YCLXJ-ZHSNR = L_XJSN.
+      ENDIF.
+      "没选中有流水号,检查数据的有效性判断是否在数据库中已存在，就删除原记录再做插入操作
+      SELECT ZPHCD
+           ZCLID
+        INTO CORRESPONDING FIELDS OF TABLE LT_CHECK
+        FROM ZZTCLPH
+      WHERE ZPHCD = W_YCLXJ-ZPHCD.
+      READ TABLE LT_CHECK INTO LW_CHECK WITH KEY ZCLID = W_YCLXJ-ZCLID.
+      IF SY-SUBRC &lt;&gt; 0.
+        MESSAGE E169(ZPEOPLE).
+      ENDIF.
+      PERFORM CHECK_FILED_INPUT.
+      MODIFY GT_YCLXJ FROM W_YCLXJ.
+      MOVE-CORRESPONDING W_YCLXJ TO W_XJ.
+      SELECT SINGLE ZCLNM
+        INTO CORRESPONDING FIELDS OF W_XJ
+        FROM ZZTCLLB
+      WHERE ZCLID = W_XJ-ZCLID.
+      DELETE FROM ZZYCLXJ WHERE ZHSNR = W_XJ-ZHSNR.
+      INSERT ZZYCLXJ FROM W_XJ.
+      IF SY-SUBRC EQ 0.
+        MESSAGE S036(ZPEOPLE).
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+
+  CLEAR G_CHANGE.
+ENDFORM.                    "save_record
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_sn</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       获取询价记录单号</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;L_SN       询价记录单号</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_SN CHANGING L_SN.
+  CALL FUNCTION 'NUMBER_RANGE_ENQUEUE'
+    EXPORTING
+      OBJECT           = 'ZHSNR'
+    EXCEPTIONS
+      FOREIGN_LOCK     = 1
+      OBJECT_NOT_FOUND = 2
+      SYSTEM_FAILURE   = 3
+      OTHERS           = 4.
+  IF SY-SUBRC = 0.
+
+    CALL FUNCTION 'NUMBER_GET_NEXT'
+      EXPORTING
+        NR_RANGE_NR
+        ='01'
+        OBJECT                  = 'ZHSNR'
+<font color ="#0000FF">*       QUANTITY                = '1'</font>
+<font color ="#0000FF">*       SUBOBJECT               = ' '</font>
+<font color ="#0000FF">*       TOYEAR                  = '0000'</font>
+<font color ="#0000FF">*       IGNORE_BUFFER           = ' '</font>
+      IMPORTING
+        NUMBER                  = L_SN
+<font color ="#0000FF">*       QUANTITY                =</font>
+<font color ="#0000FF">*       RETURNCODE              =</font>
+      EXCEPTIONS
+        INTERVAL_NOT_FOUND      = 1
+        NUMBER_RANGE_NOT_INTERN = 2
+        OBJECT_NOT_FOUND        = 3
+        QUANTITY_IS_0           = 4
+        QUANTITY_IS_NOT_1       = 5
+        INTERVAL_OVERFLOW       = 6
+        BUFFER_OVERFLOW         = 7
+        OTHERS                  = 8.
+
+    CALL FUNCTION 'NUMBER_RANGE_DEQUEUE'
+      EXPORTING
+        OBJECT
+        ='ZHSNR'
+
+      EXCEPTIONS
+        OBJECT_NOT_FOUND = 1
+        OTHERS           = 2.
+
+  ENDIF.
+ENDFORM.                    "get_sn
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  save_file</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">* 点击存档，状态改为存档，如果询价记录号为空，产生流水号并保存到数据库表</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SAVE_FILE.
+  DATA:L_XJSN TYPE ZZYCLXJ-ZHSNR,
+       LT_CHECK TYPE STANDARD TABLE OF TY_PH,
+       LW_CHECK TYPE TY_PH.
+  LOOP AT GT_YCLXJ INTO W_YCLXJ WHERE SEL = 'X'.
+    "已选择但是编制状态下有2种情况，一种是无流水号的，产生流水号
+    IF W_YCLXJ-ZSTAU = '编制'.
+      IF W_YCLXJ-ZHSNR IS INITIAL.
+        PERFORM GET_SN CHANGING L_XJSN.
+        W_YCLXJ-ZHSNR = L_XJSN.
+      ENDIF.
+      "2种情况下都要检查数据的有效性,把状态改成存档
+      SELECT ZPHCD
+             ZCLID
+        INTO CORRESPONDING FIELDS OF TABLE LT_CHECK
+        FROM ZZTCLPH
+      WHERE ZPHCD = W_YCLXJ-ZPHCD.
+      READ TABLE LT_CHECK INTO LW_CHECK WITH KEY ZCLID = W_YCLXJ-ZCLID.
+      IF SY-SUBRC &lt;&gt; 0.
+        MESSAGE E169(ZPEOPLE).
+      ENDIF.
+      PERFORM CHECK_FILED_INPUT.
+      W_YCLXJ-ZSTAU = '存档'.
+      MODIFY GT_YCLXJ FROM W_YCLXJ.
+      "2种情况下都修改内表和数据库表，并报消息
+      MOVE-CORRESPONDING W_YCLXJ TO W_XJ.
+      SELECT SINGLE ZCLNM
+        INTO CORRESPONDING FIELDS OF W_XJ
+        FROM ZZTCLLB
+      WHERE ZCLID = W_XJ-ZCLID.
+      DELETE FROM ZZYCLXJ WHERE ZHSNR = W_XJ-ZHSNR.
+      INSERT ZZYCLXJ FROM W_XJ.
+      IF SY-SUBRC EQ 0.
+        MESSAGE S037(ZPEOPLE).
+      ENDIF.
+    ENDIF.
+    "已选择但是存档状态，就直接跳出
+    IF W_YCLXJ-ZSTAU = '存档'.
+      CONTINUE.
+    ENDIF.
+  ENDLOOP.
+  "没有选中和状态为编制的数据，如果有就执行下面的代码
+  READ TABLE GT_YCLXJ INTO W_YCLXJ WITH KEY SEL = 'X'.
+  IF SY-SUBRC &lt;&gt; 0.
+    LOOP AT GT_YCLXJ INTO W_YCLXJ.
+      IF W_YCLXJ-ZSTAU = '编制'.
+        "如果没有流水号就产生流水号
+        IF W_YCLXJ-ZHSNR IS INITIAL.
+          PERFORM GET_SN CHANGING L_XJSN.
+          W_YCLXJ-ZHSNR = L_XJSN.
+        ENDIF.
+        "2种情况下都要检查数据的有效性,把状态改成存档
+        SELECT ZPHCD
+               ZCLID
+          INTO CORRESPONDING FIELDS OF TABLE LT_CHECK
+          FROM ZZTCLPH
+        WHERE ZPHCD = W_YCLXJ-ZPHCD.
+        READ TABLE LT_CHECK INTO LW_CHECK WITH KEY ZCLID = W_YCLXJ-ZCLID.
+        IF SY-SUBRC &lt;&gt; 0.
+          MESSAGE E169(ZPEOPLE).
+        ENDIF.
+        PERFORM CHECK_FILED_INPUT.
+        W_YCLXJ-ZSTAU = '存档'.
+        MODIFY GT_YCLXJ FROM W_YCLXJ.
+        MOVE-CORRESPONDING W_YCLXJ TO W_XJ.
+        SELECT SINGLE ZCLNM
+          INTO CORRESPONDING FIELDS OF W_XJ
+          FROM ZZTCLLB
+        WHERE ZCLID = W_XJ-ZCLID.
+        DELETE FROM ZZYCLXJ WHERE ZHSNR = W_XJ-ZHSNR.
+        INSERT ZZYCLXJ FROM W_XJ.
+        IF SY-SUBRC EQ 0.
+          MESSAGE S037(ZPEOPLE).
+        ENDIF.
+      ELSE.
+        EXIT.
+      ENDIF.
+    ENDLOOP.
+  ENDIF.
+ENDFORM.                    "save_file
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_phcd</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      在增加的时候取牌号代码数据</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_PHCD.
+  SELECT ZPHCD
+         ZPHNM
+    INTO CORRESPONDING FIELDS OF TABLE GT_PH
+    FROM ZZTCLPH
+    WHERE ZCLID = W_YCLXJ-ZCLID.
+ENDFORM.                    "get_phcd
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  set_showlist_for_yclph</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       在增加的时候设置牌号代码值</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;FU_ID      牌号代码</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SET_SHOWLIST_FOR_PHCD USING FU_ID.
+  CLEAR:W_LIST,
+        GT_LIST[],
+        W_YCLXJ-ZPHCD.
+  LOOP AT GT_PH INTO W_PH.
+    W_LIST-KEY = W_PH-ZPHCD.
+    W_LIST-TEXT = W_PH-ZPHNM.
+    APPEND W_LIST TO GT_LIST.
+  ENDLOOP.
+
+  PERFORM FILL_DATA_FOR_LISTBOX USING FU_ID GT_LIST.
+ENDFORM.                    "set_showlist_for_yclph
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_phnm_tjdw</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       在增加的时候根据牌号代码带出牌号名称和调价单位</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_PHNM_TJDW.
+  IF W_YCLXJ-ZPHCD IS NOT INITIAL.
+    SELECT SINGLE ZPHNM
+                  ZTJDW
+      INTO CORRESPONDING FIELDS OF W_YCLXJ
+      FROM ZZTCLPH
+    WHERE ZPHCD = W_YCLXJ-ZPHCD.
+  ENDIF.
+ENDFORM.                    "get_phnm_tjdw
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SELECT_ALL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SELECT_ALL .
+  LOOP AT GT_YCLXJ ASSIGNING &lt;FS_YCLXJ&gt; WHERE SEL = SPACE.
+    &lt;FS_YCLXJ&gt;-SEL = 'X'.
+  ENDLOOP.
+ENDFORM.                    " SELECT_ALL
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  UNSELECT_ALL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM UNSELECT_ALL .
+  LOOP AT GT_YCLXJ ASSIGNING &lt;FS_YCLXJ&gt; WHERE SEL = 'X'.
+    &lt;FS_YCLXJ&gt;-SEL = SPACE.
+  ENDLOOP.
+ENDFORM.                    " UNSELECT_ALL
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

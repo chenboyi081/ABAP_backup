@@ -1,0 +1,49 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>LZCOMM_SCREENTOP</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: LZCOMM_SCREENTOP</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  获取用户名</b></font>
+<hr>
+<pre width="100">
+FUNCTION-POOL ZCOMM_SCREEN.                 "MESSAGE-ID ..
+DATA:  BT1 TYPE STRING,
+       BT2 TYPE STRING,
+       BT3 TYPE STRING,
+       BT4 TYPE STRING,
+       BT5 TYPE STRING,
+       BT6 TYPE STRING,
+       BT7 TYPE STRING,
+       bt8 type String,
+       bt9 type string,
+       G_READ TYPE C,
+       gt_djzt type STANDARD TABLE OF zztdjzt.
+
+<font color ="#0000FF">*  面向对象ALV相关数据对象定义</font>
+data:  g_container1 type scrfnamE VALUE 'CONTAINER1',
+       G_CONTAINER2 TYPE SCRFNAME VALUE 'CONTAINER2',
+       G_CUS_CON1   TYPE REF TO cl_gui_custom_container,
+       G_CUS_CON2   TYPE REF TO cl_gui_custom_container,
+       G_GRID1      TYPE REF TO CL_GUI_ALV_GRID,
+       G_GRID2      TYPE REF TO CL_GUI_ALV_GRID,
+       "对于FIELDCAT的数据对象命名必须按照如下规则：gt_fieldcat_ + ALV的子屏幕编号
+       gt_fieldcat_9003 type lvc_t_fcat,                         "屏幕9003的ALV显示列定义
+       gt_fieldcat_9004 type lvc_t_fcat,                         "屏幕9004的ALV显示
+       gt_data_9003     type REF TO data,
+       GT_DATA_9004     TYPE REF TO DATA,
+       w_dy_line        type ref to data.
+
+FIELD-SYMBOLS: &lt;FS_OUTTAB_9003&gt; TYPE STANDARD TABLE,
+               &lt;FS_OUTTAB_9004&gt; TYPE STANDARD TABLE,
+               &lt;fs_dy_wa&gt;.
+
+<font color ="#0000FF">* INCLUDE LZCOMM_SCREEND...                  " Local class definition</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

@@ -1,0 +1,740 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZMM015</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZMM015</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  供应商清单查询报表</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& 程序名称       : ZMM015</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 作者           : 陈星烨（人民）</font>
+<font color ="#0000FF">*& 开发日期       : 2012-07-03</font>
+<font color ="#0000FF">*& 请求号         :</font>
+<font color ="#0000FF">*& 申请者         : 陈星烨（人民）</font>
+<font color ="#0000FF">*& 描述           : 供应商清单报表</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 变更记录</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">** 修改日期 开发人员  请求号 描述</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+report zmm015 message-id zpeople.
+<font color ="#0000FF">***********************************************************************</font>
+<font color ="#0000FF">* 类型池</font>
+<font color ="#0000FF">************************************************************************</font>
+type-pools slis.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 表声明</font>
+<font color ="#0000FF">************************************************************************</font>
+tables:lfm1,
+       lfb1,
+       lfa1,
+       lfbk.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 类型定义</font>
+<font color ="#0000FF">************************************************************************</font>
+types:begin of ty_data,
+      zxh type i,
+      lifnr type lfa1-lifnr,                                                                   "供应商账号
+      ekorg type lfm1-ekorg,                                                                   "采购组织
+      ktokk type lfa1-ktokk,                                                                   "供应商账户组
+      name1 type lfa1-name1,                                                                   "名称1
+      name2 type lfa1-name2,                                                                   "名称2
+      adrnr type lfa1-adrnr,                                                                   "地址
+      erdat type lfa1-erdat,                                                                   "创建日期
+      sort1 type adrc-sort1,                                                                   "检索项1
+      sort2 type adrc-sort2,                                                                   "检索项2
+      street type adrc-street,                                                                 "街道
+      home_city type adrc-home_city,                                                           "主要客户
+      house_num1 type adrc-house_num1,                                                         "门牌号
+      post_code1 type adrc-post_code1,                                                         "城市邮政编码
+      city1 type adrc-city1,                                                                   "城市
+      city2 type adrc-city2,                                                                   "供应系列
+      country type adrc-country,                                                               "国家
+      region type adrc-region,                                                                 "地区
+      langu type adrc-langu,                                                                   "语言代码
+      tel_number type adrc-tel_number,                                                         "第一个电话号码
+      tel_extens type adrc-tel_extens,                                                         "第一个分机号
+      mob_number type lfa1-telf1,                                                              "第一个移动电话号码
+      fax_number type adrc-fax_number,                                                         "第一个传真号
+      fax_extens type adrc-fax_extens,                                                         "第一个传真分机号
+      smtp_addr type lfa1-telbx,                                                               "电子邮件
+      verkf type lfm1-verkf,                                                                   "销售员
+      telf1 type lfm1-telf1,                                                                   "电话
+      kunnr type lfa1-kunnr,                                                                   "客户
+      vbund type lfa1-vbund,                                                                   "贸易伙伴
+      stcd3 type lfa1-stcd3,                                                                   "营业执照编号
+      stceg type lfa1-stceg,                                                                   "增值税登记号
+      j_1kftbus type lfa1-j_1kftbus,                                                           "业务类型
+      j_1kfrepre type lfa1-j_1kfrepre,                                                         "代表名称
+      stcd4 type lfa1-stcd4,                                                                   "法人联系方式
+      waers type lfm1-waers,                                                                   "订单货币
+      webre type lfm1-webre,                                                                   "收货的发票验证标识
+      lfabc type lfm1-lfabc,                                                                   "ABC标识
+      banks type lfbk-banks,                                                                   "开户行所在的国家
+      bankl type lfbk-bankl,                                                                   "银行代码
+      banka type bnka-banka,                                                                   "银行名称
+      bankn type lfbk-bankn,                                                                   "银行账户号码
+      koinh type lfbk-koinh,                                                                   "银行账户
+      bkref type lfbk-bkref,                                                                   "银行户主
+      akont type lfb1-akont,                                                                   "总帐中的统驭科目
+      zuawa type lfb1-zuawa,                                                                   "排序码
+      zcgfk type lfm1-zterm,                                                                   "采购付款条件
+      zcgwb type t052u-text1,                                                                  "采购付款条件描述
+      zcwfk type lfb1-zterm,                                                                   "财务付款条件
+      zcwwb type t052u-text1,                                                                  "财务付款条件描述
+      reprf type lfb1-reprf,                                                                   "检查双重发票
+      togru type lfb1-togru,                                                                   "支付容差组
+      togrr type lfb1-togrr,                                                                   "发票容差组
+      zwels type lfb1-zwels,                                                                   "付款方式
+      bukrs type lfb1-bukrs,                                                                   "公司代码
+      sperm type lfm1-sperm,                                                                   "采购冻结标识
+      sperr type lfb1-sperr,                                                                   "财务冻结标识
+      xverr type lfb1-xverr,
+      end of ty_data.
+
+types:begin of ty_lfb1,
+      akont type lfb1-akont,                                                                   "总帐中的统驭科目
+      zuawa type lfb1-zuawa,                                                                   "排序码
+      reprf type lfb1-reprf,                                                                   "检查双重发票
+      togru type lfb1-togru,                                                                   "支付容差组
+      togrr type lfb1-togrr,                                                                   "发票容差组
+      zwels type lfb1-zwels,                                                                   "付款方式
+      bukrs type lfb1-bukrs,                                                                   "公司代码
+      lifnr type lfb1-lifnr,
+      sperr type lfb1-sperr,
+      zcwfk type lfb1-zterm,
+      zcwwb type t052u-text1,
+      xverr type lfb1-xverr,
+      end of ty_lfb1.
+
+types:begin of ty_bukrs,
+      bukrs type t001-bukrs,
+      butxt type t001-butxt,
+      end of ty_bukrs.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      DEFINE MACRO_FILL_FIELDCAT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       填充结构宏定义</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+define macro_fill_fieldcat.
+  clear w_fieldcat.
+  &1 = &1 + 1.
+  w_fieldcat-col_pos    = &1.
+  w_fieldcat-fieldname  = &2.
+  w_fieldcat-seltext_l     = &3.
+  w_fieldcat-seltext_m     = &3.
+  w_fieldcat-seltext_s     = &3.
+  w_fieldcat-no_zero       = &4.
+  append w_fieldcat to gt_fieldcat.
+end-of-definition.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 内表声明</font>
+<font color ="#0000FF">************************************************************************</font>
+data:gt_data type standard table of ty_data,
+     w_data type ty_data,
+     gt_alv type standard table of ty_data,
+     w_alv type ty_data,
+     gt_lfb1 type standard table of ty_lfb1,
+     w_lfb1 type ty_lfb1,
+     gt_bukrs type standard table of ty_bukrs,
+     gs_bukrs type ty_bukrs,
+     gt_fieldcat type slis_t_fieldcat_alv,
+     w_fieldcat  type slis_fieldcat_alv,
+     w_layout    type slis_layout_alv.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 字段符声明</font>
+<font color ="#0000FF">************************************************************************</font>
+field-symbols:&lt;fs_data&gt; type ty_data,
+              &lt;fs_lfb1&gt; type ty_lfb1.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 定义选择屏幕参数</font>
+<font color ="#0000FF">************************************************************************</font>
+selection-screen begin of block blk1 with frame title text-001.
+select-options:p_cgzz for lfm1-ekorg no-extension no intervals,
+               p_gyzh for lfa1-ktokk DEFAULT 'Z002',
+               s_gybm for lfm1-lifnr matchcode object kred,
+               s_bs for lfm1-lfabc,
+               s_gsdm for lfb1-bukrs matchcode object c_t001,
+               s_fr for lfa1-j_1kfrepre no-extension no intervals,
+               s_cjrq for lfa1-erdat.
+selection-screen end of block blk1.
+
+selection-screen begin of block blk2 with frame title text-002.
+parameters:p_jtsj type c radiobutton group g1 default 'X',
+           p_gssj type c radiobutton group g1.
+selection-screen end of block blk2.
+
+selection-screen begin of block blk3 with frame title text-003.
+<font color ="#0000FF">*SELECTION-SCREEN BEGIN OF LINE.</font>
+parameters:p_cgdjbs type c as checkbox.
+<font color ="#0000FF">*SELECTION-SCREEN COMMENT 4(15) text-003.</font>
+parameters:p_cwdjbs type c as checkbox.
+<font color ="#0000FF">*SELECTION-SCREEN COMMENT 30(15) text-004.</font>
+<font color ="#0000FF">*SELECTION-SCREEN end of line.</font>
+selection-screen end of block blk3.
+
+
+<font color ="#0000FF">************* add by huangcz 20130118 begin *************************</font>
+INITIALIZATION.
+  PERFORM INCREMENT_COUNT_LOG.
+<font color ="#0000FF">************** 20130118 end ****************************************</font>
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* event Start of Selection</font>
+<font color ="#0000FF">************************************************************************</font>
+start-of-selection.
+  perform check_authority.
+
+  perform get_data.
+
+  perform display_by_alv.
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  CHECK_AUTHORITY</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+form check_authority.
+  select bukrs
+         butxt
+    from t001
+    into table gt_bukrs
+    where bukrs in s_gsdm.
+
+  if gt_bukrs is initial.
+    message e017.
+  endif.
+
+  loop at gt_bukrs into gs_bukrs.
+    authority-check object 'F_LFA1_BUK'
+              id 'BUKRS' field gs_bukrs-bukrs
+              id 'ACTVT' field '03'   .
+
+    if sy-subrc &lt;&gt; 0.
+      message e237 with gs_bukrs-bukrs.
+    endif.
+
+  endloop.
+endform.                    "CHECK_AUTHORITY
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_data</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+form get_data.
+  data:l_zxh type i.
+  types:begin of ty_adrc,
+        addrnumber type adrc-addrnumber,                                                     "地址号码
+        sort1 type adrc-sort1,
+        sort2 type adrc-sort2,
+        street type adrc-street,
+        house_num1 type adrc-house_num1,                                                     "门牌号
+        home_city type adrc-home_city,
+        post_code1 type adrc-post_code1,                                                     "城市邮政编码
+        city1 type adrc-city1,                                                               "城市
+        city2 type adrc-city2,                                                               "供应系列
+        country type adrc-country,                                                           "国家
+        region type adrc-region,                                                             "地区
+        langu type adrc-langu,                                                               "语言代码
+        tel_number type adrc-tel_number,                                                     "第一个电话号码
+        tel_extens type adrc-tel_extens,                                                     "第一个分机号
+        fax_number type adrc-fax_number,                                                     "第一个传真号
+        fax_extens type adrc-fax_extens,                                                     "第一个传真分机号
+       end of ty_adrc.
+
+  types:begin of ty_t052u,
+        zterm type t052u-zterm,
+        text1 type t052u-text1,
+        end of ty_t052u.
+
+  types:begin of ty_lfbk,
+        banks type bnka-banks,
+        bankl type bnka-bankl,
+        banka type bnka-banka,
+        bankn type lfbk-bankn,
+        lifnr type lfbk-lifnr,
+        koinh type lfbk-koinh,
+        bkref type lfbk-bkref,
+        end of ty_lfbk.
+
+  data:lt_adrc type standard table of ty_adrc,
+       lw_adrc type ty_adrc,
+       lt_lfbk type standard table of ty_lfbk,
+       lw_lfbk type ty_lfbk,
+       lt_t052u type standard table of ty_t052u,
+       lw_t052u type ty_t052u.
+
+  select akont                                                                    "总帐中的统驭科目
+         zuawa                                                                    "排序码
+         reprf                                                                    "检查双重发票
+         togru                                                                    "支付容差组
+         togrr                                                                    "发票容差组
+         zwels                                                                    "付款方式
+         bukrs                                                                    "公司代码
+         sperr                                                                    "财务冻结标识
+         lifnr
+         xverr
+         zterm as zcwfk                                                                   "财务付款条件
+    into corresponding fields of table gt_lfb1
+    from lfb1
+  where lifnr in s_gybm
+    and bukrs in s_gsdm
+    and sperr = p_cwdjbs.
+  sort gt_lfb1 by lifnr.
+
+  if gt_lfb1 is initial.
+    message s050 display like 'E'.
+  endif.
+
+  select lfa1~lifnr                                                            "供应商账号
+         ekorg                                                                 "采购组织
+         ktokk                                                                 "供应商账户组
+         name1                                                                 "名称1
+         name2                                                                 "名称2
+         adrnr                                                                 "地址
+         lfa1~telf1 as mob_number                                              "第一个移动电话号码
+         telbx as smtp_addr                                                    "电子邮件
+         verkf                                                                 "销售员
+         lfm1~telf1                                                            "电话
+         kunnr                                                                 "客户
+         stcd3                                                                 "营业执照编号
+         stceg                                                                 "增值税登记号
+         j_1kftbus                                                             "业务类型
+         j_1kfrepre                                                            "代表名称
+         stcd4                                                                 "法人联系方式
+         waers                                                                 "订单货币
+         lfm1~sperm                                                            "采购冻结标识
+         zterm as zcgfk                                                        "采购付款条件代码
+         webre                                                                 "收货的发票验证标识
+         lfabc                                                                 "ABC标识
+         lfa1~erdat                                                            "供应商创建日期
+         vbund                                                                 "贸易伙伴
+         lfa1~ernam
+    into corresponding fields of table gt_data
+    from lfa1 inner join lfm1
+    on lfa1~lifnr = lfm1~lifnr
+    for all entries in gt_lfb1
+  where ekorg in p_cgzz
+    and ktokk in p_gyzh
+    and lfabc in s_bs
+    and j_1kfrepre in s_fr
+    and lfa1~erdat in s_cjrq
+    and lfa1~lifnr = gt_lfb1-lifnr
+    and lfm1~sperm = p_cgdjbs.
+  sort gt_data by lifnr.
+  delete adjacent duplicates from gt_data comparing lifnr.
+
+  select country
+         street
+         sort1
+         sort2
+         city1
+         city2
+         house_num1
+         home_city
+         post_code1
+         addrnumber
+         region
+         langu
+         tel_number
+         tel_extens
+         fax_number
+         fax_extens
+    into corresponding fields of table lt_adrc
+    from adrc
+    for all entries in gt_data
+  where addrnumber = gt_data-adrnr.
+  sort lt_adrc by addrnumber.
+
+  select lifnr
+         banka
+         bankn
+         lfbk~banks
+         lfbk~bankl
+         koinh
+         bkref
+    into corresponding fields of table lt_lfbk
+    from lfbk inner join bnka
+    on lfbk~banks = bnka~banks
+    and lfbk~bankl = bnka~bankl
+    for all entries in gt_data
+  where lifnr = gt_data-lifnr.
+  sort lt_lfbk by lifnr.
+
+  select zterm
+         text1
+    into corresponding fields of table lt_t052u
+    from t052u
+  where spras = '1'
+    and ztagg = '00'.
+  sort lt_t052u by zterm.
+
+  loop at gt_lfb1 assigning &lt;fs_lfb1&gt;.
+    read table lt_t052u into lw_t052u with key zterm = &lt;fs_lfb1&gt;-zcwfk BINARY SEARCH.
+    if sy-subrc = 0.
+      &lt;fs_lfb1&gt;-zcwwb = lw_t052u-text1.
+    endif.
+  endloop.
+
+  loop at gt_data assigning &lt;fs_data&gt;.
+    read table lt_adrc into lw_adrc with key addrnumber = &lt;fs_data&gt;-adrnr BINARY SEARCH.
+    if sy-subrc = 0.
+      &lt;fs_data&gt;-sort1 = lw_adrc-sort1.
+      &lt;fs_data&gt;-sort2 = lw_adrc-sort2.
+      &lt;fs_data&gt;-city1 = lw_adrc-city1.
+      &lt;fs_data&gt;-city2 = lw_adrc-city2.
+      &lt;fs_data&gt;-country = lw_adrc-country.
+      &lt;fs_data&gt;-street = lw_adrc-street.
+      &lt;fs_data&gt;-house_num1 = lw_adrc-house_num1.
+      &lt;fs_data&gt;-post_code1 = lw_adrc-post_code1.
+      &lt;fs_data&gt;-region = lw_adrc-region.
+      &lt;fs_data&gt;-langu = lw_adrc-langu.
+      &lt;fs_data&gt;-tel_number = lw_adrc-tel_number.
+      &lt;fs_data&gt;-tel_extens = lw_adrc-tel_extens.
+      &lt;fs_data&gt;-fax_number = lw_adrc-fax_number.
+      &lt;fs_data&gt;-fax_extens = lw_adrc-fax_extens.
+      &lt;fs_data&gt;-home_city = lw_adrc-home_city.
+    endif.
+
+    read table lt_t052u into lw_t052u with key zterm = &lt;fs_data&gt;-zcgfk BINARY SEARCH.
+    if sy-subrc = 0.
+      &lt;fs_data&gt;-zcgwb = lw_t052u-text1.
+    endif.
+
+    read table lt_lfbk into lw_lfbk with key lifnr = &lt;fs_data&gt;-lifnr BINARY SEARCH.
+    if sy-subrc = 0.
+      &lt;fs_data&gt;-banka = lw_lfbk-banka.
+      &lt;fs_data&gt;-bankn = lw_lfbk-bankn.
+      &lt;fs_data&gt;-banks = lw_lfbk-banks.
+      &lt;fs_data&gt;-bankl = lw_lfbk-bankl.
+      &lt;fs_data&gt;-koinh = lw_lfbk-koinh.
+      &lt;fs_data&gt;-bkref = lw_lfbk-bkref.
+    endif.
+  endloop.
+
+  loop at gt_data into w_data.
+    read table gt_lfb1 assigning &lt;fs_lfb1&gt; with key lifnr = w_data-lifnr BINARY SEARCH.
+    if sy-subrc = 0.
+      loop at gt_lfb1 assigning &lt;fs_lfb1&gt; where lifnr = w_data-lifnr.
+        move-corresponding w_data to w_alv.
+        l_zxh = l_zxh + 1.
+        w_alv-zxh = l_zxh.
+        w_alv-akont = &lt;fs_lfb1&gt;-akont.
+        w_alv-xverr = &lt;fs_lfb1&gt;-xverr.
+        w_alv-zuawa = &lt;fs_lfb1&gt;-zuawa.
+        w_alv-reprf = &lt;fs_lfb1&gt;-reprf.
+        w_alv-togru = &lt;fs_lfb1&gt;-togru.
+        w_alv-togrr = &lt;fs_lfb1&gt;-togrr.
+        w_alv-zwels = &lt;fs_lfb1&gt;-zwels.
+        w_alv-bukrs = &lt;fs_lfb1&gt;-bukrs.
+        w_alv-sperr = &lt;fs_lfb1&gt;-sperr.
+        w_alv-zcwwb = &lt;fs_lfb1&gt;-zcwwb.
+        w_alv-zcwfk = &lt;fs_lfb1&gt;-zcwfk.
+        append w_alv to gt_alv.
+      endloop.
+    else.
+      delete gt_data.
+    endif.
+  endloop.
+
+endform.                    "get_data
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  display_by_alv</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+form display_by_alv.
+  perform init_layout.
+
+  perform init_fieldcat.
+
+  perform show_alv.
+endform.                    "display_by_alv
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  init_layout</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+form init_layout.
+  clear w_layout.
+  w_layout-zebra = 'X'.
+  w_layout-f2code = '&ETA'.
+  w_layout-detail_popup = 'X'.
+  w_layout-colwidth_optimize = 'X'.
+endform.                    "init_layout
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  init_fieldcat</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+form init_fieldcat.
+  data:l_colpos type slis_fieldcat_alv-col_pos.
+  clear:gt_fieldcat.
+  if p_jtsj = 'X'.
+    macro_fill_fieldcat:
+    l_colpos 'ZXH' '序号' '',
+    l_colpos 'LIFNR' '供应商账号' 'X',
+    l_colpos 'NAME1' '名称1' '',
+    l_colpos 'NAME2' '公司曾用名' '',
+    l_colpos 'SORT1' '检索项1' '',
+    l_colpos 'SORT2' '检索项2' '',
+    l_colpos 'CITY2' '供应系列' '',
+    l_colpos 'HOME_CITY' '主要客户' '',
+    l_colpos 'STREET' '街道' '',
+    l_colpos 'HOUSE_NUM1' '门牌号' '',
+    l_colpos 'POST_CODE1' '城市邮政编码' '',
+    l_colpos 'CITY1' '城市' '',
+    l_colpos 'COUNTRY' '国家代码' '',
+    l_colpos 'REGION' '地区 (州、省、县)' '',
+    l_colpos 'TEL_NUMBER' '第一个电话号码: 拨号 + 编号' '',
+    l_colpos 'TEL_EXTENS' '第一个电话号码分机号' '',
+    l_colpos 'MOB_NUMBER' '第一个移动电话号码：区号 + 电话号码' '',
+    l_colpos 'FAX_NUMBER' '第一个传真号: 拨号 + 编号' '',
+    l_colpos 'FAX_EXTENS' '第一个传真号: 分机号' '',
+    l_colpos 'SMTP_ADDR' '电子邮件地址' '',
+    l_colpos 'STCD3' '营业执照编号' 'X',
+    l_colpos 'STCEG' '增值税登记号' 'X',
+    l_colpos 'J_1KFTBUS' '业务类型' '',
+    l_colpos 'J_1KFREPRE' '代表名称' '',
+    l_colpos 'STCD4' '法人联系方式' '',
+    l_colpos 'BANKS' '开户行所在国家' '',
+    l_colpos 'BANKL' '银行代码' '',
+    l_colpos 'BANKA' '银行名称' '',
+    l_colpos 'BANKN' '银行帐户号码' '',
+    l_colpos 'KOINH' '银行账户' '',
+    l_colpos 'BKREF' '银行户主' ''.
+  else.
+    macro_fill_fieldcat:
+    l_colpos 'ZXH' '序号' '',
+    l_colpos 'LIFNR' '供应商账号' 'X',
+    l_colpos 'BUKRS' '公司代码' 'X',
+    l_colpos 'EKORG' '采购组织' '',
+    l_colpos 'KTOKK' '供应商账户组' '',
+    l_colpos 'ERDAT' '创建日期' '',
+    l_colpos 'NAME1' '名称1' '',
+    l_colpos 'NAME2' '公司曾用名' '',
+    l_colpos 'VBUND' '贸易伙伴' 'X',
+    l_colpos 'SORT1' '公司简称' '',
+    l_colpos 'SORT2' '公司旧编号' '',
+    l_colpos 'CITY2' '供应系列' '',
+    l_colpos 'HOME_CITY' '主要客户' '',
+    l_colpos 'STREET' '街道' '',
+    l_colpos 'HOUSE_NUM1' '门牌号' '',
+    l_colpos 'POST_CODE1' '城市邮政编码' '',
+    l_colpos 'CITY1' '城市' '',
+    l_colpos 'COUNTRY' '国家代码' '',
+    l_colpos 'REGION' '地区 (州、省、县)' '',
+    l_colpos 'LANGU' '语言代码' '',
+    l_colpos 'TEL_NUMBER' '第一个电话号码: 拨号 + 编号' '',
+    l_colpos 'TEL_EXTENS' '第一个电话号码分机号' '',
+    l_colpos 'MOB_NUMBER' '第一个移动电话号码：区号 + 电话号码' '',
+    l_colpos 'FAX_NUMBER' '第一个传真号: 拨号 + 编号' '',
+    l_colpos 'FAX_EXTENS' '第一个传真号: 分机号' '',
+    l_colpos 'SMTP_ADDR' '电子邮件地址' '',
+    l_colpos 'VERKF' '销售员' '',
+    l_colpos 'TELF1' '电话' '',
+    l_colpos 'KUNNR' '客户' 'X',
+    l_colpos 'STCD3' '营业执照编号' 'X',
+    l_colpos 'STCEG' '增值税登记号' 'X',
+    l_colpos 'J_1KFTBUS' '业务类型' '',
+    l_colpos 'J_1KFREPRE' '法人代表' '',
+    l_colpos 'STCD4' '法人联系方式' '',
+    l_colpos 'BANKS' '开户行所在国家' '',
+    l_colpos 'BANKL' '银行代码' '',
+    l_colpos 'BANKA' '银行名称' '',
+    l_colpos 'BANKN' '银行帐户号码' '',
+    l_colpos 'KOINH' '银行账户' '',
+    l_colpos 'BKREF' '银行户主' '',
+    l_colpos 'XVERR' '结算客户' '',
+    l_colpos 'AKONT' '总帐中的统驭科目' '',
+    l_colpos 'ZUAWA' '排序码' '',
+    l_colpos 'ZCWFK' '财务付款条件' '',
+    l_colpos 'ZCWWB' '财务付款条件描述' '',
+    l_colpos 'ZCGFK' '采购付款条件' '',
+    l_colpos 'ZCGWB' '采购付款条件描述' '',
+    l_colpos 'REPRF' '检查双重发票' '',
+    l_colpos 'TOGRU' '支付容差组' '',
+    l_colpos 'TOGRR' '发票容差组' '',
+    l_colpos 'ZWELS' '付款方式' '',
+    l_colpos 'WEBRE' '标识：基于收货的发票验证' '',
+    l_colpos 'LFABC' 'ABC标识' '',
+    l_colpos 'SPERR' '财务冻结标识' '',
+    l_colpos 'SPERM' '采购冻结标识' ''.
+  endif.
+
+endform.                    "init_fieldcat
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  show_alv</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+form show_alv.
+  call function 'REUSE_ALV_GRID_DISPLAY'
+   exporting
+<font color ="#0000FF">*     I_INTERFACE_CHECK                 = ' '</font>
+<font color ="#0000FF">*     I_BYPASSING_BUFFER                = ' '</font>
+<font color ="#0000FF">*     I_BUFFER_ACTIVE                   = ' '</font>
+     i_callback_program                = sy-repid
+     i_callback_pf_status_set          = 'SET_PF_STATUS'
+<font color ="#0000FF">*     i_callback_user_command           = 'USER_COMMAND'</font>
+<font color ="#0000FF">*     I_CALLBACK_TOP_OF_PAGE            = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE       = 'ALV_TOP_PAGE'</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_END_OF_LIST       = ' '</font>
+<font color ="#0000FF">*     I_STRUCTURE_NAME                  =</font>
+<font color ="#0000FF">*     I_BACKGROUND_ID                   = ' '</font>
+<font color ="#0000FF">*     I_GRID_TITLE                      =</font>
+<font color ="#0000FF">*     I_GRID_SETTINGS                   =</font>
+     is_layout                         = w_layout
+     it_fieldcat                       = gt_fieldcat
+<font color ="#0000FF">*     IT_EXCLUDING                      =</font>
+<font color ="#0000FF">*     IT_SPECIAL_GROUPS                 =</font>
+<font color ="#0000FF">*     IT_SORT                           =</font>
+<font color ="#0000FF">*     IT_FILTER                         =</font>
+<font color ="#0000FF">*     IS_SEL_HIDE                       =</font>
+<font color ="#0000FF">*     I_DEFAULT                         = 'X'</font>
+<font color ="#0000FF">*     I_SAVE                            = ' '</font>
+<font color ="#0000FF">*     IS_VARIANT                        =</font>
+<font color ="#0000FF">*     IT_EVENTS                         =</font>
+<font color ="#0000FF">*     IT_EVENT_EXIT                     =</font>
+<font color ="#0000FF">*     IS_PRINT                          =</font>
+<font color ="#0000FF">*     IS_REPREP_ID                      =</font>
+<font color ="#0000FF">*     I_SCREEN_START_COLUMN             = 0</font>
+<font color ="#0000FF">*     I_SCREEN_START_LINE               = 0</font>
+<font color ="#0000FF">*     I_SCREEN_END_COLUMN               = 0</font>
+<font color ="#0000FF">*     I_SCREEN_END_LINE                 = 0</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_TOP                 = 0</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_END                 = 0</font>
+<font color ="#0000FF">*     IT_ALV_GRAPHICS                   =</font>
+<font color ="#0000FF">*     IT_HYPERLINK                      =</font>
+<font color ="#0000FF">*     IT_ADD_FIELDCAT                   =</font>
+<font color ="#0000FF">*     IT_EXCEPT_QINFO                   =</font>
+<font color ="#0000FF">*     IR_SALV_FULLSCREEN_ADAPTER        =</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">*     ES_EXIT_CAUSED_BY_USER            =</font>
+    tables
+      t_outtab                          = gt_alv
+   exceptions
+     program_error                     = 1
+     others                            = 2.
+  if sy-subrc &lt;&gt; 0.
+    message id sy-msgid type sy-msgty number sy-msgno
+            with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  endif.
+endform.                    "show_alv
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_PF_STATUS</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       设置标准工具栏按钮</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;RT_EXTAB   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+form set_pf_status using rt_extab type slis_t_extab.
+  set pf-status 'STANDARD_FULLSCREEN'.
+endform.                    "SET_PF_STATUS
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  INCREMENT_COUNT_LOG</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       每次访问后增加次数, 每次返回到查询页面，都会进入这个函数</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+form INCREMENT_COUNT_LOG .
+  DATA: lw_db TYPE zzttablog,
+        l_minute TYPE sy-uzeit,
+        l_now_year type zzttablog-GJAHR,
+        l_now_month type zzttablog-MONAT.
+
+  l_now_year = sy-datum+0(4).
+  l_now_month = sy-datum+4(2).
+
+  " 按每月累加用户使用数
+  SELECT SINGLE *
+    INTO lw_db
+    FROM zzttablog
+  WHERE tcode = sy-tcode      " 事物代码
+    and GJAHR = l_now_year    " 当前年份
+    and MONAT = l_now_month.  " 当前月份
+
+  IF sy-subrc = 0.
+    " 相同的人，如果在10分钟内做相同的操作，算计一次
+    IF lw_db-ernam = sy-uname AND
+      lw_db-erdat = sy-datum.
+      l_minute = sy-uzeit - lw_db-erzet.
+      IF l_minute &lt; '001000'.
+        RETURN.
+      ENDIF.
+    ENDIF.
+    lw_db-zcunt = lw_db-zcunt + 1.      " 次数加一
+  ELSE.
+    lw_db-tcode = sy-tcode.           " 记录操作的tcode
+    lw_db-zcunt = '1'.                " 初始化次数
+    lw_db-zfnam = sy-uname.           " 第一次操作人员
+    lw_db-zfdat = sy-datum.           " 第一次操作日期
+    lw_db-zfzet = sy-uzeit.           " 第一次操作时间
+    lw_db-GJAHR = l_now_year.         " 年度
+    lw_db-MONAT = l_now_month.        " 月份
+  ENDIF.
+
+  lw_db-ernam = sy-uname.     " 本次操作人员
+  lw_db-erdat = sy-datum.     " 本次操作日期
+  lw_db-erzet = sy-uzeit.     " 本次操作时间
+
+  MODIFY zzttablog FROM lw_db.
+  COMMIT WORK AND WAIT.
+endform.                    " INCREMENT_COUNT_LOG
+
+<font color ="#0000FF">*Text elements</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* 001 查询条件</font>
+<font color ="#0000FF">* 002 数据</font>
+<font color ="#0000FF">* 003 冻结条件</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* P_CGDJBS         采购冻结</font>
+<font color ="#0000FF">* P_CGZZ         采购组织</font>
+<font color ="#0000FF">* P_CWDJBS         财务冻结</font>
+<font color ="#0000FF">* P_GSSJ         公司层数据</font>
+<font color ="#0000FF">* P_GYZH         供应商账户组</font>
+<font color ="#0000FF">* P_JTSJ         集团层数据</font>
+<font color ="#0000FF">* S_BS         ABC标识</font>
+<font color ="#0000FF">* S_CGDJRQ         采购冻结日期</font>
+<font color ="#0000FF">* S_CJRQ         创建日期</font>
+<font color ="#0000FF">* S_CWDJRQ         财务冻结日期</font>
+<font color ="#0000FF">* S_FR         供应商法人</font>
+<font color ="#0000FF">* S_GSDM         公司代码</font>
+<font color ="#0000FF">* S_GYBM         供应商编码</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPEOPLE</font>
+<font color ="#0000FF">*017   没有选择条件的数据！</font>
+<font color ="#0000FF">*050   没有满足查询条件的数据!</font>
+<font color ="#0000FF">*237   用户没有公司代码&1的权限！</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

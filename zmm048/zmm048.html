@@ -1,0 +1,345 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZMM048</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZMM048</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:   物流工厂补充计划</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  ZMM048</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  ZMM048 MESSAGE-ID ZPEOPLE.
+
+TABLES: MARC,SSCRFIELDS,MARA,MARD,ZZTMM48.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 类型字段</font>
+<font color ="#0000FF">************************************************************************</font>
+
+TYPES:BEGIN OF TY_MATER,
+      MATNR TYPE MARA-MATNR,
+    WERKS  TYPE MARC-WERKS,
+    MAKTX TYPE MAKT-MAKTX,
+    MATKL type MARA-MATKL,
+    EKGRP TYPE MARC-EKGRP,
+    PRDHA type MARA-PRDHA,
+    CARN TYPE MARM-UMREN,
+    BOXN TYPE  MARM-UMREN,
+    lgort  TYPE MARD-lgort,
+ END OF TY_MATER.
+
+TYPES:  BEGIN OF TY_ZCKXQ,
+            MATNR TYPE MATNR,
+           WERKS TYPE WERKS_D,
+           MAKTX TYPE MAKTX,
+           KCJY TYPE MENGV13,
+           TEXT TYPE TEXT40,   "订单行项目的生产说明
+           EXTRA TYPE TEXT17,
+        END OF TY_ZCKXQ.
+
+TYPES:BEGIN OF TY_ZZTMM48,
+      SEL TYPE CHAR1,
+      ISCUB TYPE C,  "是否创建ub调拨单，用于回写作为标记
+      ZSTAT_TEXT(8) TYPE C. "状态描述
+        include structure <a href ="zztmm48/dictionary-zztmm48.html">ZZTMM48</a>.
+TYPES:      END OF TY_ZZTMM48.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*全局变量</font>
+<font color ="#0000FF">************************************************************************</font>
+
+
+DATA:G_OK_CODE TYPE SY-UCOMM,
+     G_NEW_OK  TYPE SY-UCOMM,
+     G_SAVE_OK TYPE SY-UCOMM,
+     L_SUM TYPE I,    "选中的行的总数
+     G_CHANGE TYPE C.         "数据发生变化标识
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 常量</font>
+<font color ="#0000FF">************************************************************************</font>
+CONSTANTS: COS_FC01           TYPE CHAR4  VALUE 'FC01',
+           COS_SJOB           TYPE CHAR4  VALUE 'SJOB'.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*内表&工作区</font>
+<font color ="#0000FF">************************************************************************</font>
+
+DATA: GT_ZZTMM48 TYPE STANDARD TABLE OF TY_ZZTMM48,
+     W_ZZTMM48 TYPE TY_ZZTMM48.
+
+
+DATA: GT_MM TYPE STANDARD TABLE OF ZZTMM48,
+     W_MM TYPE ZZTMM48.
+
+
+DATA: GT_MATER TYPE STANDARD TABLE OF TY_MATER,
+     W_MATER TYPE TY_MATER.
+
+DATA:  GT_ZCKXQ TYPE STANDARD TABLE OF TY_ZCKXQ,
+       W_ZCKXQ TYPE TY_ZCKXQ.
+RANGES:R_XSWERKS  FOR T001W-WERKS.    "工厂range
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 字段符声明</font>
+<font color ="#0000FF">************************************************************************</font>
+FIELD-SYMBOLS: &lt;FS_ZZTMM48&gt; TYPE TY_ZZTMM48,
+               &lt;FS_ZZTMM48_include&gt; TYPE TY_ZZTMM48,
+               &lt;FS_ZCKXQ&gt; TYPE TY_ZCKXQ,
+               &lt;FS_MM&gt; TYPE ZZTMM48,
+               &lt;FS_MATER&gt; TYPE TY_MATER.
+
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 选择屏幕</font>
+<font color ="#0000FF">************************************************************************</font>
+SELECTION-SCREEN BEGIN OF BLOCK BLK WITH FRAME TITLE TEXT-001.
+PARAMETER: P_WERKS TYPE MARC-WERKS OBLIGATORY. " 物流工厂
+PARAMETER: p_STAT TYPE ZZTMM48-ZSTAT. " 物流工厂
+SELECT-OPTIONS: S_MATNR FOR MARC-MATNR,
+                S_PRDHA FOR MARA-PRDHA, " 产品层次
+                S_EKGRP FOR MARC-EKGRP, "采购组
+<font color ="#0000FF">*                s_LGORT for mard-LGORT, "库存地点</font>
+                S_MATKL FOR MARA-MATKL. " 物料组
+
+<font color ="#0000FF">*                S_DJRQ    FOR SY-DATUM.</font>
+SELECTION-SCREEN END OF BLOCK BLK.
+
+selection-screen: function key 1."自定义按钮一
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* INITIALIZATION</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* AT SELECTION-SCREEN</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+INITIALIZATION.
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* AT SELECTION-SCREEN</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+AT SELECTION-SCREEN.
+  IF SSCRFIELDS-UCOMM = COS_FC01.
+    SSCRFIELDS-UCOMM = COS_SJOB.
+  ENDIF.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*& start-of-selection</font>
+<font color ="#0000FF">************************************************************************</font>
+START-OF-SELECTION.
+<font color ="#0000FF">*perform createdata.</font>
+
+<font color ="#0000FF">*  跑正常代码</font>
+  PERFORM GET_DATA_FROM_DB.
+
+    CALL SCREEN 9001.
+
+
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_RVOD</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       根据装箱数获取库存需求值</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*      --&gt;P_L_CARN  text</font>
+<font color ="#0000FF">*      &lt;--P_W_ZCKXQ_KCJY  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_RVOD  USING L_CARN
+               CHANGING P_KCJY.
+
+data:  L_DIVISOR TYPE MARM-UMREN, "除数
+       L_MOD TYPE MARM-UMREN. "L_CARN
+
+        IF L_CARN &lt;&gt; 0.
+          L_DIVISOR = ABS( P_KCJY )  DIV L_CARN.
+          L_MOD = ABS( P_KCJY ) MOD L_CARN.
+          IF L_MOD &lt;&gt; 0.
+            P_KCJY = ( L_DIVISOR + 1 ) * L_CARN.
+          ENDIF.
+        ENDIF.
+
+ENDFORM.                    " GET_RVOD
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      GET_TEXT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       获取订单行项目的生产说明文本</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_TEXT USING L_VBELN L_POSNR  CHANGING TEXT.
+  DATA: L_NAME TYPE THEAD-TDNAME.
+  DATA: GT_TLINE TYPE STANDARD TABLE OF TLINE,
+        W_TLINE TYPE TLINE.
+
+  CONCATENATE L_VBELN L_POSNR INTO L_NAME.
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      CLIENT    = SY-MANDT
+      ID        = 'Z001'
+      LANGUAGE  = '1'
+      NAME      = L_NAME
+      OBJECT    = 'VBBP'
+    TABLES
+      LINES     = GT_TLINE
+    EXCEPTIONS
+      NOT_FOUND = 4.
+  IF SY-SUBRC &lt;&gt; 0.
+    TEXT = ''.
+  ELSE.
+    LOOP AT GT_TLINE INTO W_TLINE.
+      CONCATENATE TEXT W_TLINE-TDLINE INTO TEXT.
+    ENDLOOP.
+  ENDIF.
+
+  CLEAR: GT_TLINE.
+ENDFORM.                    "GET_TEXT
+
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  GET_DATA_FROM_DB</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA_FROM_DB .
+  CLEAR:GT_MM.
+
+  IF P_STAT IS INITIAL.
+          SELECT *
+    INTO CORRESPONDING FIELDS OF TABLE GT_MM
+    FROM  ZZTMM48
+    WHERE ZZTMM48~RVOD &gt; 0 and ZZTMM48~WERKS = P_WERKS and ZZTMM48~MATNR in S_MATNR and ZZTMM48~PRDHA in S_PRDHA  and ZZTMM48~EKGRP in S_EKGRP and ZZTMM48~MATKL in  S_MATKL.
+
+  ELSE.
+      SELECT *
+    INTO CORRESPONDING FIELDS OF TABLE GT_MM
+    FROM  ZZTMM48
+    WHERE ZZTMM48~RVOD &gt; 0 and ZZTMM48~WERKS = P_WERKS and ZZTMM48~ZSTAT = P_STAT and ZZTMM48~MATNR in S_MATNR and ZZTMM48~PRDHA in S_PRDHA  and ZZTMM48~EKGRP in S_EKGRP and ZZTMM48~MATKL in  S_MATKL.
+
+  ENDIF.
+
+  IF GT_MM IS  INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+
+
+  LOOP AT GT_MM ASSIGNING &lt;FS_MM&gt;.
+    W_ZZTMM48-MATNR = &lt;FS_MM&gt;-MATNR.
+    W_ZZTMM48-WERKS = &lt;FS_MM&gt;-WERKS.
+    W_ZZTMM48-MAKTX = &lt;FS_MM&gt;-MAKTX.
+    W_ZZTMM48-RVOD = &lt;FS_MM&gt;-RVOD.  "库存建议值
+    W_ZZTMM48-EXTRA = &lt;FS_MM&gt;-EXTRA.
+    W_ZZTMM48-TEXT = &lt;FS_MM&gt;-TEXT.
+    W_ZZTMM48-BOXN = &lt;FS_MM&gt;-BOXN.
+    W_ZZTMM48-CARN = &lt;FS_MM&gt;-CARN.
+    W_ZZTMM48-EKGRP = &lt;FS_MM&gt;-EKGRP.
+    W_ZZTMM48-LGORT = &lt;FS_MM&gt;-LGORT.
+    W_ZZTMM48-MATKL = &lt;FS_MM&gt;-MATKL.
+    W_ZZTMM48-ZSTAT = &lt;FS_MM&gt;-ZSTAT.
+    CASE  &lt;FS_MM&gt;-ZSTAT.
+      WHEN 1.
+        W_ZZTMM48-ZSTAT_TEXT = '自建'.
+      WHEN 2.
+        W_ZZTMM48-ZSTAT_TEXT = '编制'.
+      WHEN 3.
+        W_ZZTMM48-ZSTAT_TEXT = '物流审批通过'.
+      WHEN 4.
+        W_ZZTMM48-ZSTAT_TEXT = '总部审批通过'.
+    ENDCASE.
+    W_ZZTMM48-YJSD = &lt;FS_MM&gt;-YJSD.
+    W_ZZTMM48-YJSR = &lt;FS_MM&gt;-YJSR.
+    W_ZZTMM48-YJST = &lt;FS_MM&gt;-YJST.
+    W_ZZTMM48-EJSD = &lt;FS_MM&gt;-EJSD.
+    W_ZZTMM48-EJSR = &lt;FS_MM&gt;-EJSR.
+    W_ZZTMM48-EJST = &lt;FS_MM&gt;-EJST.
+    W_ZZTMM48-TJDAT = &lt;FS_MM&gt;-TJDAT.
+    W_ZZTMM48-TJNAM = &lt;FS_MM&gt;-TJNAM.
+    W_ZZTMM48-TJTIM = &lt;FS_MM&gt;-TJTIM.
+    W_ZZTMM48-CGDD = &lt;FS_MM&gt;-CGDD.
+    W_ZZTMM48-PRDHA = &lt;FS_MM&gt;-PRDHA.
+    W_ZZTMM48-CRTED = &lt;FS_MM&gt;-CRTED.
+    W_ZZTMM48-CRTET = &lt;FS_MM&gt;-CRTET.
+    APPEND W_ZZTMM48 TO GT_ZZTMM48.
+  ENDLOOP.
+ENDFORM.                    " GET_DATA_FROM_DB
+
+include <a href ="zmm048_data_form.html">ZMM048_DATA_FORM</a>.
+
+include <a href ="zmm048_define.html">ZMM048_DEFINE</a>.
+
+include <a href ="zmm048_pai.html">ZMM048_PAI</a>.
+
+include <a href ="zmm048_pai_form.html">ZMM048_PAI_FORM</a>.
+
+include <a href ="zmm048_pbo.html">ZMM048_PBO</a>.
+
+include <a href ="zmm048_pbo_form.html">ZMM048_PBO_FORM</a>.
+
+<font color ="#0000FF">*&SPWIZARD: DECLARATION OF TABLECONTROL 'TAB1' ITSELF</font>
+CONTROLS: TAB1 TYPE TABLEVIEW USING SCREEN 9001.
+
+<font color ="#0000FF">*&SPWIZARD: OUTPUT MODULE FOR TC 'TAB1'. DO NOT CHANGE THIS LINE!</font>
+<font color ="#0000FF">*&SPWIZARD: UPDATE LINES FOR EQUIVALENT SCROLLBAR</font>
+MODULE TAB1_CHANGE_TC_ATTR OUTPUT.
+  DESCRIBE TABLE GT_ZZTMM48 LINES TAB1-lines.
+ENDMODULE.
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  TAB1_MODIFY  INPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE TAB1_MODIFY INPUT.
+  MODIFY GT_ZZTMM48
+    FROM W_ZZTMM48
+    INDEX TAB1-CURRENT_LINE.
+ENDMODULE.                 " TAB1_MODIFY  INPUT
+
+<font color ="#0000FF">*GUI Texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* TITLE_9001 --&gt; 物流工厂补充申请/审批表</font>
+
+<font color ="#0000FF">*Text elements</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* 001 查询条件</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* P_STAT         状态</font>
+<font color ="#0000FF">* P_WERKS         工厂</font>
+<font color ="#0000FF">* S_EKGRP         采购组</font>
+<font color ="#0000FF">* S_MATKL         物料组</font>
+<font color ="#0000FF">* S_MATNR         物料编码</font>
+<font color ="#0000FF">* S_PRDHA         产品层次</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPEOPLE</font>
+<font color ="#0000FF">*000   &1 &2 &3 &4</font>
+<font color ="#0000FF">*002   系统错误：在表 & 中修改时有错误</font>
+<font color ="#0000FF">*050   没有满足查询条件的数据!</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

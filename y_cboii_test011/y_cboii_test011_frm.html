@@ -1,0 +1,1088 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>Y_CBOII_TEST011_FRM</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: Y_CBOII_TEST011_FRM</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include Y_CBOII_TEST011_FRM</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                Y_CBOII_TEST011_FRM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+FORM FRM_GET_DATA .
+  DATA: LT_WHERE  TYPE TABLE OF STRING,
+        LW_WHERE  TYPE STRING.
+
+  DATA: ROW_NUM   TYPE I VALUE 0,
+        L_TIMES   TYPE I VALUE 1.
+
+  DATA: L_MATNR TYPE  QALS-MATNR VALUE 'X',       "物料号
+        L_WERK  TYPE  QALS-WERK VALUE 'X',        "工厂
+        L_LAGOR TYPE  QALS-LAGORTCHRG VALUE 'X',  "库存地点
+        L_MAABC TYPE  MARC-MAABC VALUE 'X',       "ABC物料
+        L_LIFNR TYPE  QALS-LIFNR VALUE 'X',       "供应商帐号
+        L_PRDHA TYPE  MARA-PRDHA VALUE 'X',       "产品层次
+        L_KTLOS TYPE  QALS-KTEXTLOS VALUE 'X',    "检验员
+        L_EKGRP TYPE  EKKO-EKGRP VALUE 'X'.       "采购组
+
+  DATA:  L_ZPC   TYPE I VALUE 0,         "总批次
+        L_HGPC  TYPE I VALUE 0,         "合格批次
+        L_BHGPC TYPE I VALUE 0,         "不合格批次
+        L_JJPC  TYPE I VALUE 0,         "回用－降级使用批次
+        L_ZCPC  TYPE I VALUE 0,         "回用－正常使用批次
+        L_FXPC  TYPE I VALUE 0,         "紧急放行批次
+        L_HGJF  TYPE I VALUE 0,         "合格时质量积分
+        L_JJJF  TYPE I VALUE 0,         "降级使用批次决策质量记分
+        L_ZCJF  TYPE I VALUE 0,         "正常使用批次决策质量记分
+        L_ISJJFX TYPE I VALUE 0.        "是否降级使用
+
+  "ZQM01报表新增采购入库数量等相关字段 Start 20130820 by huangbw
+  DATA: L_ZSL   TYPE I VALUE 0,         "送检总数量
+       L_HGSL  TYPE I VALUE 0,         "合格数量
+       L_HYSL  TYPE I VALUE 0          "回用数量
+       .
+  "ZQM01报表新增采购入库数量等相关字段 End   20130820 by huangbw
+
+
+  DATA: L_NAME TYPE STRING.             "供应商名称
+
+  DATA: L_INDEX TYPE SY-TABIX.
+
+  "工厂
+  IF S_WERKS IS NOT INITIAL.
+    LW_WHERE = 'QALS~WERK = S_WERKS'.
+    APPEND LW_WHERE TO LT_WHERE.
+  ENDIF.
+
+  "库存地点
+  IF LT_WHERE IS NOT INITIAL.
+    LW_WHERE = 'AND QALS~LAGORTCHRG IN S_LAGOR'.
+    APPEND LW_WHERE TO LT_WHERE.
+  ELSE.
+    LW_WHERE = 'QALS~LAGORTCHRG IN S_LAGOR'.
+    APPEND LW_WHERE TO LT_WHERE.
+  ENDIF.
+
+  "供应商帐号
+  LW_WHERE = 'AND QALS~LIFNR IN S_LIFNR'.
+  APPEND LW_WHERE TO LT_WHERE.
+
+  "物料号
+  LW_WHERE = 'AND QALS~MATNR IN S_MATNR'.
+  APPEND LW_WHERE TO LT_WHERE.
+
+  "产品层次
+  LW_WHERE = 'AND MARA~PRDHA IN S_PRDHA'.
+  APPEND LW_WHERE TO LT_WHERE.
+
+  "物料组
+  LW_WHERE = 'AND MARA~MATKL IN S_MATKL'.
+  APPEND LW_WHERE TO LT_WHERE.
+
+  "外部物料组
+  LW_WHERE = 'AND MARA~EXTWG IN S_EXTWG'.
+  APPEND LW_WHERE TO LT_WHERE.
+
+  "查询检验批日期
+  LW_WHERE = 'AND QALS~ENSTEHDAT IN S_STEHD'.
+  APPEND LW_WHERE TO LT_WHERE.
+
+  "ABC物料
+  LW_WHERE = 'AND MARC~MAABC IN S_MAABC'.
+  APPEND LW_WHERE TO LT_WHERE.
+
+  "检验员
+  IF S_KTLOS IS NOT INITIAL.
+    IF S_KTLOS-LOW = '' AND S_KTLOS-HIGH = '' .
+      LW_WHERE = 'AND ( QALS~KTEXTLOS = '''' AND MARC~QMATA = '''' )'.
+      APPEND LW_WHERE TO LT_WHERE.
+    ELSE.
+<font color ="#0000FF">*    LW_WHERE = 'AND ( QALS~KTEXTLOS IN S_KTLOS OR MARC~QSSYS IN S_KTLOS ) '.</font>
+<font color ="#0000FF">*    APPEND LW_WHERE TO LT_WHERE.</font>
+      LW_WHERE = 'AND ( ( QALS~KTEXTLOS IN S_KTLOS ) OR ( QALS~KTEXTLOS = '''' AND MARC~QMATA IN S_KTLOS ) )'.
+      APPEND LW_WHERE TO LT_WHERE.
+    ENDIF.
+  ENDIF.
+
+  "采购组
+  LW_WHERE = 'AND EKKO~EKGRP IN S_EKGRP'.
+  APPEND LW_WHERE TO LT_WHERE.
+
+  "检验批源 零部件
+  LW_WHERE = 'AND ( QALS~HERKUNFT = ''01'' OR QALS~HERKUNFT = ''Z1'' )'.
+  APPEND LW_WHERE TO LT_WHERE.
+
+  SELECT QAVE~KZART     AS KZART        "检验批，部分批，单个单位，间隔
+        QAVE~PRUEFLOS   AS PRUEF        "检验批编号
+
+        QALS~MATNR      AS MATNR       "物料号
+        QALS~WERK       AS WERK        "工厂
+<font color ="#0000FF">*        QALS~LAGORTCHRG AS  LAGOR       "库存地点</font>
+        QALS~LAGORTVORG AS LAGOR       "库存地点
+        MARC~MAABC      AS MAABC       "ABC物料
+        MARA~PRDHA      AS PRDHA       "产品层次
+        MARA~MATKL      AS MATKL       "物料组
+        MARA~EXTWG      AS EXTWG       "外部物料组
+        MAKT~MAKTX      AS MAKTX       "物料描述
+        QALS~LIFNR      AS LIFNR       "供应商帐号
+        LFA1~NAME1      AS NAME1       "供应商名称 1
+        LFA1~NAME2      AS NAME2       "供应商名称 2
+        QALS~LOSMENGE   AS LOSME       "数量
+
+        QALS~LMENGE01   AS LMENG       "合格数量/回用数量
+
+        QAVE~VCODEGRP   AS VCGRP       "使用决定的代码组
+        QAVE~VCODE      AS VCODE       "使用决策代码
+        QAVE~QKENNZAHL  AS QKENN       "质量记分
+
+        QALS~KTEXTLOS   AS KTLOS       "检验员
+        MARC~QMATA      AS QMATA       "检验员
+
+        T001L~LGOBE     AS LGOBE       "仓储地点的描述
+
+        T179T~VTEXT       "产品层次描述
+        T023T~WGBEZ       "物料组描述
+        TWEWT~EWBEZ       "外部物料组描述
+
+        EKKO~EKGRP        "采购组
+        QALS~OBJNR
+
+    INTO CORRESPONDING FIELDS OF TABLE GT_JIANYANPI
+    FROM QALS
+      INNER JOIN QAVE
+        ON QALS~PRUEFLOS = QAVE~PRUEFLOS
+      INNER JOIN MARC
+        ON QALS~MATNR = MARC~MATNR
+        AND QALS~WERK = MARC~WERKS
+      INNER JOIN MARA
+        ON QALS~MATNR = MARA~MATNR
+      INNER JOIN EKKO
+        ON QALS~EBELN = EKKO~EBELN
+      LEFT JOIN MAKT
+        ON QALS~MATNR = MAKT~MATNR
+        AND MAKT~SPRAS = '1'
+      LEFT JOIN LFA1
+        ON QALS~LIFNR = LFA1~LIFNR
+      LEFT JOIN T001L
+        ON T001L~WERKS = QALS~WERK
+        AND T001L~LGORT = QALS~LAGORTVORG
+      LEFT JOIN T179T                 "产品层次描述
+      ON T179T~PRODH = MARA~PRDHA
+      AND T179T~SPRAS = '1'
+
+      LEFT JOIN T023T                 "物料组描述
+      ON T023T~MATKL = MARA~MATKL
+      AND T023T~SPRAS = '1'
+
+      LEFT JOIN TWEWT                 "外部物料组描述
+      ON TWEWT~EXTWG = MARA~EXTWG
+      AND TWEWT~SPRAS = '1'
+
+  WHERE (LT_WHERE).
+
+  IF GT_JIANYANPI IS INITIAL.
+    MESSAGE S017 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  LOOP AT GT_JIANYANPI INTO W_JIANYANPI.
+    L_INDEX = SY-TABIX.
+
+<font color ="#0000FF">*    读取系统状态</font>
+    CALL FUNCTION 'STATUS_READ'
+      EXPORTING
+        CLIENT                 = SY-MANDT
+        OBJNR                  = W_JIANYANPI-OBJNR
+        ONLY_ACTIVE            = 'X'
+      TABLES
+        STATUS                 = GT_STAT
+     EXCEPTIONS
+       OBJECT_NOT_FOUND       = 1
+       OTHERS                 = 2
+              .
+<font color ="#0000FF">*    根据TJ02T 系统状态文本 判断读出的检验批状态</font>
+    READ TABLE GT_STAT INTO W_STAT WITH KEY STAT = 'I0224'.
+    IF SY-SUBRC = 0.
+      IF W_JIANYANPI-VCODE &lt;&gt; '02'.
+        DELETE GT_JIANYANPI INDEX L_INDEX.
+        CLEAR: W_JIANYANPI,W_STAT,L_INDEX.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+
+    IF W_JIANYANPI-KTLOS IS INITIAL.
+      W_JIANYANPI-KTLOS = W_JIANYANPI-QMATA.
+    ENDIF.
+    MODIFY GT_JIANYANPI FROM W_JIANYANPI.
+    CLEAR: W_JIANYANPI,W_STAT,L_INDEX.
+  ENDLOOP.
+
+  IF P_CB1 IS NOT INITIAL.
+    "总揽
+    SORT GT_JIANYANPI BY MATNR WERK LAGOR MAABC EKGRP LIFNR KTLOS.
+    LOOP AT GT_JIANYANPI ASSIGNING &lt;FS_JIANYANPI&gt;.
+      IF &lt;FS_JIANYANPI&gt;-MATNR &lt;&gt; L_MATNR OR &lt;FS_JIANYANPI&gt;-WERK &lt;&gt; L_WERK
+        OR &lt;FS_JIANYANPI&gt;-LAGOR &lt;&gt; L_LAGOR OR &lt;FS_JIANYANPI&gt;-MAABC &lt;&gt; L_MAABC
+        OR &lt;FS_JIANYANPI&gt;-EKGRP &lt;&gt; L_EKGRP  OR &lt;FS_JIANYANPI&gt;-LIFNR &lt;&gt; L_LIFNR
+        OR &lt;FS_JIANYANPI&gt;-KTLOS &lt;&gt; L_KTLOS.
+        "主键不一样，行号加一
+        ROW_NUM = ROW_NUM + 1.
+      ENDIF.
+
+      &lt;FS_JIANYANPI&gt;-NUM = ROW_NUM.
+
+      CLEAR: L_MATNR, L_WERK, L_LAGOR, L_MAABC, L_EKGRP, L_LIFNR, L_KTLOS.
+
+      L_MATNR = &lt;FS_JIANYANPI&gt;-MATNR.
+      L_WERK  = &lt;FS_JIANYANPI&gt;-WERK.
+      L_LAGOR = &lt;FS_JIANYANPI&gt;-LAGOR.
+      L_MAABC = &lt;FS_JIANYANPI&gt;-MAABC.
+      L_EKGRP = &lt;FS_JIANYANPI&gt;-EKGRP.
+      L_LIFNR = &lt;FS_JIANYANPI&gt;-LIFNR.
+      L_KTLOS = &lt;FS_JIANYANPI&gt;-KTLOS.
+    ENDLOOP.
+  ELSEIF P_CB2 IS NOT INITIAL.
+    "按工厂集计
+    SORT GT_JIANYANPI BY WERK.
+    LOOP AT GT_JIANYANPI ASSIGNING &lt;FS_JIANYANPI&gt;.
+      IF &lt;FS_JIANYANPI&gt;-WERK &lt;&gt; L_WERK.
+        "主键不一样，行号加一
+        ROW_NUM = ROW_NUM + 1.
+      ENDIF.
+
+      &lt;FS_JIANYANPI&gt;-NUM = ROW_NUM.
+
+      CLEAR: L_WERK.
+
+      L_WERK  = &lt;FS_JIANYANPI&gt;-WERK.
+    ENDLOOP.
+  ELSEIF P_CB3 IS NOT INITIAL.
+    "按库存地点集计
+    SORT GT_JIANYANPI BY WERK LAGOR.
+    LOOP AT GT_JIANYANPI ASSIGNING &lt;FS_JIANYANPI&gt;.
+      IF &lt;FS_JIANYANPI&gt;-WERK &lt;&gt; L_WERK OR &lt;FS_JIANYANPI&gt;-LAGOR &lt;&gt; L_LAGOR.
+        "主键不一样，行号加一
+        ROW_NUM = ROW_NUM + 1.
+      ENDIF.
+
+      &lt;FS_JIANYANPI&gt;-NUM = ROW_NUM.
+
+      CLEAR: L_WERK, L_LAGOR.
+
+      L_WERK  = &lt;FS_JIANYANPI&gt;-WERK.
+      L_LAGOR = &lt;FS_JIANYANPI&gt;-LAGOR.
+    ENDLOOP.
+  ELSEIF P_CB4 IS NOT INITIAL.
+    "取出截取后的产品层次名称
+    IF P_ZSTAT &lt;&gt; 5.
+      CLEAR GT_T179T.
+
+      SELECT  T179T~PRODH
+           T179T~VTEXT
+      FROM T179 INNER JOIN T179T
+      ON T179~PRODH = T179T~PRODH
+      AND T179T~SPRAS = '1'
+      INTO CORRESPONDING FIELDS OF TABLE GT_T179T
+      WHERE T179~STUFE = P_ZSTAT .
+
+      SORT GT_T179T BY PRODH.
+    ENDIF.
+
+    "按产品层次集计 截取产品层次前几位
+    IF P_ZSTAT = 1.
+      LOOP AT GT_JIANYANPI INTO W_JIANYANPI.
+        "产品层次
+        W_JIANYANPI-PRDHA = W_JIANYANPI-PRDHA+0(1).
+
+        "产品层次名称
+        READ TABLE GT_T179T INTO W_T179T WITH KEY PRODH = W_JIANYANPI-PRDHA BINARY SEARCH.
+        IF SY-SUBRC EQ 0 .
+          W_JIANYANPI-VTEXT = W_T179T-VTEXT.
+        ENDIF.
+
+        MODIFY GT_JIANYANPI FROM W_JIANYANPI.
+        CLEAR: W_JIANYANPI.
+        CLEAR: W_T179T.
+      ENDLOOP.
+    ELSEIF P_ZSTAT = 2.
+      LOOP AT GT_JIANYANPI INTO W_JIANYANPI.
+        "产品层次
+        W_JIANYANPI-PRDHA = W_JIANYANPI-PRDHA+0(3).
+
+        "产品层次名称
+        READ TABLE GT_T179T INTO W_T179T WITH KEY PRODH = W_JIANYANPI-PRDHA BINARY SEARCH.
+        IF SY-SUBRC EQ 0 .
+          W_JIANYANPI-VTEXT = W_T179T-VTEXT.
+        ENDIF.
+
+        MODIFY GT_JIANYANPI FROM W_JIANYANPI.
+        CLEAR: W_JIANYANPI.
+        CLEAR: W_T179T.
+      ENDLOOP.
+    ELSEIF P_ZSTAT = 3.
+      LOOP AT GT_JIANYANPI INTO W_JIANYANPI.
+        "产品层次
+        W_JIANYANPI-PRDHA = W_JIANYANPI-PRDHA+0(6).
+
+        "产品层次名称
+        READ TABLE GT_T179T INTO W_T179T WITH KEY PRODH = W_JIANYANPI-PRDHA BINARY SEARCH.
+        IF SY-SUBRC EQ 0 .
+          W_JIANYANPI-VTEXT = W_T179T-VTEXT.
+        ENDIF.
+
+        MODIFY GT_JIANYANPI FROM W_JIANYANPI.
+        CLEAR: W_JIANYANPI.
+        CLEAR: W_T179T.
+      ENDLOOP.
+    ELSEIF P_ZSTAT = 4.
+      LOOP AT GT_JIANYANPI INTO W_JIANYANPI.
+        "产品层次
+        W_JIANYANPI-PRDHA = W_JIANYANPI-PRDHA+0(9).
+
+        "产品层次名称
+        READ TABLE GT_T179T INTO W_T179T WITH KEY PRODH = W_JIANYANPI-PRDHA BINARY SEARCH.
+        IF SY-SUBRC EQ 0 .
+          W_JIANYANPI-VTEXT = W_T179T-VTEXT.
+        ENDIF.
+
+        MODIFY GT_JIANYANPI FROM W_JIANYANPI.
+        CLEAR: W_JIANYANPI.
+        CLEAR: W_T179T.
+      ENDLOOP.
+    ENDIF.
+
+    SORT GT_JIANYANPI BY PRDHA.
+    LOOP AT GT_JIANYANPI ASSIGNING &lt;FS_JIANYANPI&gt;.
+      IF &lt;FS_JIANYANPI&gt;-PRDHA &lt;&gt; L_PRDHA.
+        "主键不一样，行号加一
+        ROW_NUM = ROW_NUM + 1.
+      ENDIF.
+
+      &lt;FS_JIANYANPI&gt;-NUM = ROW_NUM.
+
+      CLEAR: L_PRDHA.
+
+      L_PRDHA = &lt;FS_JIANYANPI&gt;-PRDHA.
+    ENDLOOP.
+  ELSEIF P_CB5 IS NOT INITIAL.
+    "按供应商集计
+    SORT GT_JIANYANPI BY LIFNR.
+    LOOP AT GT_JIANYANPI ASSIGNING &lt;FS_JIANYANPI&gt;.
+      IF &lt;FS_JIANYANPI&gt;-LIFNR &lt;&gt; L_LIFNR.
+        "主键不一样，行号加一
+        ROW_NUM = ROW_NUM + 1.
+      ENDIF.
+
+      &lt;FS_JIANYANPI&gt;-NUM = ROW_NUM.
+
+      CLEAR: L_LIFNR.
+
+      L_LIFNR = &lt;FS_JIANYANPI&gt;-LIFNR.
+    ENDLOOP.
+  ELSEIF P_CB6 IS NOT INITIAL.
+    "按检验员集计
+    SORT GT_JIANYANPI BY KTLOS.
+
+    LOOP AT GT_JIANYANPI ASSIGNING &lt;FS_JIANYANPI&gt;.
+      IF &lt;FS_JIANYANPI&gt;-KTLOS &lt;&gt; L_KTLOS.
+        "主键不一样，行号加一
+        ROW_NUM = ROW_NUM + 1.
+      ENDIF.
+
+      &lt;FS_JIANYANPI&gt;-NUM = ROW_NUM.
+
+      CLEAR: L_KTLOS.
+
+      L_KTLOS = &lt;FS_JIANYANPI&gt;-KTLOS.
+    ENDLOOP.
+  ELSEIF P_CB7 IS NOT INITIAL.
+    "按采购组集计
+    SORT GT_JIANYANPI BY EKGRP.
+
+    LOOP AT GT_JIANYANPI ASSIGNING &lt;FS_JIANYANPI&gt;.
+      IF &lt;FS_JIANYANPI&gt;-EKGRP &lt;&gt; L_EKGRP.
+        "主键不一样，行号加一
+        ROW_NUM = ROW_NUM + 1.
+      ENDIF.
+
+      &lt;FS_JIANYANPI&gt;-NUM = ROW_NUM.
+
+      CLEAR: L_EKGRP.
+
+      L_EKGRP = &lt;FS_JIANYANPI&gt;-EKGRP.
+    ENDLOOP.
+  ENDIF.
+
+<font color ="#0000FF">*  SORT GT_JIANYANPI BY NUM.</font>
+  LOOP AT GT_JIANYANPI into W_JIANYANPI.
+<font color ="#0000FF">*move GT_JIANYANPI to gs_tableline.</font>
+    "总批次
+    L_ZPC = L_ZPC + 1.
+
+    "总数量
+    L_ZSL = L_ZSL + W_JIANYANPI-LOSME.
+
+    "检验合格            使用决策为01 A0
+    IF W_JIANYANPI-VCGRP = 'A0' AND W_JIANYANPI-VCODE = '01'.
+      "合格批次
+      L_HGPC = L_HGPC + 1.
+
+      "合格数量
+      L_HGSL = L_HGSL + W_JIANYANPI-LMENG.
+
+      "合格质量积分
+      L_HGJF = W_JIANYANPI-QKENN.
+
+      "判断是否为“紧急放行”批次
+      PERFORM FRM_IS_JJFX USING W_JIANYANPI-PRUEF W_JIANYANPI-KZART L_ISJJFX.
+      "若是紧急放行
+      IF L_ISJJFX = 1.
+        L_FXPC = L_FXPC + 1.
+      ENDIF.
+
+      "检验不合格          使用决策为02 A0
+    ELSEIF W_JIANYANPI-VCGRP = 'A0' AND W_JIANYANPI-VCODE = '02'.
+      "不合格批次
+      L_BHGPC = L_BHGPC + 1.
+
+      "回用－降级使用批次  使用决策为03 A0
+    ELSEIF W_JIANYANPI-VCGRP = 'A0' AND W_JIANYANPI-VCODE = '03'.
+      "不合格批次
+      L_BHGPC = L_BHGPC + 1.
+
+      "回用数量
+      L_HYSL = L_HYSL + W_JIANYANPI-LMENG.
+
+      "降级使用批次
+      L_JJPC = L_JJPC + 1.
+      "降级使用质量积分
+      L_JJJF = W_JIANYANPI-QKENN.
+
+      "回用－正常使用批次  使用决策为04 A0
+    ELSEIF W_JIANYANPI-VCGRP = 'A0' AND W_JIANYANPI-VCODE = '04'.
+      "不合格批次
+      L_BHGPC = L_BHGPC + 1.
+
+      "回用数量
+      L_HYSL = L_HYSL + W_JIANYANPI-LMENG.
+
+      "正常使用批次
+      L_ZCPC = L_ZCPC + 1.
+      "正常使用质量积分
+      L_ZCJF = W_JIANYANPI-QKENN.
+    ENDIF.
+
+  W_DETAIL-NUM   = W_JIANYANPI-NUM.         "行号
+      W_DETAIL-MATNR = W_JIANYANPI-MATNR.     "产品编号/物料号
+      W_DETAIL-WERK  = W_JIANYANPI-WERK.       "工厂
+      W_DETAIL-LAGOR = W_JIANYANPI-LAGOR.     "库存地点（车间 ）
+      W_DETAIL-MAABC = W_JIANYANPI-MAABC.     "ABC物料
+      W_DETAIL-EKGRP = W_JIANYANPI-EKGRP.     "采购组
+      W_DETAIL-MATKL = W_JIANYANPI-MATKL.     "物料组
+      W_DETAIL-EXTWG = W_JIANYANPI-EXTWG.     "外部物料组
+      W_DETAIL-PRDHA = W_JIANYANPI-PRDHA.     "产品层次
+      W_DETAIL-MAKTX = W_JIANYANPI-MAKTX.     "物料描述
+      W_DETAIL-LIFNR = W_JIANYANPI-LIFNR.     "供应商帐号
+      W_DETAIL-LGOBE = W_JIANYANPI-LGOBE.
+      W_DETAIL-KTLOS = W_JIANYANPI-KTLOS.
+      W_DETAIL-VTEXT = W_JIANYANPI-VTEXT.
+      W_DETAIL-WGBEZ = W_JIANYANPI-WGBEZ.
+      W_DETAIL-EWBEZ = W_JIANYANPI-EWBEZ.
+
+      CONCATENATE W_JIANYANPI-NAME1
+                W_JIANYANPI-NAME2 INTO L_NAME.
+      W_DETAIL-LNAME = L_NAME.                 "供应商名称
+
+      W_DETAIL-SJPC = L_ZPC.                  "送检总批次
+      W_DETAIL-HGPC = L_HGPC.                 "合格批次
+      W_DETAIL-BHGPC = L_BHGPC.               "不合格批次
+      W_DETAIL-JJPC = L_JJPC.                 "回用－降级使用批次
+      W_DETAIL-ZCPC = L_ZCPC.                 "回用－正常使用批次
+      W_DETAIL-FXPC = L_FXPC.                 "紧急放行批次
+
+
+    AT END OF NUM.
+      W_DETAIL-HGP = L_HGPC * 100 / L_ZPC.    "送检批次合格率
+
+      IF L_BHGPC &lt;&gt; 0 .                       "送检批次回用率.
+        W_DETAIL-HYP = ( L_JJPC + L_ZCPC ) * 100 / L_BHGPC.
+      ENDIF.
+
+      W_DETAIL-SYP = L_FXPC * 100 / L_ZPC.    "紧急放行批次使用率
+
+
+      "ZQM01报表新增采购入库数量等相关字段 Start 20130820 by huangbw
+
+      W_DETAIL-SJSL = L_ZSL.      "送检总数量
+      W_DETAIL-HGSL = L_HGSL.     "合格数量
+      W_DETAIL-HYSL = L_HYSL.     "回用数量
+
+      IF W_DETAIL-SJSL IS NOT INITIAL.
+        W_DETAIL-HGSLP = L_HGSL * 100 / L_ZSL.     "送检数量合格率
+      ENDIF.
+      IF L_ZSL - L_HGSL &gt; 0.
+        W_DETAIL-HYSLP = L_HYSL * 100 / ( L_ZSL - L_HGSL ).   "送检数量回用率
+      ENDIF.
+
+
+      "ZQM01报表新增采购入库数量等相关字段 End  20130820 by huangbw
+
+
+      "质量积分
+      W_DETAIL-ZLJF = ( L_HGPC * L_HGJF + L_JJPC * L_JJJF + L_ZCPC * L_ZCJF ) / L_ZPC.
+
+      APPEND W_DETAIL TO GT_DETAIL.
+
+      L_TIMES = L_TIMES + 1.
+
+      CLEAR: L_ZPC, L_HGPC, L_BHGPC, L_JJPC,
+    L_ZCPC, L_FXPC, L_HGJF, L_JJJF, L_ZCJF, L_NAME,
+    L_ZSL, L_HGSL, L_HYSL.
+
+      CLEAR: gs_tableline.
+      CLEAR: L_ISJJFX.
+    ENDAT.
+  ENDLOOP.
+
+ENDFORM.                    " FRM_GET_DATA
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FRM_IS_JJFX</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_W_JIANYANPI_PRUEF  text</font>
+<font color ="#0000FF">*      --&gt;P_W_JIANYANPI_KZART  text</font>
+<font color ="#0000FF">*      --&gt;P_L_ISJJFX  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FRM_IS_JJFX  USING    P_W_JIANYANPI_PRUEF
+                           P_W_JIANYANPI_KZART
+                           P_L_ISJJFX.
+  DATA: L_NAME TYPE THEAD-TDNAME.
+
+  CONCATENATE SY-MANDT
+              P_W_JIANYANPI_PRUEF
+              P_W_JIANYANPI_KZART INTO L_NAME.
+
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+      CLIENT                        = SY-MANDT
+      ID                            = 'QAVE'
+      LANGUAGE                      = '1'
+      NAME                          = L_NAME
+      OBJECT                        = 'QPRUEFLOS'
+<font color ="#0000FF">*     ARCHIVE_HANDLE                = 0</font>
+<font color ="#0000FF">*     LOCAL_CAT                     = ' '</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     HEADER                        =</font>
+    TABLES
+      LINES                         = GT_TLINE
+    EXCEPTIONS
+<font color ="#0000FF">*     ID                            = 1</font>
+<font color ="#0000FF">*     LANGUAGE                      = 2</font>
+<font color ="#0000FF">*     NAME                          = 3</font>
+      NOT_FOUND                     = 4
+<font color ="#0000FF">*     OBJECT                        = 5</font>
+<font color ="#0000FF">*     REFERENCE_CHECK               = 6</font>
+<font color ="#0000FF">*     WRONG_ACCESS_TO_ARCHIVE       = 7</font>
+<font color ="#0000FF">*     OTHERS                        = 8</font>
+            .
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+
+  "若长文本中包含‘降级使用’ 则该批次为降级使用批次
+  LOOP AT GT_TLINE INTO W_TLINE.
+    IF CNS_JJFX CO W_TLINE-TDLINE.
+      P_L_ISJJFX = 1.
+      EXIT.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.                    " FRM_IS_JJFX
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  CREATE_FIELDCAT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CREATE_FIELDCAT .
+  IF P_CB1 IS NOT INITIAL.
+    MACRO_FILL_FIELDCAT:
+    'NUM'   '行号'          ''  8,
+    'MATNR' '物料号'        'X' 18,
+    'WERK'  '工厂'          ''  4,
+    'LAGOR' '库存地点'      ''  4,
+    'LGOBE' '库存地点描述'  ''  16,
+    'MAABC' 'ABC物料'       ''  3,
+    'KTLOS' '检验员'        ''  40,
+    'EKGRP' '采购组'        ''  3,
+    'MATKL' '物料组'        'X' 9,
+    'WGBEZ' '物料组描述'    ''  20,
+    'EXTWG' '外部物料组'    'X' 18,
+    'EWBEZ' '外部物料组描述' '' 20,
+    'PRDHA' '产品层次'      'X' 18,
+    'VTEXT' '产品层次描述'  ''  40,
+    'MAKTX' '物料描述'      ''  40,
+    'LIFNR' '供应商帐号'    ''  10,
+    'LNAME' '供应商名称'    ''  70,
+    'SJPC'  '送检总批次'    ''  10,
+    'SJSL'  '送检总数量'    ''  10,
+    'HGPC'  '合格批次'      ''  10,
+    'HGSL'  '合格数量'      ''  10,
+    'BHGPC' '不合格批次'    ''  10,
+    'JJPC'  '回用－降级使用批次'    ''  10,
+    'ZCPC'  '回用－正常使用批次'    ''  10,
+    'HYSL'  '回用数量'      ''  10,
+    'FXPC'  '紧急放行批次'          ''  10,
+    'HGP'   '送检批次合格率'        ''  10,
+    'HGSLP'  '送检数量合格率'      ''  10,
+    'HYP'   '送检批次回用率'        ''  10,
+    'HYSLP'  '送检数量回用率'      ''  10,
+    'SYP'   '紧急放行批次使用率'    ''  10,
+    'ZLJF'  '质量积分'              ''  10.
+  ELSEIF P_CB2 IS NOT INITIAL.
+    MACRO_FILL_FIELDCAT:
+    'NUM'   '行号'          ''  8,
+    'WERK'  '工厂'          ''  4,
+    'SJPC'  '送检总批次'    ''  10,
+    'SJSL'  '送检总数量'    ''  10,
+    'HGPC'  '合格批次'      ''  10,
+    'HGSL'  '合格数量'      ''  10,
+    'BHGPC' '不合格批次'    ''  10,
+    'JJPC'  '回用－降级使用批次'    ''  10,
+    'ZCPC'  '回用－正常使用批次'    ''  10,
+    'HYSL'  '回用数量'      ''  10,
+    'FXPC'  '紧急放行批次'          ''  10,
+    'HGP'   '送检批次合格率'        ''  10,
+    'HGSLP'  '送检数量合格率'      ''  10,
+    'HYP'   '送检批次回用率'        ''  10,
+    'HYSLP'  '送检数量回用率'      ''  10,
+    'SYP'   '紧急放行批次使用率'    ''  10,
+    'ZLJF'  '质量积分'              ''  10.
+  ELSEIF P_CB3 IS NOT INITIAL.
+    MACRO_FILL_FIELDCAT:
+    'NUM'   '行号'          ''  8,
+    'WERK'  '工厂'          ''  4,
+    'LAGOR' '库存地点'      ''  4,
+    'LGOBE' '库存地点描述'  ''  16,
+    'SJPC'  '送检总批次'    ''  10,
+    'SJSL'  '送检总数量'    ''  10,
+    'HGPC'  '合格批次'      ''  10,
+    'HGSL'  '合格数量'      ''  10,
+    'BHGPC' '不合格批次'    ''  10,
+    'JJPC'  '回用－降级使用批次'    ''  10,
+    'ZCPC'  '回用－正常使用批次'    ''  10,
+    'HYSL'  '回用数量'      ''  10,
+    'FXPC'  '紧急放行批次'          ''  10,
+    'HGP'   '送检批次合格率'        ''  10,
+    'HGSLP'  '送检数量合格率'      ''  10,
+    'HYP'   '送检批次回用率'        ''  10,
+    'HYSLP'  '送检数量回用率'      ''  10,
+    'SYP'   '紧急放行批次使用率'    ''  10,
+    'ZLJF'  '质量积分'              ''  10.
+  ELSEIF P_CB4 IS NOT INITIAL.
+    MACRO_FILL_FIELDCAT:
+    'NUM'   '行号'          ''  8,
+    'PRDHA' '产品层次'      'X' 18,
+    'VTEXT' '产品层次描述'  ''  40,
+    'SJPC'  '送检总批次'    ''  10,
+    'SJSL'  '送检总数量'    ''  10,
+    'HGPC'  '合格批次'      ''  10,
+    'HGSL'  '合格数量'      ''  10,
+    'BHGPC' '不合格批次'    ''  10,
+    'JJPC'  '回用－降级使用批次'    ''  10,
+    'ZCPC'  '回用－正常使用批次'    ''  10,
+    'HYSL'  '回用数量'      ''  10,
+    'FXPC'  '紧急放行批次'          ''  10,
+    'HGP'   '送检批次合格率'        ''  10,
+    'HGSLP'  '送检数量合格率'      ''  10,
+    'HYP'   '送检批次回用率'        ''  10,
+    'HYSLP'  '送检数量回用率'      ''  10,
+    'SYP'   '紧急放行批次使用率'    ''  10,
+    'ZLJF'  '质量积分'              ''  10.
+  ELSEIF P_CB5 IS NOT INITIAL.
+    MACRO_FILL_FIELDCAT:
+    'NUM'   '行号'          ''  8,
+    'LIFNR' '供应商帐号'    ''  10,
+    'LNAME' '供应商名称'    ''  70,
+    'SJPC'  '送检总批次'    ''  10,
+    'SJSL'  '送检总数量'    ''  10,
+    'HGPC'  '合格批次'      ''  10,
+    'HGSL'  '合格数量'      ''  10,
+    'BHGPC' '不合格批次'    ''  10,
+    'JJPC'  '回用－降级使用批次'    ''  10,
+    'ZCPC'  '回用－正常使用批次'    ''  10,
+    'HYSL'  '回用数量'      ''  10,
+    'FXPC'  '紧急放行批次'          ''  10,
+    'HGP'   '送检批次合格率'        ''  10,
+    'HGSLP'  '送检数量合格率'      ''  10,
+    'HYP'   '送检批次回用率'        ''  10,
+    'HYSLP'  '送检数量回用率'      ''  10,
+    'SYP'   '紧急放行批次使用率'    ''  10,
+    'ZLJF'  '质量积分'              ''  10.
+  ELSEIF P_CB6 IS NOT INITIAL.
+    MACRO_FILL_FIELDCAT:
+    'NUM'   '行号'          ''  8,
+    'KTLOS' '检验员'        ''  30,
+    'SJPC'  '送检总批次'    ''  10,
+    'SJSL'  '送检总数量'    ''  10,
+    'HGPC'  '合格批次'      ''  10,
+    'HGSL'  '合格数量'      ''  10,
+    'BHGPC' '不合格批次'    ''  10,
+    'JJPC'  '回用－降级使用批次'    ''  10,
+    'ZCPC'  '回用－正常使用批次'    ''  10,
+    'HYSL'  '回用数量'      ''  10,
+    'FXPC'  '紧急放行批次'          ''  10,
+    'HGP'   '送检批次合格率'        ''  10,
+    'HGSLP'  '送检数量合格率'      ''  10,
+    'HYP'   '送检批次回用率'        ''  10,
+    'HYSLP'  '送检数量回用率'      ''  10,
+    'SYP'   '紧急放行批次使用率'    ''  10,
+    'ZLJF'  '质量积分'              ''  10.
+  ELSEIF P_CB7 IS NOT INITIAL..
+    MACRO_FILL_FIELDCAT:
+    'NUM'   '行号'          ''  8,
+    'EKGRP' '采购组'        ''  3,
+    'SJPC'  '送检总批次'    ''  10,
+    'SJSL'  '送检总数量'    ''  10,
+    'HGPC'  '合格批次'      ''  10,
+    'HGSL'  '合格数量'      ''  10,
+    'BHGPC' '不合格批次'    ''  10,
+    'JJPC'  '回用－降级使用批次'    ''  10,
+    'ZCPC'  '回用－正常使用批次'    ''  10,
+    'HYSL'  '回用数量'      ''  10,
+    'FXPC'  '紧急放行批次'          ''  10,
+    'HGP'   '送检批次合格率'        ''  10,
+    'HGSLP'  '送检数量合格率'      ''  10,
+    'HYP'   '送检批次回用率'        ''  10,
+    'HYSLP'  '送检数量回用率'      ''  10,
+    'SYP'   '紧急放行批次使用率'    ''  10,
+    'ZLJF'  '质量积分'              ''  10.
+  ENDIF.
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'NUM'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '行号'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'MATNR'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '物料号'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'CHAR'.</font>
+<font color ="#0000FF">*  W_FCAT-INTLEN    = 18.</font>
+<font color ="#0000FF">*  W_FCAT-NO_ZERO   = 'X'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'WERK'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '工厂'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'CHAR'.</font>
+<font color ="#0000FF">*  W_FCAT-INTLEN    = 4.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'LAGOR'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '库存地点'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'CHAR'.</font>
+<font color ="#0000FF">*  W_FCAT-INTLEN    = 4.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'MAABC'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = 'ABC物料'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'CHAR'.</font>
+<font color ="#0000FF">*  W_FCAT-INTLEN    = 3.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'MATKL'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '物料组'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'CHAR'.</font>
+<font color ="#0000FF">*  W_FCAT-INTLEN    = 9.</font>
+<font color ="#0000FF">*  W_FCAT-NO_ZERO   = 'X'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'EXTWG'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '外部物料组'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'CHAR'.</font>
+<font color ="#0000FF">*  W_FCAT-INTLEN    = 18.</font>
+<font color ="#0000FF">*  W_FCAT-NO_ZERO   = 'X'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'PRDHA'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '产品层次'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'CHAR'.</font>
+<font color ="#0000FF">*  W_FCAT-INTLEN    = 18.</font>
+<font color ="#0000FF">*  W_FCAT-NO_ZERO   = 'X'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'MAKTX'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '物料描述'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'CHAR'.</font>
+<font color ="#0000FF">*  W_FCAT-INTLEN    = 40.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'LIFNR'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '供应商帐号'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'CHAR'.</font>
+<font color ="#0000FF">*  W_FCAT-INTLEN    = 10.</font>
+<font color ="#0000FF">*  W_FCAT-NO_ZERO   = 'X'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'LNAME'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '供应商名称'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'CHAR'.</font>
+<font color ="#0000FF">*  W_FCAT-INTLEN    = 70.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'SJPC'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '送检总批次'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'DEC'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'HGPC'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '合格批次'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'DEC'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'BHGPC'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '不合格批次'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'DEC'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'JJPC'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '回用－降级使用批次'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'DEC'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'ZCPC'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '回用－正常使用批次'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'DEC'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'FXPC'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '紧急放行批次'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'DEC'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'HGP'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '送检批次合格率'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'DEC'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'HYP'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '送检批次回用率'.</font>
+<font color ="#0000FF">*  W_FCAT-DATATYPE  = 'DEC'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'SYP'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '紧急放行批次使用率'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">*  CLEAR W_FCAT.</font>
+<font color ="#0000FF">*  W_FCAT-FIELDNAME = 'ZLJF'.</font>
+<font color ="#0000FF">*  W_FCAT-COLTEXT   = '质量积分'.</font>
+<font color ="#0000FF">*  APPEND W_FCAT TO GT_FCAT.</font>
+ENDFORM.                    " CREATE_FIELDCAT
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DISPLAY_BY_ALV</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_BY_ALV .
+  W_LAYOUT-ZEBRA = 'X'.              "ALV 控制: 可选行颜色 (带)
+  W_LAYOUT-CWIDTH_OPT = 'X'.         "ALV 控制: 优化列宽度
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'
+    EXPORTING
+      I_CALLBACK_PROGRAM          = SY-REPID
+      IS_LAYOUT_LVC               = W_LAYOUT
+      IT_FIELDCAT_LVC             = GT_FCAT
+      I_CALLBACK_HTML_TOP_OF_PAGE = 'HTML_TOP_OF_PAGE'
+      I_HTML_HEIGHT_TOP           = 15
+      I_SAVE                      = 'A'
+      IS_VARIANT                  = V_STRU_DISVAR
+    TABLES
+      T_OUTTAB                    = GT_DETAIL
+    EXCEPTIONS
+      PROGRAM_ERROR               = 1
+      OTHERS                      = 2.
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+ENDFORM.                    " DISPLAY_BY_ALV
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FRM_DATA_SAVE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM HTML_TOP_OF_PAGE USING P_CL_DD TYPE REF TO CL_DD_DOCUMENT.
+  DATA: L_POSITION TYPE I ,
+        L_CONTENTS TYPE STRING .
+
+  DATA: L_LDATA     TYPE DATS,
+        L_HDATA     TYPE DATS.
+
+  "起始日期
+  L_LDATA = S_STEHD-LOW.
+
+  IF S_STEHD-HIGH IS INITIAL.
+    "终了日期
+    L_HDATA = S_STEHD-LOW.
+  ELSE.
+    "终了日期
+    L_HDATA = S_STEHD-HIGH.
+  ENDIF.
+
+  L_CONTENTS = '&lt;HTML&gt;&lt;CENTER&gt;&lt;H2&gt;外协、外购件质量统计表&lt;/H2&gt;&lt;/CENTER&gt;&lt;/HTML&gt;' .
+
+  CALL METHOD P_CL_DD-&gt;HTML_INSERT
+    EXPORTING
+      CONTENTS = L_CONTENTS
+    CHANGING
+      POSITION = L_POSITION.
+
+  CLEAR L_CONTENTS .
+  CONCATENATE '&lt;P ALIGN = LEFT &gt; 查询日期： ' L_LDATA ' &nbsp至 &nbsp' L_HDATA ' &lt;/P &gt;' INTO L_CONTENTS.
+
+  CALL METHOD P_CL_DD-&gt;HTML_INSERT
+    EXPORTING
+      CONTENTS = L_CONTENTS
+    CHANGING
+      POSITION = L_POSITION.
+
+ENDFORM.                    "HTML_TOP_OF_PAGE
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_LIST_VALUE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SET_LIST_VALUE .
+  DATA: L_TMP TYPE C VALUE '1'.
+
+  DO 5 TIMES.
+    W_VRM-KEY = L_TMP.
+    L_TMP = L_TMP + 1.
+    APPEND W_VRM TO GT_VRM.
+    CLEAR: W_VRM.
+  ENDDO.
+
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      ID              = 'P_ZSTAT'
+      VALUES          = GT_VRM
+    EXCEPTIONS
+      ID_ILLEGAL_NAME = 1
+      OTHERS          = 2.
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">*   Implement suitable error handling here</font>
+  ENDIF.
+ENDFORM.                    " SET_LIST_VALUE
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FRM_PARA_CHECK</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FRM_PARA_CHECK .
+  "按产品层次集计时 必须选择 产品层次集计层
+  IF P_CB4 IS NOT INITIAL.
+    IF P_ZSTAT IS INITIAL.
+      MESSAGE S346 DISPLAY LIKE 'E'.
+      STOP.
+    ENDIF.
+  ENDIF.
+
+  IF S_PRDHA-HIGH IS NOT INITIAL.
+    S_PRDHA-HIGH = S_PRDHA-HIGH + 1.
+    CONDENSE S_PRDHA-HIGH.
+    MODIFY S_PRDHA INDEX 1.
+  ENDIF.
+ENDFORM.                    " FRM_PARA_CHECK
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  INCREMENT_COUNT_LOG</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INCREMENT_COUNT_LOG .
+  DATA: LW_DB TYPE ZZTTABLOG,
+        L_MINUTE TYPE SY-UZEIT,
+        L_NOW_YEAR TYPE ZZTTABLOG-GJAHR,
+        L_NOW_MONTH TYPE ZZTTABLOG-MONAT.
+
+  L_NOW_YEAR = SY-DATUM+0(4).
+  L_NOW_MONTH = SY-DATUM+4(2).
+
+  " 按每月累加用户使用数
+  SELECT SINGLE *
+    INTO LW_DB
+    FROM ZZTTABLOG
+  WHERE TCODE = SY-TCODE      " 事物代码
+    AND GJAHR = L_NOW_YEAR    " 当前年份
+    AND MONAT = L_NOW_MONTH.  " 当前月份
+
+  IF SY-SUBRC = 0.
+    " 相同的人，如果在10分钟内做相同的操作，算计一次
+    IF LW_DB-ERNAM = SY-UNAME AND
+      LW_DB-ERDAT = SY-DATUM.
+      L_MINUTE = SY-UZEIT - LW_DB-ERZET.
+      IF L_MINUTE &lt; '001000'.
+        RETURN.
+      ENDIF.
+    ENDIF.
+    LW_DB-ZCUNT = LW_DB-ZCUNT + 1.      " 次数加一
+  ELSE.
+    LW_DB-TCODE = SY-TCODE.           " 记录操作的tcode
+    LW_DB-ZCUNT = '1'.                " 初始化次数
+    LW_DB-ZFNAM = SY-UNAME.           " 第一次操作人员
+    LW_DB-ZFDAT = SY-DATUM.           " 第一次操作日期
+    LW_DB-ZFZET = SY-UZEIT.           " 第一次操作时间
+    LW_DB-GJAHR = L_NOW_YEAR.         " 年度
+    LW_DB-MONAT = L_NOW_MONTH.        " 月份
+  ENDIF.
+
+  LW_DB-ERNAM = SY-UNAME.     " 本次操作人员
+  LW_DB-ERDAT = SY-DATUM.     " 本次操作日期
+  LW_DB-ERZET = SY-UZEIT.     " 本次操作时间
+
+  MODIFY ZZTTABLOG FROM LW_DB.
+  COMMIT WORK AND WAIT.
+ENDFORM.                    " INCREMENT_COUNT_LOG
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

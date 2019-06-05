@@ -1,0 +1,500 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZCO002</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZCO002</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  标准成本查询</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& 程序名称       : ZCO002</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 作者           : 陈星烨（人民）</font>
+<font color ="#0000FF">*& 开发日期       : 2012-06-30</font>
+<font color ="#0000FF">*& 请求号         :</font>
+<font color ="#0000FF">*& 申请者         : 陈星烨（人民）</font>
+<font color ="#0000FF">*& 描述           : 标准成本查询报表</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 变更记录</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">** 修改日期 开发人员  请求号 描述</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  ZCO002 MESSAGE-ID zpeople.
+<font color ="#0000FF">***********************************************************************</font>
+<font color ="#0000FF">* 类型池</font>
+<font color ="#0000FF">************************************************************************</font>
+TYPE-POOLS SLIS.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 表声明</font>
+<font color ="#0000FF">************************************************************************</font>
+tables:KEPH,
+       KALA,
+       KEKO,
+       MARA.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 类型定义</font>
+<font color ="#0000FF">************************************************************************</font>
+types:begin of ty_alv,
+      mtart type mara-mtart,                                            "物料类型
+      meins type keko-meins,                                            "单位
+      matnr type keko-matnr,                                            "物料编码
+      vbeln type keko-vbeln,                                            "销售订单
+      posnr type keko-posnr,                                            "销售订单行项目
+      LOSGR type keko-LOSGR,                                            "成本核算批量
+      KLVAR type keko-KLVAR,                                            "成本核算变式
+      TVERS type keko-TVERS,
+      maktx type makt-maktx,                                            "物料描述
+      KADAT type keko-KADAT,                                            "成本核算日期起于
+      werks type keko-werks,                                            "工厂
+      KST001 type keph-KST001,                                           "直接材料
+      KST003 type keph-KST003,                                           "直接人工
+      KST005 type keph-KST005,                                           "制造费用
+      zbzcb type keph-KST001,                                           "标准成本
+      end of ty_alv.
+
+types:begin of ty_data,
+      bukrs type t001-bukrs,                                            "公司代码
+      butxt type t001-butxt,                                            "公司名称
+      BZOBJ type keko-BZOBJ,
+      KALNR type keko-KALNR,
+      KALKA type keko-KALKA,
+      KADKY type keko-KADKY,
+      KALAID type kala-KALAID,
+      KALADAT type kala-KALADAT,
+      BWVAR type keko-BWVAR,
+      KKZMA type keko-KKZMA.
+        INCLUDE TYPE ty_alv.
+types:end of ty_data.
+
+types:begin of ty_makt,
+      maktx type makt-maktx,
+      matnr type makt-matnr,
+      end of ty_makt,
+
+      begin of ty_gc,
+      werks type t001w-werks,
+      name1 type t001w-name1,
+      end of ty_gc.
+
+types:begin of ty_keph,
+      BZOBJ type keph-BZOBJ,
+      KALNR type keph-KALNR,
+      KALKA type keph-KALKA,
+      KADKY type keph-KADKY,
+      TVERS type keph-TVERS,
+      BWVAR type keph-BWVAR,
+      KKZMA type keph-KKZMA,
+      KST001 type keph-KST001,
+      KST003 type keph-KST003,
+      KST005 type keph-KST005,
+      end of ty_keph.
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      DEFINE MACRO_FILL_FIELDCAT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       填充结构宏定义</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+DEFINE macro_fill_fieldcat.
+  clear w_fieldcat.
+  &1 = &1 + 1.
+  w_fieldcat-col_pos    = &1.
+  w_fieldcat-fieldname  = &2.
+  w_fieldcat-seltext_l     = &3.
+  w_fieldcat-seltext_m     = &3.
+  w_fieldcat-seltext_s     = &3.
+  w_fieldcat-no_zero       = &4.
+  w_fieldcat-edit_mask = &5.
+
+  append w_fieldcat to gt_fieldcat.
+END-OF-DEFINITION.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 内表声明</font>
+<font color ="#0000FF">************************************************************************</font>
+data:gt_data type STANDARD TABLE OF ty_data,
+     w_data type ty_data,
+     gt_makt type STANDARD TABLE OF ty_makt,
+     w_makt type ty_makt,
+     gt_alv type STANDARD TABLE OF ty_alv,
+     w_alv type ty_alv,
+     gt_gc type STANDARD TABLE OF ty_gc,
+     w_gc type ty_gc,
+     gt_keph type STANDARD TABLE OF ty_keph,
+     w_keph type ty_keph,
+     g_butxt type butxt,
+     GT_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV,
+     W_FIELDCAT  TYPE SLIS_FIELDCAT_ALV,
+     W_LAYOUT    TYPE SLIS_LAYOUT_ALV.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 字段符声明</font>
+<font color ="#0000FF">************************************************************************</font>
+FIELD-SYMBOLS:&lt;fs_data&gt; type ty_data.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 定义选择屏幕参数</font>
+<font color ="#0000FF">************************************************************************</font>
+SELECTION-SCREEN BEGIN OF BLOCK BLK1 WITH FRAME TITLE TEXT-001.
+PARAMETERS:p_qsrq type KALA-KADAT OBLIGATORY,
+           p_hsbs type KEKO-KLVAR OBLIGATORY,
+           p_hszt type KEKO-FEH_STA OBLIGATORY,
+           p_werks type keko-werks MATCHCODE OBJECT H_T001W OBLIGATORY.
+SELECT-OPTIONS:s_vbeln for keko-vbeln no-EXTENSION no INTERVALS,
+               s_posnr for keko-posnr no-EXTENSION no INTERVALS,
+               s_wlbm FOR keko-matnr MATCHCODE OBJECT MAT1,
+               s_wllx FOR mara-mtart MATCHCODE OBJECT H_T134.
+SELECTION-SCREEN END OF BLOCK BLK1.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* event Start of Selection</font>
+<font color ="#0000FF">************************************************************************</font>
+START-OF-SELECTION.
+  perform get_data.
+
+  perform display_by_alv.
+
+
+form get_data.
+
+  select BZOBJ
+         KALNR
+         KALKA
+         KADKY
+         TVERS
+         BWVAR
+         KKZMA
+         keko~matnr
+         vbeln
+         posnr
+         KLVAR
+         LOSGR
+         KADAT
+         mtart
+         keko~meins
+         werks
+         KALAID
+         KALADAT
+    into CORRESPONDING FIELDS OF TABLE gt_data
+    from keko inner join mara
+    on keko~matnr = mara~matnr
+  where KLVAR = p_hsbs
+    and kadat &lt;= p_qsrq
+    and FEH_STA = p_hszt
+    and keko~matnr in s_wlbm
+    and werks = p_werks
+    and mtart in s_wllx
+    and vbeln in s_vbeln
+    and posnr in s_posnr.
+
+<font color ="#0000FF">*******add by yetp 20180917*******start</font>
+sort gt_data DESCENDING by matnr KADAT.
+delete ADJACENT DUPLICATES FROM gt_data comparing matnr.
+<font color ="#0000FF">*******add by yetp 20180917*******end</font>
+
+  if gt_data is INITIAL.
+    message s050 DISPLAY LIKE 'E'.
+    STOP.
+  endif.
+
+  select werks
+         name1
+    into CORRESPONDING FIELDS OF TABLE gt_gc
+    from t001w
+  where werks = p_werks.  "modify by yetp 20180917
+sort gt_gc by werks. " add by yetp 20180917
+
+
+  select maktx
+         matnr
+    into CORRESPONDING FIELDS OF TABLE gt_makt
+    from makt
+    FOR ALL ENTRIES IN gt_data
+  where matnr = gt_data-matnr
+    and spras = '1'.
+
+ sort gt_makt by matnr. "add by yetp 20180917
+
+  loop at gt_data ASSIGNING &lt;fs_data&gt;.
+    read table gt_makt into w_makt with key matnr = &lt;fs_data&gt;-matnr BINARY SEARCH . "modify by yetp 20180917
+    if sy-subrc = 0.
+      &lt;fs_data&gt;-maktx = w_makt-maktx.
+    endif.
+
+    read table gt_gc into w_gc with key werks = &lt;fs_data&gt;-werks BINARY SEARCH.  "modify by yetp 20180917
+    if sy-subrc = 0.
+      g_butxt = w_gc-name1.
+    endif.
+  endloop.
+
+
+  select BZOBJ
+         KALNR
+         KALKA
+         KADKY
+         TVERS
+         BWVAR
+         KKZMA
+         KST001
+         KST003
+         KST005
+    into CORRESPONDING FIELDS OF TABLE gt_keph
+    from keph
+    FOR ALL ENTRIES IN gt_data
+  where BZOBJ = gt_data-bzobj
+    and KALNR = gt_data-kalnr
+    and KALKA = gt_data-kalka
+    and KADKY = gt_data-kadky
+    and TVERS = gt_data-tvers
+    and BWVAR = gt_data-bwvar
+    and KKZMA = gt_data-kkzma
+    and KKZST = ''.
+
+
+<font color ="#0000FF">******add by yetp 20180917******start</font>
+sort gt_keph by bzobj KALNR kalka kadky tvers bwvar kkzma.
+<font color ="#0000FF">******add by yetp 20180917******end</font>
+  loop at gt_data into w_data.
+    MOVE-CORRESPONDING w_data to w_alv.
+    read table gt_keph into w_keph with key BZOBJ = w_data-bzobj
+                                            KALNR = w_data-kalnr
+                                            KALKA = w_data-kalka
+                                            KADKY = w_data-kadky
+                                            TVERS = w_data-tvers
+                                            BWVAR = w_data-bwvar
+                                            KKZMA = w_data-kkzma
+                                            BINARY SEARCH. "modify by yetp 20180917
+    if sy-subrc = 0.
+      w_alv-KST001 = w_keph-KST001.
+      w_alv-KST003 = w_keph-KST003.
+      w_alv-KST005 = w_keph-KST005.
+      w_alv-zbzcb = w_alv-KST001 + w_alv-KST003 + w_alv-KST005.
+    endif.
+    append w_alv to gt_alv.
+  ENDLOOP.
+
+  sort gt_alv DESCENDING by matnr KADAT.
+  delete ADJACENT DUPLICATES FROM gt_alv comparing matnr.
+endform.
+
+form display_by_alv.
+  PERFORM init_layout.
+
+  PERFORM init_fieldcat.
+
+  PERFORM show_alv.
+ENDFORM.
+
+form init_layout.
+  w_layout-zebra = 'X'.
+  w_layout-colwidth_optimize = 'X'.
+endform.
+
+form init_fieldcat.
+  DATA:l_colpos TYPE slis_fieldcat_alv-col_pos.
+  CLEAR:l_colpos.
+  if gt_fieldcat is INITIAL.
+    l_colpos = l_colpos + 1.
+    clear w_fieldcat.
+
+    macro_fill_fieldcat:
+    l_colpos 'MTART' '物料类型' '' '',
+    l_colpos 'WERKS' '工厂' '' '',
+    l_colpos 'VBELN' '销售订单' 'X' '',
+    l_colpos 'POSNR' '销售订单行项目' '' '',
+    l_colpos 'MATNR' '物料编码' 'X' '==MATN1',
+    l_colpos 'MAKTX' '物料描述' '' '',
+    l_colpos 'KADAT' '成本核算日期' '' '',
+    l_colpos 'MEINS' '单位' '' '',
+    l_colpos 'LOSGR' '成本核算批量' '' '',
+    l_colpos 'KST001' '直接材料' '' '',
+    l_colpos 'KST003' '直接人工' '' '',
+    l_colpos 'KST005' '制造费用' '' '',
+    l_colpos 'ZBZCB' '标准成本' '' ''.
+
+  endif.
+
+endform.
+
+form show_alv.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+<font color ="#0000FF">*     I_INTERFACE_CHECK                 = ' '</font>
+<font color ="#0000FF">*     I_BYPASSING_BUFFER                = ' '</font>
+<font color ="#0000FF">*     I_BUFFER_ACTIVE                   = ' '</font>
+     I_CALLBACK_PROGRAM                = sy-repid
+     I_CALLBACK_PF_STATUS_SET          = 'SET_PF_STATUS'
+<font color ="#0000FF">*     I_CALLBACK_USER_COMMAND           = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_TOP_OF_PAGE            = ' '</font>
+     I_CALLBACK_HTML_TOP_OF_PAGE       = 'ALV_TOP_PAGE'
+<font color ="#0000FF">*     I_CALLBACK_HTML_END_OF_LIST       = ' '</font>
+<font color ="#0000FF">*     I_STRUCTURE_NAME                  =</font>
+<font color ="#0000FF">*     I_BACKGROUND_ID                   = ' '</font>
+<font color ="#0000FF">*     I_GRID_TITLE                      =</font>
+<font color ="#0000FF">*     I_GRID_SETTINGS                   =</font>
+     IS_LAYOUT                         = w_layout
+     IT_FIELDCAT                       = gt_fieldcat
+<font color ="#0000FF">*     IT_EXCLUDING                      =</font>
+<font color ="#0000FF">*     IT_SPECIAL_GROUPS                 =</font>
+<font color ="#0000FF">*     IT_SORT                           =</font>
+<font color ="#0000FF">*     IT_FILTER                         =</font>
+<font color ="#0000FF">*     IS_SEL_HIDE                       =</font>
+<font color ="#0000FF">*     I_DEFAULT                         = 'X'</font>
+<font color ="#0000FF">*     I_SAVE                            = ' '</font>
+<font color ="#0000FF">*     IS_VARIANT                        =</font>
+<font color ="#0000FF">*     IT_EVENTS                         =</font>
+<font color ="#0000FF">*     IT_EVENT_EXIT                     =</font>
+<font color ="#0000FF">*     IS_PRINT                          =</font>
+<font color ="#0000FF">*     IS_REPREP_ID                      =</font>
+<font color ="#0000FF">*     I_SCREEN_START_COLUMN             = 0</font>
+<font color ="#0000FF">*     I_SCREEN_START_LINE               = 0</font>
+<font color ="#0000FF">*     I_SCREEN_END_COLUMN               = 0</font>
+<font color ="#0000FF">*     I_SCREEN_END_LINE                 = 0</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_TOP                 = 0</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_END                 = 0</font>
+<font color ="#0000FF">*     IT_ALV_GRAPHICS                   =</font>
+<font color ="#0000FF">*     IT_HYPERLINK                      =</font>
+<font color ="#0000FF">*     IT_ADD_FIELDCAT                   =</font>
+<font color ="#0000FF">*     IT_EXCEPT_QINFO                   =</font>
+<font color ="#0000FF">*     IR_SALV_FULLSCREEN_ADAPTER        =</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">*     ES_EXIT_CAUSED_BY_USER            =</font>
+    TABLES
+      T_OUTTAB                          = gt_alv
+   EXCEPTIONS
+     PROGRAM_ERROR                     = 1
+     OTHERS                            = 2.
+  IF SY-SUBRC &lt;&gt; 0.
+    message id sy-msgid TYPE sy-msgty NUMBER sy-msgno
+            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+endform.
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_PF_STATUS</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       设置标准工具栏按钮</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;RT_EXTAB   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM set_pf_status USING rt_extab TYPE slis_t_extab.
+  SET PF-STATUS 'STANDARD_FULLSCREEN'.
+ENDFORM.                    "SET_PF_STATUS
+
+form alv_top_page USING document type REF TO cl_dd_document.
+  data:text type sdydo_text_element,
+       position type i.
+
+  IF sy-subrc &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+
+  SEARCH document-&gt;html_table FOR document-&gt;cursor.
+
+  if sy-subrc = 0.
+    position = sy-tabix.
+    CALL METHOD document-&gt;html_insert   "设置表单表头标题的显示格式
+      EXPORTING
+        contents = '&lt;div class=MsoNormal align=center style="text-align:center"&gt;'
+      CHANGING
+        position = position.
+    CALL METHOD document-&gt;html_insert
+      EXPORTING
+        contents = '&lt;span align="center" style=" font-weight:bold;font-size:30"&gt;标准成本查询报表&lt;/span&gt; &lt;/div&gt;'
+      CHANGING
+        position = position.
+  ENDIF.
+
+  text = '工厂代码：'.
+  CALL METHOD document-&gt;add_text    "在标题插入文本文字
+     EXPORTING
+       text         = text
+       sap_emphasis = 'Strong'.      "设置高亮
+
+  CALL METHOD document-&gt;add_gap      "添加两个单位的space
+     EXPORTING
+       width        = 1.
+
+  text = p_werks.
+
+  CALL METHOD document-&gt;add_text
+    EXPORTING
+      text      = text
+      sap_style = 'Key'.
+
+  CALL METHOD document-&gt;add_gap
+    EXPORTING
+      width = 2.
+
+  text = '工厂名称：'.
+
+  CALL METHOD document-&gt;add_text
+    EXPORTING
+      text         = text
+      sap_emphasis = 'Strong'.
+
+  CALL METHOD document-&gt;add_gap
+    EXPORTING
+      width = 2.
+
+  text = g_butxt.
+  CALL METHOD document-&gt;add_text
+    EXPORTING
+      text      = text
+      sap_style = 'Key'.
+
+  CALL METHOD document-&gt;add_gap
+    EXPORTING
+      width = 10.
+
+  CALL METHOD DOCUMENT-&gt;NEW_LINE.  "在标题区域插入空的一行
+
+  text = '查询日期:'.
+
+  CALL METHOD document-&gt;add_text
+    EXPORTING
+      text         = text
+      sap_emphasis = 'Strong'.
+
+  CALL METHOD document-&gt;add_gap
+    EXPORTING
+      width = 2.
+
+  text = p_qsrq.
+  CALL METHOD document-&gt;add_text
+    EXPORTING
+      text      = text
+      sap_style = 'Key'.
+endform.
+
+<font color ="#0000FF">*Text elements</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* 001 查询条件</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* P_HSBS         成本核算变式</font>
+<font color ="#0000FF">* P_HSZT         成本核算状态</font>
+<font color ="#0000FF">* P_QSRQ         成本核算起始日期</font>
+<font color ="#0000FF">* P_WERKS         工厂</font>
+<font color ="#0000FF">* S_POSNR         销售订单行项目</font>
+<font color ="#0000FF">* S_VBELN         销售订单号</font>
+<font color ="#0000FF">* S_WLBM         物料编码</font>
+<font color ="#0000FF">* S_WLLX         物料类型</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPEOPLE</font>
+<font color ="#0000FF">*050   没有满足查询条件的数据!</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

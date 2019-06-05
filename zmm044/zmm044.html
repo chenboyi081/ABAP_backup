@@ -1,0 +1,863 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZMM044</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZMM044</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  物流工厂物料安全库存查询及维护表</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  ZMM044</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&物料安全库存查询及维护表</font>
+<font color ="#0000FF">*&T通过批量导入，批量更新Marc（物料的工厂数据）表下面的EISBE字段</font>
+<font color ="#0000FF">*&根据相关条件查询物料MRP数据</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  ZMM044 MESSAGE-ID ZPEOPLE.
+TYPE-POOLS: SLIS.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 引用表</font>
+<font color ="#0000FF">************************************************************************</font>
+TABLES:
+  MARC,
+  MARA,
+  MAKT.
+
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 类型字段</font>
+<font color ="#0000FF">************************************************************************</font>
+TYPES: BEGIN OF TY_EXCEL,
+<font color ="#0000FF">*    ZXH TYPE I,</font>
+    WERKS TYPE MARC-WERKS,    "工厂
+    MATNR TYPE MARA-MATNR,    "物料编号
+    EISBE TYPE MARC-EISBE,    "安全库存
+END OF TY_EXCEL.
+
+TYPES:BEGIN OF TY_CHECKMSG,
+    ZXH TYPE I,
+    WERKS TYPE MARC-WERKS,    "工厂
+    MATNR TYPE MARA-MATNR,    "物料编号
+    EISBE TYPE MARC-EISBE,    "安全库存
+    ERR_MSG(100) TYPE C,    "错误文本  "错误信息
+  END OF  TY_CHECKMSG.
+
+TYPES:BEGIN OF TY_MARA,
+    ZXH TYPE I,
+    WERKS TYPE MARC-WERKS,
+    MATNR TYPE MARC-MATNR,
+    MAKTX TYPE MAKT-MAKTX,
+    MATKL TYPE MARA-MATKL,
+    PRDHA TYPE MARA-PRDHA,
+    EKGRP TYPE MARC-EKGRP,
+    DZEIT TYPE MARC-DZEIT,
+    PLIFZ TYPE MARC-PLIFZ,
+    EISBE TYPE MARC-EISBE,
+    BSTRF TYPE MARC-BSTRF,
+END OF TY_MARA.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*全局变量</font>
+<font color ="#0000FF">************************************************************************</font>
+DATA:G_ERROR(255) TYPE C. "保存错误文本
+DATA:G_FLAG TYPE C.   "值为 ‘X’ 导入文本存在错误
+DATA:  WL_ANSWER  TYPE C.
+<font color ="#0000FF">*** OLE EXCLE定义</font>
+DATA: G_SHEET TYPE OLE2_OBJECT,
+      G_ACTIVESHEET TYPE OLE2_OBJECT,
+      G_NEWSHEET TYPE OLE2_OBJECT,
+      G_APPL TYPE OLE2_OBJECT,
+      G_WORK TYPE OLE2_OBJECT,
+      G_CELL TYPE OLE2_OBJECT.
+
+DATA: PLANTDATA               TYPE BAPI_MARC,       "工厂级别数据
+      PLANTDATAX              TYPE BAPI_MARCX,
+      HEADDATA  LIKE  BAPIMATHEAD,  "带有控制信息的表头段
+      RETURN    LIKE  BAPIRET2,     "返回参数
+      RETURNMES LIKE BAPI_MATRETURN2 OCCURS 0 WITH HEADER LINE.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*内表&工作区</font>
+<font color ="#0000FF">************************************************************************</font>
+DATA  GT_RAW TYPE TRUXS_T_TEXT_DATA.
+DATA: LT_EXCEL TYPE STANDARD TABLE OF TY_EXCEL,
+      LW_EXCEL TYPE TY_EXCEL.
+
+DATA: LT_CHECKMSG TYPE STANDARD TABLE OF TY_CHECKMSG,
+     LW_CHECKMSG TYPE TY_CHECKMSG.
+
+DATA: LT_MARA TYPE STANDARD TABLE OF TY_MARA,
+     LW_MARA TYPE TY_MARA.
+
+<font color ="#0000FF">***alv相关内表定义</font>
+DATA: GT_FCAT  TYPE LVC_T_FCAT,
+     W_FCAT   TYPE LVC_S_FCAT,
+     W_LAYOUT TYPE LVC_S_LAYO.
+
+<font color ="#0000FF">*DATA: G_ISCHANGE TYPE I VALUE 0.</font>
+<font color ="#0000FF">***  BDC处理数据定义</font>
+DATA: GT_BDCDATA TYPE STANDARD TABLE OF BDCDATA,
+      W_BDCDATA  TYPE BDCDATA,
+      GT_MSGTAB  TYPE STANDARD TABLE OF BDCMSGCOLL,
+      W_MSGTAB   TYPE BDCMSGCOLL.
+
+
+
+DATA: G_MODE(1) TYPE C VALUE 'N'.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 字段符声明</font>
+<font color ="#0000FF">************************************************************************</font>
+FIELD-SYMBOLS: &lt;FS_EXCEL&gt; TYPE TY_EXCEL,
+               &lt;FS_MARA&gt; TYPE TY_MARA.
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* 宏定义</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+DEFINE MARCO.
+
+  CLEAR W_FCAT.
+  &1 = &1 + 1.
+  W_FCAT-COL_POS = &1.
+  W_FCAT-FIELDNAME = &2.
+  W_FCAT-COLTEXT = &3.
+  W_FCAT-KEY = &4.
+  W_FCAT-REF_FIELD = &5.
+  W_FCAT-REF_TABLE = &6.
+
+
+  APPEND W_FCAT TO GT_FCAT.
+END-OF-DEFINITION.
+
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 定义选择屏幕参数</font>
+<font color ="#0000FF">************************************************************************</font>
+SELECTION-SCREEN BEGIN OF BLOCK BLOCK2 WITH FRAME TITLE T1.
+PARAMETERS:  P_2 TYPE C RADIOBUTTON GROUP G2 USER-COMMAND SEL DEFAULT 'X',
+            P_1 TYPE C RADIOBUTTON GROUP G2 .
+SELECTION-SCREEN END OF BLOCK BLOCK2.
+
+SELECTION-SCREEN BEGIN OF BLOCK BLOCK1 WITH FRAME TITLE T2.
+PARAMETERS: P_UPLOAD TYPE C RADIOBUTTON GROUP G1 USER-COMMAND SEL DEFAULT 'X' MODIF ID M1,
+            P_DOWN   TYPE C RADIOBUTTON GROUP G1 MODIF ID M1.
+PARAMETERS: P_FILE  LIKE RLGRAP-FILENAME MODIF ID M1.
+SELECTION-SCREEN END OF BLOCK BLOCK1.
+
+SELECTION-SCREEN BEGIN OF BLOCK BLOCK3 WITH FRAME TITLE T3.
+PARAMETER: P_WERKS TYPE MARC-WERKS   MODIF ID M2.
+SELECT-OPTIONS:
+               P_MATNR FOR MARA-MATNR NO-EXTENSION  MODIF ID M2,
+               P_MATKL FOR MARA-MATKL NO-EXTENSION  MODIF ID M2,
+               P_PRDHA FOR MARA-PRDHA NO-EXTENSION  MODIF ID M2,
+               P_EKGRP FOR MARC-EKGRP NO-EXTENSION  MODIF ID M2.
+SELECTION-SCREEN END OF BLOCK BLOCK3.
+
+SELECTION-SCREEN BEGIN OF BLOCK BK2 WITH FRAME TITLE TEXT-002 .
+SELECTION-SCREEN  BEGIN  OF LINE.
+SELECTION-SCREEN: COMMENT 1(79) WARNING1 MODIF ID M3.
+SELECTION-SCREEN  END  OF LINE.
+
+SELECTION-SCREEN  BEGIN  OF LINE.
+SELECTION-SCREEN: COMMENT 1(79) WARNING2 MODIF ID M3.
+SELECTION-SCREEN  END  OF LINE.
+
+SELECTION-SCREEN  BEGIN  OF LINE.
+SELECTION-SCREEN: COMMENT 1(79) WARNING3 MODIF ID M4.
+SELECTION-SCREEN  END  OF LINE.
+SELECTION-SCREEN END OF BLOCK BK2.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 屏幕输出之前处理</font>
+<font color ="#0000FF">************************************************************************</font>
+AT  SELECTION-SCREEN  OUTPUT .
+  LOOP  AT  SCREEN .
+    CASE  SCREEN-GROUP1.                    "屏幕组
+      WHEN  'M1' .
+        IF  P_1 EQ  'X' .
+          SCREEN-ACTIVE = 1 .                "设置屏幕显示
+          SCREEN-REQUIRED = 2 .
+        ELSE .
+          SCREEN-ACTIVE = 0 .                "设置屏幕隐藏
+          SCREEN-REQUIRED = 0 .
+        ENDIF .
+      WHEN  'M2' .
+        IF  P_2 EQ  'X' .
+          SCREEN-ACTIVE = 1 .
+<font color ="#0000FF">*         SCREEN-REQUIRED = 2 .</font>
+        ELSE .
+          SCREEN-ACTIVE = 0 .
+<font color ="#0000FF">*          SCREEN-REQUIRED = 0.</font>
+        ENDIF .
+      WHEN  'M3' .
+        IF  P_1 EQ  'X' .
+          SCREEN-ACTIVE = 1 .
+<font color ="#0000FF">*         SCREEN-REQUIRED = 2 .</font>
+        ELSE .
+          SCREEN-ACTIVE = 0 .
+<font color ="#0000FF">*          SCREEN-REQUIRED = 0.</font>
+        ENDIF .
+      WHEN  'M4' .
+        IF  P_2 EQ  'X' .
+          SCREEN-ACTIVE = 1 .
+<font color ="#0000FF">*         SCREEN-REQUIRED = 2 .</font>
+        ELSE .
+          SCREEN-ACTIVE = 0 .
+<font color ="#0000FF">*          SCREEN-REQUIRED = 0.</font>
+        ENDIF.
+    ENDCASE .
+    MODIFY  SCREEN .                        "修改选择屏幕属性
+  ENDLOOP.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* initialization 初始化事件</font>
+<font color ="#0000FF">************************************************************************</font>
+INITIALIZATION.
+  T1 = '请选择'.
+  T2 = '批量更新物料安全库存'.
+  T3 = '查询物料物料MRP数据'.
+  WARNING1 = '【1】模板中的共有三个字段：工厂、物料编号、安全库存'.
+  WARNING2 = '【2】上传之前请先下载模板，模板内容不可更改'.
+  WARNING3 = '【1】工厂为必填项'.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*at selection screen                                                   *</font>
+<font color ="#0000FF">************************************************************************</font>
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR P_FILE.
+  PERFORM F4_HELP_FOR_FILENAME.
+
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*& start-of-selection</font>
+<font color ="#0000FF">************************************************************************</font>
+START-OF-SELECTION.
+
+  CLEAR:G_FLAG .
+  IF P_1 = 'X'.   "
+
+      AUTHORITY-CHECK OBJECT 'ZMM44_ANY' ID 'ACTVT' FIELD '02'.
+      IF SY-SUBRC &lt;&gt; 0.
+        MESSAGE S000 DISPLAY LIKE 'E' WITH '当前角色没有操作权限'.
+        STOP.
+      ENDIF.
+
+    IF P_FILE IS INITIAL.
+      MESSAGE S000 DISPLAY LIKE 'E' WITH '请输入上传文件路径'.
+      STOP.
+    ENDIF.
+    IF P_UPLOAD = 'X'.          "上传
+
+      DATA: L_COUNT TYPE I VALUE 0.
+      PERFORM CONVERT_XLS_TO_ITAB.
+
+      PERFORM CHECKDATA.   "验证内表中的数据
+
+      IF G_FLAG = 'X'.
+        PERFORM DISPLAY_ALV.  "显示错误信息
+      ELSE.
+        " PERFORM UPDATEDATA.  该方法已经弃用，改用录屏（因为权限太多）
+        PERFORM BDC_PROCESS_MM02 CHANGING L_COUNT. "使用录屏
+        PERFORM DISPLAY_ALV.
+      ENDIF.
+
+    ELSE.
+      PERFORM DOWNLOAD_TEMPLATE.               "下载模板
+    ENDIF.
+
+  ELSE.    "查询物料主数据
+    IF P_WERKS IS INITIAL.
+      MESSAGE S000 DISPLAY LIKE 'E' WITH '工厂为必填选项'.
+      STOP.
+    ENDIF.
+
+    PERFORM GETDATA.
+    PERFORM DISPLAY_ALV.
+
+
+  ENDIF.
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      form  convert_xls_to_itab</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CONVERT_XLS_TO_ITAB .
+  CLEAR:LT_EXCEL,LW_CHECKMSG.
+
+  CALL FUNCTION 'TEXT_CONVERT_XLS_TO_SAP'
+    EXPORTING
+<font color ="#0000FF">*     i_field_seperator    =</font>
+      I_LINE_HEADER        = 'x'
+      I_TAB_RAW_DATA       = GT_RAW
+      I_FILENAME           = P_FILE
+    TABLES
+      I_TAB_CONVERTED_DATA = LT_EXCEL
+    EXCEPTIONS
+      CONVERSION_FAILED    = 1
+      OTHERS               = 2.
+
+
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">*   break-point.</font>
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+ENDFORM.                    "convert_xls_to_itab
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  CHECKDATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CHECKDATA.
+  CLEAR:LT_CHECKMSG,
+    G_FLAG.
+
+
+  IF LT_EXCEL[] IS INITIAL.
+    MESSAGE S000(ZPEOPLE) WITH '上传文件不包含任何有效数据' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+
+  LOOP AT LT_EXCEL ASSIGNING &lt;FS_EXCEL&gt;.
+    CLEAR:G_ERROR.
+
+    IF &lt;FS_EXCEL&gt;-WERKS IS INITIAL.
+      CONCATENATE   G_ERROR '上传失败，工厂不能为空.'  INTO  G_ERROR.
+    ENDIF.
+
+    IF &lt;FS_EXCEL&gt;-EISBE IS INITIAL.
+      CONCATENATE   G_ERROR  '上传失败，安全库存不能为空.'  INTO  G_ERROR.
+    ENDIF.
+
+    IF &lt;FS_EXCEL&gt;-MATNR IS INITIAL.
+      CONCATENATE  G_ERROR '上传失败，物料编号不能为空.' INTO  G_ERROR.
+    ELSE.
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          INPUT  = &lt;FS_EXCEL&gt;-MATNR
+        IMPORTING
+          OUTPUT = &lt;FS_EXCEL&gt;-MATNR.
+    ENDIF.
+
+    IF G_ERROR IS NOT INITIAL.
+      CLEAR:LW_CHECKMSG.
+      "导入文本存在错误信息
+      G_FLAG = 'X'.
+
+      MOVE-CORRESPONDING &lt;FS_EXCEL&gt; TO LW_CHECKMSG.
+
+      LW_CHECKMSG-ERR_MSG = G_ERROR.
+      LW_CHECKMSG-ZXH = SY-TABIX.
+      APPEND LW_CHECKMSG TO LT_CHECKMSG.
+    ENDIF.
+  ENDLOOP.
+
+  "导入数据表存在错误
+  IF LT_CHECKMSG IS NOT INITIAL.
+    G_FLAG  = 'X'.
+    EXIT.
+  ENDIF.
+ENDFORM.                    "CHECKDATA
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DISPLAY_ALV</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       在页面中显示信息</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_ALV .
+
+  PERFORM INIT_LAYOUT.
+
+  PERFORM INIT_FIELDCAT.    "
+
+
+  PERFORM SHOW_ALV.
+ENDFORM.                    "DISPLAY_ALV
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  INIT_FIELDCAT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_FIELDCAT .
+  DATA:L_COLPOS TYPE I.
+  CLEAR:GT_FCAT.
+
+  IF P_1 = 'X'.     "上传更新
+    MARCO:L_COLPOS 'ZXH' '序列' 'X' '' '',
+    L_COLPOS 'WERKS' '工厂' 'X' '' '',
+    L_COLPOS 'MATNR' '物料编号' 'X' 'MATNR' 'MARA',
+    L_COLPOS 'EISBE' '安全库存' 'X' '' ''.
+    MARCO:L_COLPOS 'ERR_MSG' '提示信息' '' '' ''.
+
+  ELSEIF P_2 = 'X'.   "查询主物料信息
+    MARCO:L_COLPOS 'ZXH' '序列' 'X' '' '',
+    L_COLPOS 'WERKS' '工厂' 'X' '' '',
+    L_COLPOS 'MATNR' '物料编号' 'X' 'MATNR' 'MARA',
+    L_COLPOS 'MAKTX' '物料描述' '' '' '',
+    L_COLPOS 'MATKL' '物料组' '' '' '',
+    L_COLPOS 'PRDHA' '产品层次' '' 'PRDHA' 'MARA',
+    L_COLPOS 'EKGRP' '采购组' '' '' '',
+    L_COLPOS 'DZEIT' '生产周期' '' '' '',
+    L_COLPOS 'PLIFZ' '采购周期' '' '' '',
+    L_COLPOS 'EISBE' '安全库存' '' '' '',
+    L_COLPOS 'BSTRF' '舍入值' '' '' ''.
+  ENDIF.
+ENDFORM.                    "INIT_FIELDCAT
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  INIT_LAYOUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_LAYOUT .
+  CLEAR W_LAYOUT.
+
+  W_LAYOUT-ZEBRA = 'X'.
+  W_LAYOUT-COL_OPT = 'X'.
+  W_LAYOUT-CWIDTH_OPT = 'X'.
+ENDFORM.                    "INIT_LAYOUT
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SHOW_ALV</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_ALV .
+  IF P_1 = 'X'.     "上传更新
+      CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'
+        EXPORTING
+          I_CALLBACK_PROGRAM = SY-REPID
+          IS_LAYOUT_LVC      = W_LAYOUT
+          IT_FIELDCAT_LVC    = GT_FCAT
+          I_SAVE             = 'A'
+        TABLES
+          T_OUTTAB           = LT_CHECKMSG.
+      IF SY-SUBRC &lt;&gt; 0.
+        MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+                    WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+      ENDIF.
+  ELSEIF P_2 = 'X'.   "查询主物料信息
+    CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'
+      EXPORTING
+        I_CALLBACK_PROGRAM = SY-REPID
+        IS_LAYOUT_LVC      = W_LAYOUT
+        IT_FIELDCAT_LVC    = GT_FCAT
+        I_SAVE             = 'A'
+      TABLES
+        T_OUTTAB           = LT_MARA.
+    IF SY-SUBRC &lt;&gt; 0.
+      MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+                  WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    ENDIF.
+  ENDIF.
+ENDFORM.                    "SHOW_ALV
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      form  f4_help_for_filename</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM F4_HELP_FOR_FILENAME .
+  DATA: L_FILE         TYPE STRING,
+        L_FILE_IMPORT  TYPE STRING,
+        L_PATH_INITIAL TYPE STRING,
+        LT_FILE_TABLE  TYPE FILETABLE,
+        LW_FILE        TYPE FILE_TABLE,
+        L_RC           TYPE I.
+
+  CLEAR: L_FILE,
+         L_FILE_IMPORT,
+         L_PATH_INITIAL,
+         LT_FILE_TABLE,
+         LW_FILE,
+         L_RC.
+
+  L_FILE = P_FILE.
+<font color ="#0000FF">*    CALL FUNCTION 'F4_FILENAME'</font>
+<font color ="#0000FF">*      EXPORTING</font>
+<font color ="#0000FF">*        field_name = 'P_FILE'</font>
+<font color ="#0000FF">*      IMPORTING</font>
+<font color ="#0000FF">*        file_name  = p_file.</font>
+  CALL METHOD CL_GUI_FRONTEND_SERVICES=&gt;FILE_OPEN_DIALOG
+    EXPORTING
+<font color ="#0000FF">*     window_title            =</font>
+<font color ="#0000FF">*     default_extension       =</font>
+<font color ="#0000FF">*     default_filename        =</font>
+      FILE_FILTER             = 'Excel 文件 (*.xls;*xlsx)|*.xls;*.xlsx'
+<font color ="#0000FF">*     with_encoding           =</font>
+<font color ="#0000FF">*     initial_directory       =</font>
+<font color ="#0000FF">*     multiselection          =</font>
+    CHANGING
+      FILE_TABLE              = LT_FILE_TABLE
+      RC                      = L_RC
+<font color ="#0000FF">*     user_action             =</font>
+<font color ="#0000FF">*     file_encoding           =</font>
+    EXCEPTIONS
+      FILE_OPEN_DIALOG_FAILED = 1
+      CNTL_ERROR              = 2
+      ERROR_NO_GUI            = 3
+      NOT_SUPPORTED_BY_GUI    = 4
+      OTHERS                  = 5.
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+               WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+  READ TABLE LT_FILE_TABLE INTO LW_FILE INDEX 1.
+  IF SY-SUBRC EQ 0.
+    P_FILE = LW_FILE-FILENAME.
+  ENDIF.
+ENDFORM.            " f4_help_for_filename
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DOWNLOAD_TEMPLATE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       下载模板</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DOWNLOAD_TEMPLATE .
+  CREATE OBJECT G_APPL 'EXCEL.APPLICATION'.
+  SET PROPERTY OF G_APPL 'VISIBLE' = 0.
+
+  CALL METHOD OF
+      G_APPL
+      'WORKBOOKS' = G_WORK.
+  CALL METHOD OF
+      G_WORK
+      'Add'  = G_WORK.
+
+  GET PROPERTY OF G_APPL 'ActiveSheet' = G_ACTIVESHEET.
+
+  SET PROPERTY OF G_ACTIVESHEET 'Name' = '物料安全库存表导入 '.
+
+  PERFORM FILL_CELL USING: 1 1 '工厂' 26 1,
+        1 2 '物料编码' 26 1,
+        1 3 '安全库存' 26 1.
+
+
+  "EXCEL文件别存为
+  CALL METHOD OF
+      G_WORK
+      'SAVEAS'
+
+    EXPORTING
+      #1       = P_FILE.
+
+  "关闭文件
+  CALL METHOD OF
+      G_WORK
+      'close'.
+
+  "退出EXCEL
+  CALL METHOD OF
+      G_APPL
+      'QUIT'.
+  FREE OBJECT G_APPL.
+
+  MESSAGE S000 WITH '文件：' P_FILE ' 下载成功'.
+
+ENDFORM.                    " DOWNLOAD_TEMPLATE
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FILL_CELL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;FU_ROW     text</font>
+<font color ="#0000FF">*      --&gt;FU_COLUMN  text</font>
+<font color ="#0000FF">*      --&gt;FU_VALUE   text</font>
+<font color ="#0000FF">*      --&gt;FU_COLOR   text</font>
+<font color ="#0000FF">*      --&gt;FU_BOLD    text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FILL_CELL USING  FU_ROW
+                      FU_COLUMN
+                      FU_VALUE
+                      FU_COLOR
+                      FU_BOLD.
+
+  DATA: L_CELL  TYPE OLE2_OBJECT,
+        L_COLOR TYPE OLE2_OBJECT,
+        L_BOLD  TYPE OLE2_OBJECT.
+
+  "设置单元格内容
+  CALL METHOD OF
+      G_APPL
+      'Cells' = L_CELL
+    EXPORTING
+      #1      = FU_ROW
+      #2      = FU_COLUMN.
+
+  SET PROPERTY OF L_CELL 'Value'       =  FU_VALUE.
+
+  "设置单元格颜色
+  GET PROPERTY OF L_CELL 'Interior'    = L_COLOR.
+  SET PROPERTY OF L_COLOR 'ColorIndex' = FU_COLOR.
+
+  "设置单元格加粗
+  GET PROPERTY OF L_CELL 'Font' = L_BOLD.
+  SET PROPERTY OF L_BOLD 'Bold' = FU_BOLD.
+
+ENDFORM.                    "fill_cell
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  UPDATEDATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM UPDATEDATA.
+  DATA: TOTAL TYPE I,
+         NUM TYPE I.
+  NUM = 0.
+  CLEAR:LT_CHECKMSG,
+      G_FLAG.
+
+  LOOP AT LT_EXCEL ASSIGNING &lt;FS_EXCEL&gt;.
+    CLEAR:G_ERROR.
+    NUM = NUM + 1.
+    CLEAR:G_ERROR.
+    "工厂级别数据
+    CLEAR PLANTDATA.
+    PLANTDATA-SAFETY_STK = &lt;FS_EXCEL&gt;-EISBE .
+    PLANTDATA-PLANT = &lt;FS_EXCEL&gt;-WERKS .
+
+
+    CLEAR PLANTDATAX.
+    PLANTDATAX-SAFETY_STK = 'X'.
+    PLANTDATAX-PLANT = &lt;FS_EXCEL&gt;-WERKS.
+
+    CLEAR HEADDATA.
+    "抬头数据 ，物料和视图维护
+    HEADDATA-MATERIAL  = &lt;FS_EXCEL&gt;-MATNR.
+    HEADDATA-MRP_VIEW  = 'X'.
+
+    CALL FUNCTION 'BAPI_MATERIAL_SAVEDATA'
+      EXPORTING
+        HEADDATA       = HEADDATA
+        PLANTDATA      = PLANTDATA
+        PLANTDATAX     = PLANTDATAX
+      IMPORTING
+        RETURN         = RETURN
+      TABLES
+        RETURNMESSAGES = RETURNMES.
+
+    IF RETURN-TYPE = 'E'.
+      DATA ERR_STR TYPE STRING.
+      ERR_STR = RETURNMES-MESSAGE.
+      CONCATENATE  '更新失败，错误信息：'   ERR_STR  INTO  G_ERROR.
+    ELSEIF  RETURN-TYPE = 'S'.
+      CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'.
+      G_ERROR = '更新成功！'.
+    ENDIF.
+
+
+    G_FLAG = 'X'.      "这里只做为显示标志
+    CLEAR:LW_CHECKMSG.
+    MOVE-CORRESPONDING &lt;FS_EXCEL&gt; TO LW_CHECKMSG.
+    LW_CHECKMSG-ERR_MSG = G_ERROR.
+    LW_CHECKMSG-ZXH = NUM.
+    APPEND LW_CHECKMSG TO LT_CHECKMSG.
+
+
+  ENDLOOP.
+ENDFORM.                    "UPDATEDATA
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  getdata</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GETDATA.
+  "todo:验证参数
+  SELECT A~WERKS A~MATNR B~MAKTX C~MATKL C~PRDHA A~EKGRP A~DZEIT A~PLIFZ A~EISBE A~BSTRF
+    INTO CORRESPONDING FIELDS OF TABLE LT_MARA
+    FROM MARC AS A
+    INNER JOIN MAKT AS B ON A~MATNR = B~MATNR AND SPRAS = '1'
+    INNER JOIN MARA AS C ON A~MATNR = C~MATNR
+    WHERE A~WERKS = P_WERKS AND A~MATNR IN  P_MATNR AND A~EKGRP IN P_EKGRP AND C~MATKL IN P_MATKL AND C~PRDHA IN P_PRDHA AND C~MSTAV &lt;&gt; 17.
+
+  IF LT_MARA IS INITIAL.
+    MESSAGE S050(ZPEOPLE).
+    STOP.
+  ENDIF.
+
+  SORT LT_MARA BY WERKS MATNR.
+
+  LOOP AT LT_MARA ASSIGNING &lt;FS_MARA&gt;.
+    &lt;FS_MARA&gt;-ZXH = SY-TABIX.
+  ENDLOOP.
+
+ENDFORM.                    "getdata
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  BDC_PROCESS_MM02</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_L_COUNT  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM BDC_PROCESS_MM02 CHANGING P_L_COUNT.
+  DATA: CP_EIND TYPE C,
+        L_MESSAGE TYPE STRING.
+
+  DATA: BDCDATA2 TYPE STANDARD TABLE OF BDCDATA,
+        W_BDCDATA2 TYPE BDCDATA.
+
+  DATA: WORK_INT_2 TYPE I VALUE 0.
+
+  DATA: TOTAL TYPE I,
+       NUM TYPE I.
+  NUM = 0.
+  CLEAR:LT_CHECKMSG,
+      G_FLAG.
+
+  LOOP AT LT_EXCEL INTO LW_EXCEL.
+    CLEAR: GT_BDCDATA,GT_MSGTAB,CP_EIND.
+
+                                                            "屏幕 0060
+    PERFORM BDC_DYNPRO      USING 'SAPLMGMM'      '0060'.
+
+    PERFORM BDC_FIELD       USING 'BDC_OKCODE'    '=ENTR'.
+    PERFORM BDC_FIELD       USING 'RMMG1-MATNR'   LW_EXCEL-MATNR.
+
+                                                            "屏幕 0070
+    PERFORM BDC_DYNPRO      USING 'SAPLMGMM'      '0070'.
+    PERFORM BDC_FIELD       USING 'BDC_OKCODE'    '=RESA'.
+                                                            "屏幕 0070
+    PERFORM BDC_DYNPRO      USING 'SAPLMGMM'      '0070'.
+    PERFORM BDC_FIELD       USING 'BDC_OKCODE'    '=ENTR'.
+    PERFORM BDC_FIELD       USING 'MSICHTAUSW-KZSEL(12)'   'X'.
+
+                                                            "屏幕 0080
+    PERFORM BDC_DYNPRO      USING 'SAPLMGMM'      '0080'.
+    PERFORM BDC_FIELD       USING 'BDC_OKCODE'    '=ENTR'.
+    PERFORM BDC_FIELD       USING 'RMMG1-WERKS'   LW_EXCEL-WERKS.
+
+                                                            "屏幕 4000
+    PERFORM BDC_DYNPRO      USING 'SAPLMGMM'      '4000'.
+    PERFORM BDC_FIELD       USING 'BDC_OKCODE'    '=BU'.
+    PERFORM BDC_FIELD       USING 'MARC-EISBE'    LW_EXCEL-EISBE.
+
+
+    LOOP AT GT_BDCDATA INTO W_BDCDATA.
+      CONDENSE W_BDCDATA-FVAL.
+      MODIFY GT_BDCDATA FROM W_BDCDATA.
+      CLEAR W_BDCDATA.
+    ENDLOOP.
+
+    "调用MM02 BDC
+    CALL TRANSACTION 'MM02' USING GT_BDCDATA
+                            MODE G_MODE
+                            MESSAGES INTO GT_MSGTAB
+                            UPDATE 'S'.
+
+    LOOP AT GT_MSGTAB INTO W_MSGTAB WHERE MSGTYP = 'E'
+                          OR MSGTYP = 'A'
+                      .
+
+      G_FLAG = 'X'.
+      CP_EIND  = 'X'.
+      CALL FUNCTION 'MESSAGE_TEXT_BUILD'
+        EXPORTING
+          MSGID               = W_MSGTAB-MSGID
+          MSGNR               = W_MSGTAB-MSGNR
+          MSGV1               = W_MSGTAB-MSGV1
+          MSGV2               = W_MSGTAB-MSGV2
+          MSGV3               = W_MSGTAB-MSGV3
+          MSGV4               = W_MSGTAB-MSGV4
+        IMPORTING
+          MESSAGE_TEXT_OUTPUT = L_MESSAGE.
+      CLEAR:W_MSGTAB.
+    ENDLOOP.
+
+    IF CP_EIND  EQ 'X'.
+      CONCATENATE  '更新失败，错误信息：'   L_MESSAGE  INTO  G_ERROR.
+    ELSE.
+      G_ERROR = '更新成功！'.
+    ENDIF.
+
+    CLEAR:LW_CHECKMSG.
+    MOVE-CORRESPONDING LW_EXCEL TO LW_CHECKMSG.
+    NUM = NUM + 1.
+    LW_CHECKMSG-ZXH = NUM.
+    LW_CHECKMSG-ERR_MSG = G_ERROR.
+    LW_CHECKMSG-ZXH = NUM.
+    APPEND LW_CHECKMSG TO LT_CHECKMSG.
+
+
+  ENDLOOP.
+ENDFORM.                    "BDC_PROCESS_MM02
+
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*        Start new screen                                              *</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM BDC_DYNPRO USING PROGRAM DYNPRO.
+  CLEAR W_BDCDATA.
+  W_BDCDATA-PROGRAM  = PROGRAM.
+  W_BDCDATA-DYNPRO   = DYNPRO.
+  W_BDCDATA-DYNBEGIN = 'X'.
+  APPEND W_BDCDATA TO GT_BDCDATA.
+ENDFORM.                    "BDC_DYNPRO
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*        Insert field                                                  *</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM BDC_FIELD USING FNAM FVAL.
+  CLEAR W_BDCDATA.
+  W_BDCDATA-FNAM = FNAM.
+  W_BDCDATA-FVAL = FVAL.
+  APPEND W_BDCDATA TO GT_BDCDATA.
+ENDFORM.                    "BDC_FIELD
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* P_1         批量修改物料安全库存</font>
+<font color ="#0000FF">* P_2         查询物料MRP数据</font>
+<font color ="#0000FF">* P_DOWN         下载模板</font>
+<font color ="#0000FF">* P_EKGRP         采购组</font>
+<font color ="#0000FF">* P_FILE         文件路径(上传\下载)</font>
+<font color ="#0000FF">* P_MATKL         物料组</font>
+<font color ="#0000FF">* P_MATNR         物料</font>
+<font color ="#0000FF">* P_PRDHA         产品层次</font>
+<font color ="#0000FF">* P_UPLOAD         上传</font>
+<font color ="#0000FF">* P_WERKS         工厂</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPEOPLE</font>
+<font color ="#0000FF">*000   &1 &2 &3 &4</font>
+<font color ="#0000FF">*050   没有满足查询条件的数据!</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

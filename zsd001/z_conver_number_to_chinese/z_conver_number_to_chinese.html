@@ -1,0 +1,94 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>Z_CONVER_NUMBER_TO_CHINESE</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for function: Z_CONVER_NUMBER_TO_CHINESE</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  数值转换为大写中文</b></font>
+<hr>
+<pre width="100">
+FUNCTION Z_CONVER_NUMBER_TO_CHINESE.
+<font color ="#0000FF">*"----------------------------------------------------------------------</font>
+<font color ="#0000FF">*"*"Local interface:</font>
+<font color ="#0000FF">*"  IMPORTING</font>
+<font color ="#0000FF">*"     VALUE(I_SOURCE) TYPE  BSEG-DMBTR</font>
+<font color ="#0000FF">*"  EXPORTING</font>
+<font color ="#0000FF">*"     REFERENCE(O_RESULT) TYPE  STRING</font>
+<font color ="#0000FF">*"----------------------------------------------------------------------</font>
+
+<font color ="#0000FF">*       <a href ="global-z_conver_number_to_chinese.html">Global data declarations</a></font>
+  DATA: SCR(30) TYPE C, RES(60) TYPE C,FEN(2) TYPE C .
+  DATA: LEN TYPE I, C1 TYPE I, C2 TYPE I, C3 TYPE I, C4 TYPE I.
+  DATA: D1(1) TYPE C, D2(1) TYPE C, D3 TYPE I.
+  DATA: DIGIT(2) TYPE C, WEIGHT(2) TYPE C.
+  DATA: L_DMBTR  TYPE BSEG-DMBTR.
+  DATA: RULE1(20) TYPE C VALUE '零壹贰叁肆伍陆柒捌玖'.
+  DATA: RULE2(30) TYPE C VALUE '分角元拾佰仟万拾佰仟亿拾佰仟万'.
+  L_DMBTR = ABS( I_SOURCE ).
+  SCR = L_DMBTR * 100.
+  CONDENSE SCR NO-GAPS.
+  IF SCR = '0'.
+    RES = '零元'.
+  ELSE.
+    LEN = STRLEN( SCR ).
+    C1 = 0.
+    D1 = '0'.
+    CLEAR RES.
+    DO LEN TIMES.
+      C1 = C1 + 1.
+      C2 = LEN - C1.
+      D2 = SCR+C2(1) .
+      IF D2 = '0'.
+        D3 = 0.
+      ELSE.
+        D3 = D2.
+      ENDIF.
+      DIGIT = RULE1+D3(1) .
+      C3 = ( C1 - 1 ) .
+      WEIGHT = RULE2+C3(1) .
+      IF D2 = '0'.
+        IF C1 = 3.
+          DIGIT = ''.
+        ELSEIF C1 = 7.
+          DIGIT = ''.
+          IF LEN &gt; 10 .
+            C4 = LEN - 10.
+            IF SCR+C4(4) = '0000'.
+              WEIGHT = ''.
+            ENDIF.
+          ENDIF.
+        ELSEIF C1 = 11.
+          DIGIT = ''.
+        ELSEIF D1 = '0'.
+          DIGIT = ''.
+          WEIGHT = ''.
+        ELSE.
+          WEIGHT = ''.
+        ENDIF.
+      ENDIF.
+      CONCATENATE DIGIT WEIGHT RES INTO RES .
+      D1 = D2.
+    ENDDO.
+  ENDIF.
+  LEN = STRLEN( RES ) - 1.
+  FEN = RES+LEN(1).
+
+  IF FEN &lt;&gt; '分' .
+    CONCATENATE RES '整' INTO O_RESULT.
+  ELSE.
+    O_RESULT = RES.
+  ENDIF.
+
+  IF I_SOURCE &lt; 0.
+    CONCATENATE '负' O_RESULT INTO O_RESULT.
+  ENDIF.
+
+ENDFUNCTION.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

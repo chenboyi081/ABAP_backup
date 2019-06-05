@@ -1,0 +1,798 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>Y_CBOII_TEST010</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: Y_CBOII_TEST010</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  bom批量删除test</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  Y_CBOII_TEST010</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  Y_CBOII_TEST010 NO STANDARD PAGE HEADING MESSAGE-ID 00.
+
+<font color ="#0000FF">*REPORT  ZRMM058 NO STANDARD PAGE HEADING MESSAGE-ID 00.</font>
+
+TABLES : EKKO,EKPO.
+
+TYPE-POOLS: SLIS.
+<font color ="#0000FF">*--------------------------------</font>
+<font color ="#0000FF">* Global Internal Tables</font>
+<font color ="#0000FF">*--------------------------------</font>
+DATA: IT_FIELDCAT_ALV  TYPE SLIS_T_FIELDCAT_ALV WITH HEADER LINE,
+      IT_FIELDCAT_ALV1 TYPE SLIS_T_FIELDCAT_ALV WITH HEADER LINE,
+      IT_FIELDCAT_ALV2 TYPE SLIS_T_FIELDCAT_ALV WITH HEADER LINE,
+      IT_LAYOUT        TYPE SLIS_LAYOUT_ALV,
+      IT_FIELDCAT      TYPE SLIS_T_FIELDCAT_ALV,
+      IT_EVENTS        TYPE SLIS_T_EVENT,
+      IT_LIST_COMMENTS TYPE SLIS_T_LISTHEADER,
+      W_REPID          LIKE SY-REPID,
+      WA_FIELDCAT LIKE LINE OF IT_FIELDCAT,
+      W_POS TYPE I,
+      W_EVENTS           LIKE LINE OF IT_EVENTS,
+      W_LIST_COMMENTS    LIKE LINE OF IT_LIST_COMMENTS,
+      W_FLAG TYPE C VALUE '1'.
+
+DEFINE M1.
+  W_POS = W_POS + 1.
+  WA_FIELDCAT-COL_POS = W_POS.
+  WA_FIELDCAT-FIELDNAME = &1.
+  WA_FIELDCAT-TABNAME = 'IT_EBAN'.
+  WA_FIELDCAT-KEY = &2.
+<font color ="#0000FF">*  WA_FIELDCAT-OUTPUTLEN = 40.</font>
+<font color ="#0000FF">*  wa_fieldcat-seltext_l = &3.</font>
+  WA_FIELDCAT-REPTEXT_DDIC = &3.
+  WA_FIELDCAT-DATATYPE  = '&4'.
+<font color ="#0000FF">*  wa_fieldcat-do_sum  = '&7'.</font>
+<font color ="#0000FF">*  wa_fieldcat-lzero     = 'X'.</font>
+  APPEND WA_FIELDCAT TO IT_FIELDCAT_ALV.
+END-OF-DEFINITION.
+
+<font color ="#0000FF">*C-- Types Declarations</font>
+
+TYPES : BEGIN OF TP_FLATFILE_VTLS,
+        EBELN(10),
+        EBELP TYPE EKPO-EBELP,
+<font color ="#0000FF">*        MENGE(13),</font>
+        END OF TP_FLATFILE_VTLS.
+
+<font color ="#0000FF">*=====================================================================</font>
+<font color ="#0000FF">*                   INTERNAL TABLES DECLARATION</font>
+<font color ="#0000FF">*=====================================================================</font>
+
+DATA:  T_FLATFILE_VTLS TYPE TP_FLATFILE_VTLS OCCURS 0 WITH HEADER LINE.
+
+DATA : BEGIN OF T_SAPDATA OCCURS 0,
+       EBELN LIKE EKPO-EBELN,
+       EBELP LIKE EKPO-EBELP,
+<font color ="#0000FF">*       MENGE LIKE EKPO-MENGE,</font>
+       END OF T_SAPDATA.
+
+DATA : BEGIN OF T_FLATFILE_VTLS1 OCCURS 0,
+       EBELN LIKE EKPO-EBELN,
+       EBELP LIKE EKPO-EBELP,
+       MENGE LIKE EKPO-MENGE,
+       END OF T_FLATFILE_VTLS1.
+
+DATA : BEGIN OF T_UPDATE OCCURS 0,
+        EBELN LIKE EKPO-EBELN,
+        EBELP LIKE EKPO-EBELP,
+        MENGE LIKE EKPO-MENGE,
+       END OF T_UPDATE.
+
+DATA : BEGIN OF T_POHEADER OCCURS 0,
+       EBELN LIKE EKPO-EBELN,
+       EBELP LIKE EKPO-EBELP,
+       END OF T_POHEADER.
+
+DATA : BEGIN OF T_POITEM OCCURS 0,
+       EBELN LIKE EKPO-EBELN,
+       EBELP LIKE EKPO-EBELP,
+       MENGE LIKE EKPO-MENGE,
+       END OF T_POITEM.
+
+DATA : BEGIN OF T_MESSAGE OCCURS 0,
+       PO LIKE EKPO-EBELN,
+       EBELP LIKE EKPO-EBELP,
+       MSGTY,
+       MSGID(2),
+       MSGNO(3),
+       MSGTX(100),
+       END OF T_MESSAGE.
+
+DATA : BEGIN OF T_BAPI_POHEADER OCCURS 0.
+        INCLUDE STRUCTURE BAPIMEPOHEADER.
+DATA : END OF T_BAPI_POHEADER.
+
+DATA : BEGIN OF T_BAPI_POHEADERX OCCURS 0.
+        INCLUDE STRUCTURE BAPIMEPOHEADERX.
+DATA : END OF T_BAPI_POHEADERX.
+
+DATA : BEGIN OF T_BAPI_POITEM OCCURS 0.
+        INCLUDE STRUCTURE BAPIMEPOITEM.
+DATA : END OF T_BAPI_POITEM.
+
+DATA : BEGIN OF T_BAPI_POITEMX OCCURS 0.
+        INCLUDE STRUCTURE BAPIMEPOITEMX.
+DATA : END OF T_BAPI_POITEMX.
+
+DATA : BEGIN OF T_BAPIRETURN OCCURS 0.
+        INCLUDE STRUCTURE BAPIRET2.
+DATA : END OF T_BAPIRETURN.
+
+DATA: PE_T_ITEMS_TO_DELETE LIKE BAPIEBAND OCCURS 0 WITH HEADER LINE.
+DATA RETURN TYPE STANDARD TABLE OF BAPIRETURN WITH HEADER LINE.
+
+
+<font color ="#0000FF">*=====================================================================</font>
+<font color ="#0000FF">*                   V A R I A B L E S</font>
+<font color ="#0000FF">*=====================================================================</font>
+
+DATA: W_SUCCESS(6)  TYPE N,
+      W_BKLAS LIKE T023-BKLAS,
+      W_CURRYEAR(4),
+      W_BEGDA LIKE SY-DATUM,
+      W_ENDDA LIKE SY-DATUM,
+      W_BEGYR(4),
+      W_ENDYR(4),
+      W_CURRMON(2),
+      W_ASSETCLASS LIKE ANKT-ANLKL,
+      W_PRICE TYPE P,
+      W_RECORDSAP TYPE I,
+      W_POVTLS(10),
+      W_COUNT TYPE I.
+
+DATA:  W_FILEPATH TYPE RLGRAP-FILENAME,
+       W_RC TYPE SY-SUBRC,
+       W_SSCRFIELDS_UCOMM1   TYPE SSCRFIELDS-UCOMM,
+       W_FILE1 TYPE STRING,
+       W_FILE2 TYPE FILENAME-FILEINTERN.
+
+<font color ="#0000FF">*=====================================================================</font>
+<font color ="#0000FF">*                   C O N S T A N T S</font>
+<font color ="#0000FF">*=====================================================================</font>
+
+CONSTANTS: C_X              TYPE  C         VALUE 'X',
+           C_HYP            TYPE  C         VALUE '-',
+           C_ERR            TYPE  BDC_MART  VALUE 'E'.
+
+CONSTANTS:  C_SLASH(1)            TYPE C VALUE '/',
+            C_HASH(1)             TYPE C VALUE '#',
+            C_PIPE                TYPE C VALUE '|',
+            C_1                   TYPE I VALUE 1,
+            C_ZERO                TYPE N VALUE '0',
+            C_RG1(3)              TYPE C VALUE 'rg1',
+            C_GR3(3)              TYPE C VALUE 'GR3',
+            C_GR2(3)              TYPE C VALUE 'GR2',
+            C_E(1)                TYPE C VALUE 'E',
+            C_FILEPATH(8)         TYPE C VALUE '/interf/',
+            C_FILETYPE(10)        TYPE C VALUE 'ASC',
+            CNS_QUERY(02)      TYPE C VALUE 'FE',
+            CNS_MASK(30)       TYPE C VALUE ',*.txt,*.txt.',
+            CNS_MODE(01)       TYPE C VALUE 'O'.
+
+
+CONSTANTS : C_BAPIMEPOHEADERX   TYPE X030L-TABNAME
+                               VALUE 'bapimepoheaderx',
+           C_BAPIMEPOITEM      TYPE  X030L-TABNAME
+                               VALUE 'bapimepoitem',
+           C_BAPIMEPOACCOUNT   TYPE  X030L-TABNAME
+                               VALUE 'bapimepoaccount',
+           C_T_BAPI_POHEADER(15)        TYPE C
+                                        VALUE 't_bapi_poheader',
+           C_T_BAPI_POITEM(13)          TYPE C
+                                        VALUE 't_bapi_poitem',
+           C_T_BAPI_POITEMX(14)         TYPE C
+                                        VALUE 't_bapi_poitemx',
+           C_T_BAPI_POHEADERX(16)       TYPE C
+                                        VALUE 't_bapi_poheaderx'.
+
+CLASS CL_ABAP_CHAR_UTILITIES DEFINITION LOAD.
+CONSTANTS:CON_TAB  TYPE C VALUE CL_ABAP_CHAR_UTILITIES=&gt;HORIZONTAL_TAB.
+
+<font color ="#0000FF">*======================================================================</font>
+<font color ="#0000FF">*                        SELECTION SCREEN</font>
+<font color ="#0000FF">*======================================================================</font>
+
+SELECTION-SCREEN BEGIN OF BLOCK INPUTPATH WITH FRAME TITLE TEXT-001.
+
+
+<font color ="#0000FF">*SELECTION-SCREEN : BEGIN OF BLOCK BLK1 WITH FRAME TITLE TEXT-003.</font>
+PARAMETERS :  P_FILE1 LIKE RLGRAP-FILENAME OBLIGATORY MODIF ID GR2.
+<font color ="#0000FF">*SELECTION-SCREEN : END OF BLOCK BLK1.</font>
+
+SELECTION-SCREEN END OF BLOCK INPUTPATH.
+
+<font color ="#0000FF">*C-- Initialization Event</font>
+
+INITIALIZATION.
+
+  CLEAR W_FILEPATH.
+  CONCATENATE C_FILEPATH SY-SYSID C_SLASH SY-MANDT C_SLASH INTO
+  W_FILEPATH.
+
+  CONDENSE W_FILEPATH NO-GAPS.
+
+  P_FILE1 = TEXT-008.
+
+
+<font color ="#0000FF">*======================================================================</font>
+<font color ="#0000FF">*                        SELECTION SCREEN EVENTS</font>
+<font color ="#0000FF">*======================================================================</font>
+
+<font color ="#0000FF">*C-- Selection Screen Output</font>
+
+AT SELECTION-SCREEN OUTPUT.
+
+
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR P_FILE1.
+  PERFORM FRM_VALUE_REQUEST USING P_FILE1
+                            CHANGING P_FILE1.
+
+AT SELECTION-SCREEN.
+<font color ="#0000FF">* check initial</font>
+  PERFORM FRM_CHECK_INITIAL USING P_FILE1.
+<font color ="#0000FF">* check file exist or not</font>
+  PERFORM FRM_CHECK_FILE USING P_FILE1 .
+
+
+START-OF-SELECTION.
+  DATA: ZUPRIC(20) TYPE C.
+
+<font color ="#0000FF">*  PERFORM VALIDATE_PRE_FILE USING P_FILE1.</font>
+
+  PERFORM UPLOAD_FILE TABLES T_FLATFILE_VTLS
+                      USING P_FILE1
+                      CHANGING W_RC.
+
+  IF W_RC &lt;&gt; 0.
+    MESSAGE S006 DISPLAY LIKE C_E.
+  ENDIF.
+
+
+  LOOP AT T_FLATFILE_VTLS.
+    CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+      EXPORTING
+        INPUT  = T_FLATFILE_VTLS-EBELN
+      IMPORTING
+        OUTPUT = T_FLATFILE_VTLS1-EBELN.
+    CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+      EXPORTING
+        INPUT  = T_FLATFILE_VTLS-EBELP
+      IMPORTING
+        OUTPUT = T_FLATFILE_VTLS1-EBELP.
+
+<font color ="#0000FF">*begin 去除千分位</font>
+<font color ="#0000FF">*    ZUPRIC = T_FLATFILE_VTLS-MENGE.</font>
+<font color ="#0000FF">*    DO.</font>
+<font color ="#0000FF">*      REPLACE ',' WITH '' INTO ZUPRIC.</font>
+<font color ="#0000FF">*      IF SY-SUBRC NE 0.</font>
+<font color ="#0000FF">*        EXIT.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">*    ENDDO.</font>
+<font color ="#0000FF">*    CONDENSE ZUPRIC NO-GAPS.</font>
+<font color ="#0000FF">*    T_FLATFILE_VTLS-MENGE = ZUPRIC.</font>
+<font color ="#0000FF">*end去除千分位符号','.</font>
+
+<font color ="#0000FF">*    MOVE T_FLATFILE_VTLS-MENGE TO T_FLATFILE_VTLS1-MENGE.</font>
+
+
+    APPEND T_FLATFILE_VTLS1.
+    CLEAR T_FLATFILE_VTLS1.
+
+  ENDLOOP.
+  SORT T_FLATFILE_VTLS1 BY EBELN EBELP.
+  DELETE T_FLATFILE_VTLS1 WHERE EBELN = '' AND EBELP = ''.
+  PERFORM GET_PODATA.
+
+  LOOP AT T_POHEADER.
+
+    PERFORM MOVE_TO_BAPI.
+
+    PERFORM CALL_BAPI.
+
+  ENDLOOP.
+
+  PERFORM STORE_MESSAGES TABLES T_MESSAGE.
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*&      Form  upload_file</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*       Routine to upload data from file to tables.</font>
+<font color ="#0000FF">*----------------------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*      --&gt;P_fp_flatfile</font>
+<font color ="#0000FF">*      --&gt;P_fp_file</font>
+<font color ="#0000FF">*      &lt;--P_fp_rc</font>
+<font color ="#0000FF">*----------------------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+
+FORM  UPLOAD_FILE TABLES   FP_FLATFILE
+                  USING    FP_FILE LIKE RLGRAP-FILENAME
+                  CHANGING FP_RC TYPE SY-SUBRC.
+
+  DATA L_FILE TYPE STRING.
+  DATA: LV_FILELENGTH TYPE I.
+
+  L_FILE = FP_FILE.
+
+  IF FP_FLATFILE[] IS INITIAL.
+
+    CALL FUNCTION 'GUI_UPLOAD'
+      EXPORTING
+       FILENAME                = L_FILE
+      FILETYPE                = 'ASC'
+      HAS_FIELD_SEPARATOR     = 'X'
+      HEADER_LENGTH           = 0
+      READ_BY_LINE            = 'X'
+      DAT_MODE                = ' '
+      CODEPAGE                = ' '
+      IGNORE_CERR             = 'X'
+      REPLACEMENT             = '#'
+      CHECK_BOM               = ' '
+
+<font color ="#0000FF">*        FILENAME                =</font>
+<font color ="#0000FF">*        FILETYPE                = C_FILETYPE</font>
+<font color ="#0000FF">*        HAS_FIELD_SEPARATOR     = C_X</font>
+    IMPORTING
+      FILELENGTH              = LV_FILELENGTH
+      TABLES
+        DATA_TAB                = FP_FLATFILE[]
+      EXCEPTIONS
+        FILE_OPEN_ERROR         = 1
+        FILE_READ_ERROR         = 2
+        NO_BATCH                = 3
+        GUI_REFUSE_FILETRANSFER = 4
+        INVALID_TYPE            = 5
+        NO_AUTHORITY            = 6
+        UNKNOWN_ERROR           = 7
+        BAD_DATA_FORMAT         = 8
+        HEADER_NOT_ALLOWED      = 9
+        SEPARATOR_NOT_ALLOWED   = 10
+        HEADER_TOO_LONG         = 11
+        UNKNOWN_DP_ERROR        = 12
+        ACCESS_DENIED           = 13
+        DP_OUT_OF_MEMORY        = 14
+        DISK_FULL               = 15
+        DP_TIMEOUT              = 16
+        OTHERS                  = 17.
+
+    MOVE SY-SUBRC TO FP_RC.
+
+  ENDIF.
+
+ENDFORM.  " upload_file
+
+
+
+<font color ="#0000FF">*&--------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_podata</font>
+<font color ="#0000FF">*&--------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+FORM GET_PODATA.
+
+
+  LOOP AT T_FLATFILE_VTLS1.
+    AT NEW EBELP.
+      T_POHEADER-EBELN = T_FLATFILE_VTLS1-EBELN.
+      T_POHEADER-EBELP = T_FLATFILE_VTLS1-EBELP.
+      APPEND T_POHEADER.
+      CLEAR T_POHEADER.
+    ENDAT.
+    T_POITEM-EBELN = T_FLATFILE_VTLS1-EBELN.
+    T_POITEM-EBELP = T_FLATFILE_VTLS1-EBELP.
+<font color ="#0000FF">*    T_POITEM-MENGE = T_FLATFILE_VTLS1-MENGE.</font>
+    APPEND T_POITEM.
+    CLEAR T_POITEM.
+
+  ENDLOOP.
+
+
+ENDFORM.                    "get_podata
+
+<font color ="#0000FF">*&--------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  move_to_bapi</font>
+<font color ="#0000FF">*&--------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+FORM MOVE_TO_BAPI.
+
+  T_BAPI_POHEADER-PO_NUMBER = T_POHEADER-EBELN.
+
+
+  REFRESH : T_BAPI_POITEM,T_BAPI_POITEMX.
+  CLEAR PE_T_ITEMS_TO_DELETE[].
+  LOOP AT T_POITEM WHERE EBELN = T_POHEADER-EBELN
+                     AND EBELP = T_POHEADER-EBELP.
+
+    PE_T_ITEMS_TO_DELETE-PREQ_ITEM = T_POITEM-EBELP.
+    PE_T_ITEMS_TO_DELETE-DELETE_IND = 'X'.
+    PE_T_ITEMS_TO_DELETE-CLOSED     = 'X'.
+    APPEND PE_T_ITEMS_TO_DELETE.
+    CLEAR PE_T_ITEMS_TO_DELETE.
+
+  ENDLOOP.
+
+ENDFORM.                    "move_to_bapi
+
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*&      Form  call_bapi</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*       This form Routine is used to commit the data records</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+FORM CALL_BAPI .
+  DATA : L_MSGTY      TYPE C,
+         L_MSGID(2)   TYPE C,
+         L_MSGNO(3)   TYPE C,
+         L_MSGTX(100) TYPE C,
+         L_ERRFLAG    TYPE C.
+
+  CLEAR: RETURN.
+  REFRESH: RETURN.
+
+
+  CALL FUNCTION 'BAPI_REQUISITION_DELETE'
+    EXPORTING
+      NUMBER                      = T_POHEADER-EBELN
+    TABLES
+      REQUISITION_ITEMS_TO_DELETE = PE_T_ITEMS_TO_DELETE
+      RETURN                      = RETURN.
+
+
+  READ TABLE RETURN WITH KEY TYPE = C_ERR." TRANSPORTING NO FIELDS.
+  IF SY-SUBRC NE 0.
+    CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+      EXPORTING
+        WAIT = C_X.
+
+    LOOP AT RETURN WHERE TYPE = 'S'.
+      T_MESSAGE-PO = T_POHEADER-EBELN.
+      T_MESSAGE-EBELP = T_POHEADER-EBELP.
+      T_MESSAGE-MSGTY = RETURN-TYPE.
+      T_MESSAGE-MSGID = RETURN-CODE.
+      T_MESSAGE-MSGNO = RETURN-LOG_MSG_NO.
+      T_MESSAGE-MSGTX = RETURN-MESSAGE.
+      APPEND T_MESSAGE.
+      CLEAR T_MESSAGE.
+    ENDLOOP.
+    IF SY-SUBRC &lt;&gt; 0.
+
+      T_MESSAGE-PO = T_POHEADER-EBELN.
+      T_MESSAGE-EBELP = T_POHEADER-EBELP.
+      T_MESSAGE-MSGTY = 'S'.
+      T_MESSAGE-MSGTX = '批量删除请购单,成功!'.
+      APPEND T_MESSAGE.
+      CLEAR T_MESSAGE.
+
+    ENDIF.
+
+
+  ELSE.
+    LOOP AT RETURN.
+      T_MESSAGE-PO = T_POHEADER-EBELN.
+      T_MESSAGE-EBELP = T_POHEADER-EBELP.
+      T_MESSAGE-MSGTY = RETURN-TYPE.
+      T_MESSAGE-MSGID = RETURN-CODE.
+      T_MESSAGE-MSGNO = RETURN-LOG_MSG_NO.
+      T_MESSAGE-MSGTX = RETURN-MESSAGE.
+      APPEND T_MESSAGE.
+      CLEAR T_MESSAGE.
+
+
+    ENDLOOP.
+  ENDIF.
+<font color ="#0000FF">*C-- Write messages</font>
+
+<font color ="#0000FF">*  WRITE: / 'PO Number', T_POHEADER-EBELN.</font>
+<font color ="#0000FF">*  CLEAR : T_UPDATE,W_POVTLS.</font>
+<font color ="#0000FF">*  READ TABLE T_UPDATE WITH KEY POSAP = T_POHEADER-PO.</font>
+<font color ="#0000FF">*  W_POVTLS = T_UPDATE-POVTLS.</font>
+
+  CLEAR L_ERRFLAG.
+
+
+
+ENDFORM.                    "call_bapi
+
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*&      Form  fill_check_structure</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*       This form Routine will check whether the specified structure</font>
+<font color ="#0000FF">*       exist/active</font>
+<font color ="#0000FF">*----------------------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+
+FORM FILL_CHECK_STRUCTURE  USING    FP_TABNAME TYPE ANY
+                                    FP_ORGTABNAME TYPE ANY
+                                    FP_CHKTABNAME TYPE ANY
+                                    FP_CHECK TYPE C.
+
+
+  FIELD-SYMBOLS : &lt;fs-a&gt; .
+
+  DATA:    L_CHAR1(61)  TYPE C,
+           L_CHAR2(61)  TYPE C.
+
+  DATA:    BEGIN OF TL_NAMETAB OCCURS 60.
+          INCLUDE STRUCTURE X031L.
+  DATA:    END OF TL_NAMETAB.
+
+  REFRESH TL_NAMETAB.
+  CALL FUNCTION 'RFC_GET_NAMETAB'
+    EXPORTING
+      TABNAME          = FP_TABNAME
+    TABLES
+      NAMETAB          = TL_NAMETAB
+    EXCEPTIONS
+      TABLE_NOT_ACTIVE = 1
+      OTHERS           = 2.
+  IF SY-SUBRC &lt;&gt; 0.
+    CLEAR TL_NAMETAB.
+  ENDIF.
+
+  LOOP AT TL_NAMETAB.
+    CLEAR: L_CHAR1, L_CHAR2.
+    CONCATENATE FP_CHKTABNAME C_HYP TL_NAMETAB-FIELDNAME INTO L_CHAR1.
+    ASSIGN (L_CHAR1) TO &lt;fs-a&gt;.
+    CONCATENATE FP_ORGTABNAME C_HYP TL_NAMETAB-FIELDNAME INTO L_CHAR2.
+    ASSIGN (L_CHAR2) TO &lt;fs-a&gt;.
+    IF  &lt;fs-a&gt; IS NOT INITIAL.
+      &lt;fs-a&gt; = FP_CHECK.
+    ENDIF.
+  ENDLOOP.
+
+ENDFORM.                    " fill_check_structure
+
+<font color ="#0000FF">*&--------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  STORE_MESSAGES</font>
+<font color ="#0000FF">*&--------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;FP_MESSAGEStext</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+FORM STORE_MESSAGES TABLES FP_MESSAGES STRUCTURE T_MESSAGE.
+
+  PERFORM FRM_EVENT_BUILD.
+  PERFORM FRM_LAYOUT_BUILD."用于定义ALV表单的相关格式、属性
+  PERFORM FRM_FIELDS.      "用来定义表单中的各个列的相关信息，比如列名等
+  W_FLAG = '1'.
+  PERFORM FRM_DISPLAY_DATA TABLES FP_MESSAGES USING W_FLAG.    "用来显示ALV表单
+
+
+ENDFORM.                    "STORE_MESSAGES
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FRM_EVENT_BUILD</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FRM_EVENT_BUILD .
+  CALL FUNCTION 'REUSE_ALV_EVENTS_GET'
+    EXPORTING
+      I_LIST_TYPE = 0
+    IMPORTING
+      ET_EVENTS   = IT_EVENTS.
+
+  READ TABLE IT_EVENTS
+       WITH KEY NAME = SLIS_EV_TOP_OF_PAGE
+       INTO W_EVENTS.
+  IF SY-SUBRC = 0.
+    MOVE 'ALV_TOP_OF_PAGE' TO W_EVENTS-FORM.
+    MODIFY IT_EVENTS FROM W_EVENTS INDEX SY-TABIX.
+  ENDIF.
+
+ENDFORM.                    " FRM_EVENT_BUILD
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FRM_LAYOUT_BUILD</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FRM_LAYOUT_BUILD .
+  IT_LAYOUT-ZEBRA = 'X'.
+  IT_LAYOUT-DETAIL_POPUP = 'X'.             "是否弹出详细信息窗口
+  W_REPID = SY-REPID.                       "程序为当前程序
+<font color ="#0000FF">*  IT_LAYOUT-F2CODE = '&ETA'.</font>
+  "设置触发弹出详细信息窗口的功能码，这里是双击
+  IT_LAYOUT-NO_VLINE             = ' '.  "这个用来设置列间隔线
+  IT_LAYOUT-COLWIDTH_OPTIMIZE    = 'X'.  "优化列宽选项是否设置
+  IT_LAYOUT-DETAIL_INITIAL_LINES = 'X'.
+  IT_LAYOUT-DETAIL_TITLEBAR      = SY-TITLE.   "设置弹出窗口的标题栏
+
+
+ENDFORM.                    " FRM_LAYOUT_BUILD
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FRM_FIELDS</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FRM_FIELDS .
+  DATA: L_POS TYPE I.
+  REFRESH IT_FIELDCAT_ALV.
+  CLEAR IT_FIELDCAT.
+
+
+  M1 'PO'        ''          '请购单号码'                  CHAR.
+  M1 'EBELP'      ''         '请购单项次'                  CHAR.
+  M1 'MSGTY'        ''         '消息类型'                     CHAR.
+  M1 'MSGTX'         ''         '消息内容'              CHAR.
+
+
+ENDFORM.                    " FRM_FIELDS
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FRM_DISPLAY_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FRM_DISPLAY_DATA TABLES JTAB USING FLAG TYPE C.
+  REFRESH : IT_FIELDCAT_ALV2[].
+  IF FLAG = '1'.
+    IT_FIELDCAT_ALV2[] = IT_FIELDCAT_ALV[].
+  ELSEIF FLAG = '2'.
+    IT_FIELDCAT_ALV2[] = IT_FIELDCAT_ALV1[].
+  ENDIF.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      I_CALLBACK_PROGRAM       = W_REPID   "当前程序
+<font color ="#0000FF">*      I_CALLBACK_USER_COMMAND  = 'FRM_USER_COMMAND'</font>
+<font color ="#0000FF">*      I_CALLBACK_PF_STATUS_SET = 'FRM_STANDARD_01'</font>
+      I_SAVE                   = 'A'       "可保存layout格式
+      IS_LAYOUT                = IT_LAYOUT
+      IT_FIELDCAT              = IT_FIELDCAT_ALV2[]
+      IT_EVENTS                = IT_EVENTS    "子函数layout_build填充的格式定义
+    TABLES
+      T_OUTTAB                 = JTAB."子函数fields填充的各列
+
+ENDFORM.                    " FRM_DISPLAY_DATA
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  alv_top_of_page</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM ALV_TOP_OF_PAGE.
+
+  DATA: W_CHAR(50) TYPE C.
+  CLEAR: IT_LIST_COMMENTS[].
+
+  W_LIST_COMMENTS-TYP  = 'H'. "H=Header, S=Selection, A=Action供选择
+  W_LIST_COMMENTS-KEY  = ''.
+  W_LIST_COMMENTS-INFO = SY-TITLE.
+  APPEND W_LIST_COMMENTS TO IT_LIST_COMMENTS.
+
+  CALL FUNCTION 'REUSE_ALV_COMMENTARY_WRITE'
+    EXPORTING
+      IT_LIST_COMMENTARY = IT_LIST_COMMENTS.
+
+ENDFORM.                    "alv_top_of_page
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FRM_STANDARD_01</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;EXTAB      text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FRM_STANDARD_01 USING  EXTAB TYPE SLIS_T_EXTAB.
+<font color ="#0000FF">* if w_flag = '1'.</font>
+<font color ="#0000FF">*  SET PF-STATUS 'MENU' EXCLUDING EXTAB.</font>
+<font color ="#0000FF">* else.</font>
+<font color ="#0000FF">*  SET PF-STATUS 'MENU1' EXCLUDING EXTAB.</font>
+<font color ="#0000FF">* endif.</font>
+
+ENDFORM.                    "FRM_STANDARD_01
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FRM_VALUE_REQUEST</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_P_FILE1  text</font>
+<font color ="#0000FF">*      &lt;--P_P_FILE1  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FRM_VALUE_REQUEST  USING    PR_FILE LIKE RLGRAP-FILENAME
+                       CHANGING PE_FILE LIKE RLGRAP-FILENAME.
+
+  DATA:
+        L_NAME(128) TYPE C.
+
+<font color ="#0000FF">* get file name</font>
+  CALL FUNCTION 'WS_FILENAME_GET'
+    EXPORTING
+      DEF_FILENAME     = PR_FILE
+      MASK             = CNS_MASK
+      MODE             = CNS_MODE
+    IMPORTING
+      FILENAME         = L_NAME
+    EXCEPTIONS
+      INV_WINSYS       = 1
+      NO_BATCH         = 2
+      SELECTION_CANCEL = 3
+      SELECTION_ERROR  = 4
+      OTHERS           = 5.
+  IF SY-SUBRC = 0.
+    PE_FILE = L_NAME.
+  ENDIF.
+
+ENDFORM.                    " FRM_VALUE_REQUEST
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FRM_CHECK_INITIAL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_P_FILE1  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FRM_CHECK_INITIAL USING     P_LFILE LIKE RLGRAP-FILENAME.
+  IF P_LFILE IS INITIAL.
+<font color ="#0000FF">* Please input selection file</font>
+    MESSAGE E000 WITH TEXT-005.    "Please input selection file
+  ENDIF.
+
+ENDFORM.                    " FRM_CHECK_INITIAL
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FRM_CHECK_FILE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;PR_FILE    text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FRM_CHECK_FILE USING    PR_FILE LIKE RLGRAP-FILENAME.
+  DATA LW_NUM TYPE I.
+<font color ="#0000FF">* CHECK file exist OR NOT</font>
+  CALL FUNCTION 'WS_QUERY'
+    EXPORTING
+      FILENAME = PR_FILE
+      QUERY    = CNS_QUERY
+    IMPORTING
+      RETURN   = LW_NUM.
+<font color ="#0000FF">*   EXCEPTIONS</font>
+<font color ="#0000FF">*     inv_query            = 1</font>
+<font color ="#0000FF">*     no_batch             = 2</font>
+<font color ="#0000FF">*     frontend_error       = 3</font>
+<font color ="#0000FF">*     OTHERS               = 4.</font>
+  IF LW_NUM = 0.
+<font color ="#0000FF">* upload file doesn't exist</font>
+    MESSAGE E000 WITH TEXT-004.    "Upload file doesn't exist
+  ENDIF.
+ENDFORM.                               " FRM_CHECK_FILE
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*000</font>
+<font color ="#0000FF">*006</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

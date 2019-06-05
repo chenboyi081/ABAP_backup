@@ -1,0 +1,155 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZFI001_DEFINE</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZFI001_DEFINE</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZFI001_DEFINE</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZFI001_DEFINE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 表声明</font>
+<font color ="#0000FF">************************************************************************</font>
+tables:bkpf,
+       bseg,
+       skat, ska1.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 类型定义</font>
+<font color ="#0000FF">************************************************************************</font>
+types:begin of ty_data,
+<font color ="#0000FF">*************** begin by huangcz 20120820 ******</font>
+      sel type c,
+<font color ="#0000FF">*************** end ***************************</font>
+      GJAHR type bkpf-GJAHR,
+      USNAM type bkpf-usnam,                                                   "审核人
+      BKTXT type bkpf-bktxt,                                                   "摘要
+      ppnam type bkpf-ppnam.                                                    "制单人
+        include structure <a href ="zfi001_head/dictionary-zfi001_head.html">ZFI001_HEAD</a>.
+types:end of ty_data.
+
+types:begin of ty_bseg,
+      bukrs type bseg-bukrs,                                                    "公司代码
+      BELNR type bseg-belnr,                                                    "凭证编号
+      GJAHR type bseg-GJAHR,                                                    "会计年度
+      buzei type bseg-buzei,                                                    "项目
+      wrbtr type bseg-wrbtr,                                                    "金额
+      hkont type bseg-hkont,
+      kunnr type bseg-kunnr,                                                    "客户编码
+      lifnr type bseg-lifnr,                                                    "供应商编码
+      saknr type bseg-saknr,
+      xnegp type bseg-xnegp,                                                    "反记账标识
+      txt50 type anla-txt50,                                                    "资产描述
+      zkhnm type kna1-name1,
+      zgynm type lfa1-name1,
+      SHKZG type bseg-SHKZG,
+      BKTXT type bkpf-bktxt,                                                     "摘要
+      txt20 type skat-txt20,                                                     "科目
+      DMBTR type bseg-DMBTR,                                                     "货币金额
+      KOART type bseg-KOART,                                                     "科目类型
+      KOSTL TYPE bseg-KOSTL,                                                     "成本中心
+      KOKRS type bseg-KOKRS,                                                     "控制范围
+      MCTXT type cskt-MCTXT,                                                     "成本中心描述
+      FKBER type bseg-FKBER,                                                     "功能范围
+      AUFNR type bseg-AUFNR,                                                     "订单号
+      FKBTX type TFKBT-FKBTX,
+      KTEXT type aufk-KTEXT,
+      ANLN1 type anla-ANLN1,
+      ANLN2 type anla-ANLN2,
+      SGTXT type bseg-SGTXT,  " 行项目文本
+     end of ty_bseg.
+
+types:begin of ty_skat,
+      SAKNR type skat-saknr,
+      TXT20 type skat-txt20,
+      end of ty_skat.
+
+TYPES:BEGIN OF TY_KNA1,
+      KUNNR TYPE KNA1-KUNNR,
+      NAME1 TYPE KNA1-NAME1,
+      xcpdk type kna1-xcpdk,  " 一次性科目
+     END OF TY_KNA1.
+
+TYPES:BEGIN OF TY_T001,
+     BUKRS TYPE T001-BUKRS,
+     BUTXT TYPE T001-BUTXT,
+     END OF TY_T001.
+
+TYPES:BEGIN OF TY_LFA1,
+      LIFNR TYPE LFA1-LIFNR,
+      NAME1 TYPE LFA1-NAME1,
+      XCPDK type lfa1-XCPDK,  " 一次性科目
+     END OF TY_LFA1.
+
+TYPES:BEGIN OF TY_T003T,
+     BLART TYPE T003T-BLART,
+     SPRAS type t003t-SPRAS,
+     LTEXT TYPE T003T-LTEXT,
+    END OF TY_T003T.
+
+"add by yetp 20180705  start
+TYPES:BEGIN OF ty_username,
+    BNAME     type usr21-bname,
+    name_text type adrp-name_text,
+end of ty_username.
+
+"add by yetp 20180705  end
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 内表声明</font>
+<font color ="#0000FF">************************************************************************</font>
+data:gt_data type STANDARD TABLE OF ty_data,
+     w_data type ty_data,
+     gt_skat type STANDARD TABLE OF ty_skat,
+     w_skat type ty_skat,
+     gt_kna1 type STANDARD TABLE OF ty_kna1,
+     w_kna1 type ty_kna1,
+     gt_t001 type STANDARD TABLE OF ty_t001,
+     w_t001 type ty_t001,
+     gt_t003t type STANDARD TABLE OF ty_t003t,
+     w_t003t type ty_t003t,
+     gt_bseg type STANDARD TABLE OF ty_bseg,
+     w_bseg type ty_bseg,
+     gt_lfa1 type STANDARD TABLE OF ty_lfa1,
+     w_lfa1 type ty_lfa1,
+     gt_head type STANDARD TABLE OF ZFI001_HEAD,
+      w_head type ZFI001_HEAD,
+     fm_name type rs38l_fnam.
+
+<font color ="#0000FF">********************* add by huangcz 20121215 begin ********************</font>
+data: gt_zzkm type STANDARD TABLE OF zztzzkm,
+      w_zzkm type zztzzkm.
+<font color ="#0000FF">********************* add by huangcz 20121215 end ********************</font>
+
+<font color ="#0000FF">********************* add by yetp 20180705 start ********************</font>
+data: gt_username type STANDARD TABLE OF ty_username,
+      w_username  type ty_username.
+<font color ="#0000FF">********************* add by yetp 20180705 end ********************</font>
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 全局变量声明</font>
+<font color ="#0000FF">************************************************************************</font>
+DATA: gt_fieldcat TYPE slis_t_fieldcat_alv,   " 静态alv相关数据结构
+      w_fieldcat TYPE slis_fieldcat_alv,
+      w_layout TYPE slis_layout_alv,
+      g_alv_grid TYPE REF TO cl_gui_alv_grid.
+
+data: g_ucomm type sy-ucomm.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 字段符声明</font>
+<font color ="#0000FF">************************************************************************</font>
+FIELD-SYMBOLS:&lt;fs_bseg&gt; type ty_bseg,
+              &lt;fs_data&gt; type ty_data,
+<font color ="#0000FF">********************* add by yetp 20180705 start ********************</font>
+              &lt;fs_username&gt; type ty_username,
+<font color ="#0000FF">********************* add by yetp 20180705 end ********************</font>
+              &lt;fs_skat&gt; type ty_skat.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

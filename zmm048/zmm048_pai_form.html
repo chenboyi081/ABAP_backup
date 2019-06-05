@@ -1,0 +1,208 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZMM048_PAI_FORM</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZMM048_PAI_FORM</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZMM048_PAI_FORM</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZMM048_PAI_FORM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  EXIT_PROCESS_9001</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM EXIT_PROCESS_9001 .
+  CLEAR G_SAVE_OK.
+  G_SAVE_OK = G_OK_CODE.
+  CLEAR G_OK_CODE.
+
+  CASE G_SAVE_OK.
+    WHEN 'BACK'.
+      PERFORM PROCESS_BACK_9001.
+    WHEN 'EXIT'.
+      PERFORM PROCESS_EXIT_9001.
+    WHEN 'CLOSE'.
+      PERFORM PROCESS_CLOSE_9001.
+  ENDCASE.
+ENDFORM.      " EXIT_PROCESS_9001
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  PROCESS_BACK_9001</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM PROCESS_BACK_9001 .
+  DATA:L_ANSWER TYPE C.
+  CLEAR L_ANSWER.
+
+  IF G_CHANGE = 'X'.
+    PERFORM COMFIRM_WINDOW USING TEXT-002 TEXT-003 CHANGING L_ANSWER.
+    IF L_ANSWER = '1'.
+      G_NEW_OK = 'SAVE'.
+    ELSEIF L_ANSWER = '2'.
+      CLEAR G_CHANGE.
+      LEAVE TO SCREEN 0.
+    ENDIF.
+  ELSE.
+    LEAVE TO SCREEN 0.
+  ENDIF.
+ENDFORM.                    " PROCESS_BACK_9001
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  PROCESS_EXIT_9001</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM PROCESS_EXIT_9001 .
+  DATA:L_ANSWER TYPE C.
+  CLEAR L_ANSWER.
+
+  IF  G_CHANGE = 'X'.
+    PERFORM COMFIRM_WINDOW USING TEXT-002 TEXT-003 CHANGING L_ANSWER.
+    IF L_ANSWER = '1'.
+      G_NEW_OK = 'SAVE'.
+    ELSEIF L_ANSWER = '2'.
+      CLEAR G_CHANGE.
+      LEAVE TO SCREEN 0.
+    ENDIF.
+  ELSE.
+    LEAVE TO SCREEN 0.
+  ENDIF.
+ENDFORM.                    " PROCESS_EXIT_9001
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  PROCESS_CLOSE_9001</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM PROCESS_CLOSE_9001 .
+  DATA:L_ANSWER TYPE C.
+  CLEAR L_ANSWER.
+
+  IF  G_CHANGE = 'X'.
+    PERFORM COMFIRM_WINDOW USING TEXT-002 TEXT-003 CHANGING L_ANSWER.
+    IF L_ANSWER = '1'.
+      G_NEW_OK = 'SAVE'.
+    ELSEIF L_ANSWER = '2'.
+      CLEAR G_CHANGE.
+      LEAVE PROGRAM.
+    ENDIF.
+  ELSE.
+    LEAVE PROGRAM.
+  ENDIF.
+ENDFORM.                    " PROCESS_CLOSE_9001
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  COMFIRM_WINDOW</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       弹出窗口</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;fu_title  弹出窗口标题</font>
+<font color ="#0000FF">*      --&gt;fu_text  弹出窗口内容</font>
+<font color ="#0000FF">*      --&gt;fu_answer 返回值</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM COMFIRM_WINDOW  USING     FU_TITLE FU_TEXT
+                     CHANGING FU_ANSWER.
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+     TITLEBAR                    = FU_TITLE
+<font color ="#0000FF">*   DIAGNOSE_OBJECT             = ' '</font>
+      TEXT_QUESTION               = FU_TEXT
+<font color ="#0000FF">*   TEXT_BUTTON_1               = 'Ja'(001)</font>
+<font color ="#0000FF">*   ICON_BUTTON_1               = ' '</font>
+<font color ="#0000FF">*   TEXT_BUTTON_2               = 'Nein'(002)</font>
+<font color ="#0000FF">*   ICON_BUTTON_2               = ' '</font>
+<font color ="#0000FF">*   DEFAULT_BUTTON              = '1'</font>
+<font color ="#0000FF">*   DISPLAY_CANCEL_BUTTON       = 'X'</font>
+<font color ="#0000FF">*   USERDEFINED_F1_HELP         = ' '</font>
+<font color ="#0000FF">*   START_COLUMN                = 25</font>
+<font color ="#0000FF">*   START_ROW                   = 6</font>
+<font color ="#0000FF">*   POPUP_TYPE                  =</font>
+<font color ="#0000FF">*   IV_QUICKINFO_BUTTON_1       = ' '</font>
+<font color ="#0000FF">*   IV_QUICKINFO_BUTTON_2       = ' '</font>
+   IMPORTING
+     ANSWER                      = FU_ANSWER
+<font color ="#0000FF">* TABLES</font>
+<font color ="#0000FF">*   PARAMETER                   =</font>
+<font color ="#0000FF">* EXCEPTIONS</font>
+<font color ="#0000FF">*   TEXT_NOT_FOUND              = 1</font>
+<font color ="#0000FF">*   OTHERS                      = 2</font>
+            .
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+ENDFORM.                    " COMFIRM_WINDOW
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  USER_COMMAND_9001</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM USER_COMMAND_9001 .
+  CLEAR G_SAVE_OK.
+  G_SAVE_OK = G_OK_CODE.
+  CLEAR G_OK_CODE.
+
+ IF G_NEW_OK IS NOT INITIAL.
+    G_SAVE_OK = G_NEW_OK.
+    CLEAR:G_NEW_OK.
+  ENDIF.
+    CASE G_SAVE_OK.
+    WHEN 'F_SAVE' OR 'SAVE'.
+      PERFORM SAVE_DATA.
+    WHEN 'F_TJ'.
+      PERFORM TJ_DATA.
+    WHEN 'F_ALL'.
+      PERFORM SELECT_ALL.
+    WHEN 'F_UNALL'.
+      PERFORM UNSELECT_ALL.
+<font color ="#0000FF">*    WHEN 'F_DEL'.</font>
+<font color ="#0000FF">*      PERFORM DEL_DATA. "只能删除数据行</font>
+    WHEN 'F_REJECT_WL'.
+      PERFORM REJECT_WL.
+    WHEN 'F_PASS_WL'.
+      PERFORM PASS_WL.
+    WHEN 'F_REJECT_ZB'.
+      PERFORM REJECT_ZB.
+    WHEN 'F_PASS_ZB'.
+      PERFORM PASS_ZB.
+<font color ="#0000FF">*     when 'F_INSERT'.</font>
+<font color ="#0000FF">*       PERFORM insert_dj.</font>
+
+  ENDCASE.
+ENDFORM.                    " USER_COMMAND_9001
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

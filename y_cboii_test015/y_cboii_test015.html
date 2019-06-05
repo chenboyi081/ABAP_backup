@@ -1,0 +1,142 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>Y_CBOII_TEST015</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: Y_CBOII_TEST015</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  标准屏幕</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  Y_CBOII_TEST015</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  Y_CBOII_TEST015 MESSAGE-ID ZPEOPLE.
+
+DATA:FORINPUT(20) TYPE C VALUE '初始值aaaaaa',
+      L_TEXT(20) TYPE C VALUE '1111111',
+      FORCODE(20) TYPE C.
+
+data:FLD1(20) TYPE C,
+     FLD2(20) TYPE C,
+     FLD3(20) TYPE C,
+     FLD4(20) TYPE C,
+     ACTION(50) TYPE C.
+
+<font color ="#0000FF">*功能码返回值</font>
+DATA:OK_CODE TYPE SY-UCOMM,
+      SAVE_OK TYPE SY-UCOMM.
+
+TABLES SPFLI.
+
+
+data:gt_spfli type STANDARD TABLE OF spfli.
+data:w_spfli type spfli.
+
+SELECT *
+  INTO TABLE gt_spfli
+  FROM spfli.
+
+<font color ="#0000FF">*直接调用窗口</font>
+CALL SCREEN 100.
+
+<font color ="#0000FF">*PBO</font>
+MODULE STATUS_0100 OUTPUT.
+<font color ="#0000FF">*定义状态条、包括菜单、工具条按钮、系统按钮等。</font>
+  SET PF-STATUS 'TESTSTA1'.
+  FORCODE = SAVE_OK.
+ENDMODULE.
+
+
+
+
+<font color ="#0000FF">*CANCEL MODULE与屏幕逻辑流对应</font>
+MODULE CANCEL INPUT.
+  LEAVE PROGRAM.
+ENDMODULE.
+
+
+<font color ="#0000FF">*PAI</font>
+MODULE USER_COMMAND_0100 INPUT.
+  SAVE_OK = OK_CODE.
+  CLEAR OK_CODE.
+<font color ="#0000FF">*分析功能吗，如果是工具条上的第2个按钮，则退出屏幕。</font>
+CASE SAVE_OK.
+  WHEN 'BIN2'.
+    LEAVE TO SCREEN 0.
+  ENDCASE.
+
+  SELECT SINGLE * INTO CORRESPONDING FIELDS OF SPFLI FROM SPFLI
+    WHERE CARRID = SPFLI-CARRID AND CONNID = SPFLI-CONNID.
+  IF SY-SUBRC NE 0.
+      CLEAR SPFLI.
+  ENDIF.
+
+  ACTION = ''.
+  L_TEXT =''.
+  CONCATENATE FLD1 FLD2 FLD3 FLD4 INTO  ACTION.
+ CONCATENATE FLD1 FLD2 FLD3 FLD4 INTO  L_TEXT.
+ENDMODULE.
+
+<font color ="#0000FF">*&SPWIZARD: DECLARATION OF TABLECONTROL 'TAB1' ITSELF</font>
+CONTROLS: TAB1 TYPE TABLEVIEW USING SCREEN 0100.
+
+<font color ="#0000FF">*&SPWIZARD: OUTPUT MODULE FOR TC 'TAB1'. DO NOT CHANGE THIS LINE!</font>
+<font color ="#0000FF">*&SPWIZARD: UPDATE LINES FOR EQUIVALENT SCROLLBAR</font>
+MODULE TAB1_CHANGE_TC_ATTR OUTPUT.
+  DESCRIBE TABLE GT_SPFLI LINES TAB1-lines.
+ENDMODULE.
+
+<font color ="#0000FF">*&SPWIZARD: INPUT MODULE FOR TC 'TAB1'. DO NOT CHANGE THIS LINE!</font>
+<font color ="#0000FF">*&SPWIZARD: MODIFY TABLE</font>
+MODULE TAB1_MODIFY INPUT.
+  MODIFY GT_SPFLI
+    FROM W_SPFLI
+    INDEX TAB1-CURRENT_LINE.
+ENDMODULE.
+
+
+MODULE CHECK1 INPUT.
+  IF FLD1 = 'FLD1'.
+    MESSAGE S000 WITH 'FLD1 ERROR'.
+  ENDIF.
+  IF FLD1 = 'FLD11'.
+    MESSAGE S000 WITH 'FLD1 WARNING'.
+  ENDIF.
+  IF FLD1 = 'FLD111'.
+    MESSAGE S000 WITH 'FLD1 OK'.
+  ENDIF.
+ENDMODULE.
+
+MODULE CHECK2 INPUT.
+  IF FLD3 = 'FLD3'.
+    MESSAGE S000 WITH 'FLD3 ERROR'.
+  ENDIF.
+  IF FLD3 = 'FLD33'.
+    MESSAGE S000 WITH 'FLD3 WARNING'.
+  ENDIF.
+  IF FLD3 = 'FLD333'.
+    MESSAGE S000 WITH 'FLD3 OK'.
+  ENDIF.
+ENDMODULE.
+
+MODULE CHECK3 INPUT.
+  MESSAGE S000 WITH 'FLD2 * WARNING'.
+ENDMODULE.
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*000</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

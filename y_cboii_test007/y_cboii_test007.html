@@ -1,0 +1,229 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>Y_CBOII_TEST007</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: Y_CBOII_TEST007</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:   读取excel，并显示在ALV</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  Y_CBOII_TEST007</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*</font>
+REPORT  Y_CBOII_TEST007.
+
+TYPE-POOLS:SLIS，TRUXS. "ALV要用到的类型池
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*类型字段</font>
+<font color ="#0000FF">************************************************************************</font>
+TYPES: BEGIN OF GTY_EXCEL, "定义一个内表，用于存放从EXCEL上传的数据
+     IN_DATE(10) TYPE C,    "入库期间
+     VOUCHER_DATE(10) TYPE C,   "凭证日期
+     VOUCHER_ID(10) TYPE C,   "凭证编号
+     PROC_VOUCHER(10) TYPE C,    "采购凭证
+     SUPPLIER_ID(6) TYPE C,     "供应商编码
+     SUPPLIER_NAME(30) TYPE C,    "供应商名称
+     MA_ID(16) TYPE C,      "物料编码
+     MA_DESC(30) TYPE C,    "物料描述
+     UNIT(30) TYPE C,       "单位
+     COUNT(30) TYPE C,      "数量
+     MONEY(30) TYPE C,      "金额
+     FEE_TYPE(30) TYPE C,   "费用类型
+     SUBJ_TYPE(30) TYPE C,    "科目类别
+     LINE_ITEM(10) TYPE C,    "行项目
+END OF GTY_EXCEL.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*内表&工作区</font>
+<font color ="#0000FF">************************************************************************</font>
+DATA  GT_RAW TYPE TRUXS_T_TEXT_DATA.
+DATA: GT_EXCEL TYPE STANDARD TABLE OF GTY_EXCEL,
+      GS_EXCEL TYPE GTY_EXCEL.
+
+DATA:I_FIELD_CAT TYPE SLIS_T_FIELDCAT_ALV, "ALV是显示时要的属性
+    FIELD_CAT TYPE SLIS_FIELDCAT_ALV,
+     I_LAYOUT TYPE SLIS_LAYOUT_ALV,
+     I_REPID LIKE SY-REPID.
+DATA:TEAMPTAB LIKE GT_EXCEL WITH HEADER LINE.
+<font color ="#0000FF">*DATA:BEGIN OF EXCEL_READ_DATA OCCURS 0, "定义一个内表，用于存放从EXCEL上传的数据</font>
+<font color ="#0000FF">*     PROC_ID(10) TYPE I,        "采购凭证</font>
+<font color ="#0000FF">*     SUPPLIER_ID(6) TYPE I,     "供应商编码</font>
+<font color ="#0000FF">*     SUPPLIER_NAME(30) TYPE C,    "TODO:添加长度和注解</font>
+<font color ="#0000FF">*     MA_ID(16) TYPE C,</font>
+<font color ="#0000FF">*     MA_DESC TYPE C,</font>
+<font color ="#0000FF">*     UNIT TYPE C,</font>
+<font color ="#0000FF">*     COUNT TYPE I,</font>
+<font color ="#0000FF">*     MONEY TYPE N,</font>
+<font color ="#0000FF">*     FEE_TYPE TYPE C,</font>
+<font color ="#0000FF">*     SUBJ_TYPE TYPE C,</font>
+<font color ="#0000FF">*     LINE_ITEM TYPE I,</font>
+<font color ="#0000FF">*END OF EXCEL_READ_DATA.</font>
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*SELECTION SCREEN / OPTION / PARAMETER                                 *</font>
+<font color ="#0000FF">************************************************************************</font>
+SELECTION-SCREEN BEGIN OF BLOCK B1.
+PARAMETERS: P_FILE  LIKE RLGRAP-FILENAME OBLIGATORY.
+
+SELECTION-SCREEN END OF BLOCK B1.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*AT SELECTION SCREEN                                                   *</font>
+<font color ="#0000FF">************************************************************************</font>
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR P_FILE.
+  PERFORM F4_HELP_FOR_FILENAME.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*AT START SELECTION                                                    *</font>
+<font color ="#0000FF">************************************************************************</font>
+START-OF-SELECTION.
+  PERFORM CONVERT_XLS_TO_ITAB.
+<font color ="#0000FF">*SELECT *  FROM GT_EXCEL INTO  TEAMPTAB  UP TO 5 ROWS.</font>
+<font color ="#0000FF">*定義四FIELDCAT信息</font>
+  FIELD_CAT-COL_POS = 1. "ALV列索引
+  FIELD_CAT-FIELDNAME = 'IN_DATE'."ALV绑定字段
+  FIELD_CAT-SELTEXT_M = '入库期间'."ALV表头显示的文字
+  APPEND FIELD_CAT TO I_FIELD_CAT."內表賦值，无HEADER LINE只能APPEND...TO...
+
+  FIELD_CAT-COL_POS = 2.
+  FIELD_CAT-FIELDNAME = 'VOUCHER_DATE'.
+  FIELD_CAT-SELTEXT_M = '凭证日期'.
+  APPEND FIELD_CAT TO I_FIELD_CAT.
+
+  FIELD_CAT-COL_POS = 3.
+  FIELD_CAT-FIELDNAME = 'VOUCHER_ID'.
+  FIELD_CAT-SELTEXT_M = '凭证编号'.
+  APPEND FIELD_CAT TO I_FIELD_CAT.
+
+  FIELD_CAT-COL_POS = 4.
+  FIELD_CAT-FIELDNAME = 'PROC_VOUCHER'.
+  FIELD_CAT-SELTEXT_M = '采购凭证'.
+  APPEND FIELD_CAT TO I_FIELD_CAT.
+
+  FIELD_CAT-COL_POS = 5.
+  FIELD_CAT-FIELDNAME = 'SUPPLIER_ID'.
+  FIELD_CAT-SELTEXT_M = '供应商编码'.
+  APPEND FIELD_CAT TO I_FIELD_CAT.
+
+  FIELD_CAT-COL_POS = 6.
+  FIELD_CAT-FIELDNAME = 'SUPPLIER_NAME'.
+  FIELD_CAT-SELTEXT_M = '供应商名称'.
+  APPEND FIELD_CAT TO I_FIELD_CAT.
+
+  FIELD_CAT-COL_POS = 7.
+  FIELD_CAT-FIELDNAME = 'MA_ID'.
+  FIELD_CAT-SELTEXT_M = '物料编码'.
+  APPEND FIELD_CAT TO I_FIELD_CAT.
+
+  FIELD_CAT-COL_POS = 8.
+  FIELD_CAT-FIELDNAME = 'MA_DESC'.
+  FIELD_CAT-SELTEXT_M = '物料描述'.
+  APPEND FIELD_CAT TO I_FIELD_CAT.
+
+  FIELD_CAT-COL_POS = 9.
+  FIELD_CAT-FIELDNAME = 'UNIT'.
+  FIELD_CAT-SELTEXT_M = '单位'.
+  APPEND FIELD_CAT TO I_FIELD_CAT.
+
+
+  FIELD_CAT-COL_POS = 10.
+  FIELD_CAT-FIELDNAME = 'COUNT'.
+  FIELD_CAT-SELTEXT_M = '数量'.
+  APPEND FIELD_CAT TO I_FIELD_CAT.
+
+  FIELD_CAT-COL_POS = 11.
+  FIELD_CAT-FIELDNAME = 'MONEY'.
+  FIELD_CAT-SELTEXT_M = '金额'.
+  APPEND FIELD_CAT TO I_FIELD_CAT.
+
+  FIELD_CAT-COL_POS = 12.
+  FIELD_CAT-FIELDNAME = 'FEE_TYPE'.
+  FIELD_CAT-SELTEXT_M = '费用类型'.
+  APPEND FIELD_CAT TO I_FIELD_CAT.
+
+  FIELD_CAT-COL_POS = 13.
+  FIELD_CAT-FIELDNAME = 'SUBJ_TYPE'.
+  FIELD_CAT-SELTEXT_M = '科目类别'.
+  APPEND FIELD_CAT TO I_FIELD_CAT.
+
+  FIELD_CAT-COL_POS = 14.
+  FIELD_CAT-FIELDNAME = 'LINE_ITEM'.
+  FIELD_CAT-SELTEXT_M = '行项目'.
+  APPEND FIELD_CAT TO I_FIELD_CAT.
+
+
+
+<font color ="#0000FF">*調用ALV顯示表單</font>
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY' "'REUSE_ALV_LIST_DISPLAY' 樣式風格有點迥異
+   EXPORTING
+     IT_FIELDCAT = I_FIELD_CAT "设置ALV显示风格 对于无HEADER LINE 也可以用wa_alv_fieldcat[],然而有HEADER LINE的只能用后者，否则程序将报错，有无HEADER LINE的FIELDCAT加上[]取回的都是表身吧。
+   TABLES
+     T_OUTTAB = GT_EXCEL[].
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  F4_HELP_FOR_FILENAME</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM F4_HELP_FOR_FILENAME .
+  CALL FUNCTION 'KD_GET_FILENAME_ON_F4'
+    EXPORTING
+      PROGRAM_NAME  = SYST-REPID
+      DYNPRO_NUMBER = SYST-DYNNR
+<font color ="#0000FF">*     FIELD_NAME    = ' '</font>
+      STATIC        = 'X'
+      MASK          = ',*.XLSX,*.XLS'
+    CHANGING
+      FILE_NAME     = P_FILE
+    EXCEPTIONS
+      MASK_TOO_LONG = 1
+      OTHERS        = 2.
+
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">*   BREAK-POINT.</font>
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+ENDFORM.                    " F4_HELP_FOR_FILENAME
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  CONVERT_XLS_TO_ITAB</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CONVERT_XLS_TO_ITAB .
+  CALL FUNCTION 'TEXT_CONVERT_XLS_TO_SAP'
+    EXPORTING
+<font color ="#0000FF">*     I_FIELD_SEPERATOR    =</font>
+      I_LINE_HEADER        = 'X'
+      I_TAB_RAW_DATA       = GT_RAW
+      I_FILENAME           = P_FILE
+    TABLES
+      I_TAB_CONVERTED_DATA = GT_EXCEL[]
+    EXCEPTIONS
+      CONVERSION_FAILED    = 1
+      OTHERS               = 2.
+
+
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">*   BREAK-POINT.</font>
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+ENDFORM.                    "CONVERT_XLS_TO_ITAB
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

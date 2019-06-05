@@ -1,0 +1,442 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZYC030_DEFINE</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZYC030_DEFINE</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZYC030_DEFINE</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZYC030_DEFINE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& 程序名称       : ZYC30</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 作者           : 陈星烨（人民）</font>
+<font color ="#0000FF">*& 开发日期       : 2012-05-02</font>
+<font color ="#0000FF">*& 请求号         :</font>
+<font color ="#0000FF">*& 申请者         : 陈星烨（人民）</font>
+<font color ="#0000FF">*& 描述           : 零部件价格预测程序的数据定义</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 变更记录</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">** 修改日期 开发人员  请求号 描述</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* tables & type-pools</font>
+<font color ="#0000FF">************************************************************************</font>
+TYPE-POOLS:VRM.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 类型定义</font>
+<font color ="#0000FF">************************************************************************</font>
+
+TYPES: BEGIN OF TY_STAT,
+        ZSTAT TYPE ZZTJGYC_H-ZSTAT,
+        TEXT  TYPE DD07V-DOMVALUE_L,
+       END   OF TY_STAT.
+TYPES: BEGIN OF TY_YCJG,
+        ZTZJG TYPE ZZTJGYC_H-ZTZJG,
+        TEXT  TYPE DD07V-DOMVALUE_L,
+       END   OF TY_YCJG.
+
+TYPES:BEGIN OF TY_JM1,
+        ZTEXT1  TYPE DDOBJNAME,
+        ZTEXT2  TYPE DDOBJNAME,
+        ZPOSN TYPE ZZTJGYC_I-ZPOSN.
+        include structure <a href ="zztjgyc_h/dictionary-zztjgyc_h.html">ZZTJGYC_H</a>.
+TYPES:END OF TY_JM1.
+
+TYPES:BEGIN OF TY_HEAD2,
+      ZJGYCD TYPE ZZTJGYC_H-ZJGYCD,
+      ZTEXT1  TYPE DDOBJNAME,
+        ZSTAT TYPE ZZTJGYC_H-ZSTAT,
+        ZTZJG TYPE ZZTJGYC_H-ZTZJG,
+      END OF TY_HEAD2.
+
+TYPES:BEGIN OF TY_JM2.
+        include structure <a href ="zztjgyc_i/dictionary-zztjgyc_i.html">ZZTJGYC_I</a>.
+TYPES:END OF TY_JM2.
+
+TYPES:BEGIN OF TY_CL,
+        MATNR TYPE ZZTDEWH-MATNR,
+        WERKS TYPE ZZTDEWH-WERKS,
+        LIFNR TYPE ZZTDEWH-LIFNR,
+        EKORG TYPE ZZTDEWH-EKORG,
+        ZPHCD TYPE ZZTCLPH-ZPHCD,
+        ZXZXJ TYPE ZZTCLPH-ZXZXJ,
+        ZXJZJ TYPE ZZTDEHS-ZXJZJ,
+        ZHSLX TYPE ZZTDEHS-ZHSLX,
+        ZDESL TYPE ZZTDEWH-ZDESL,
+        ZBILU TYPE ZZTCLPH-ZBILU,
+        ZXCLJ TYPE ZZTDEWH-ZXCLJ,
+        ZZXJG TYPE ZZTLBJTJMX-ZZXJG,
+        ZJZJG TYPE ZZTLBJTJMX-ZJZJG,
+        ZHANL TYPE ZZTCLPH-ZHANL,
+        ZXHYC TYPE ZZTLBJTJMX-ZZZCJ,
+        ZZZCJ TYPE ZZTLBJTJMX-ZZZCJ,
+        END OF TY_CL.
+
+TYPES:BEGIN OF TY_MIDDLE,
+    MAKTX TYPE MAKT-MAKTX,
+    ZEINR TYPE MARA-ZEINR,
+    MEINS TYPE MARA-MEINS,
+    ZYCJG TYPE ZZTCLPH-ZXZXJ,
+    ZYCJG1 TYPE ZZTJGYC_I-ZYCJG,
+    ZYCJG2 TYPE ZZTJGYC_I-ZYCJG,
+    ZYCJG3 TYPE ZZTJGYC_I-ZYCJG,
+    ZUNIT  TYPE MARA-ZUNIT,           "结算单价 add by 叶天鹏 20121204
+    MWSKZ TYPE EINE-MWSKZ,            "销售/购买税代码,用于取税率 add by 叶天鹏 20121204
+    MATNR TYPE ZZTDEWH-MATNR,
+    WERKS TYPE ZZTDEWH-WERKS,
+    LIFNR TYPE ZZTDEWH-LIFNR,
+    EKORG TYPE ZZTDEWH-EKORG,
+    ZPHCD TYPE ZZTCLPH-ZPHCD,
+    ZCLID TYPE ZZTCLPH-ZCLID,
+    ZXZXJ TYPE ZZTCLPH-ZXZXJ,
+    ZXJZJ TYPE ZZTDEHS-ZXJZJ,
+    ZHSLX TYPE ZZTDEHS-ZHSLX,
+    ZDESL TYPE ZZTDEWH-ZDESL,
+    ZBILU TYPE ZZTCLPH-ZBILU,
+    ZXCLJ TYPE ZZTDEWH-ZXCLJ,
+    ZZXJG TYPE ZZTLBJTJMX-ZZXJG,
+    ZJZJG TYPE ZZTLBJTJMX-ZJZJG,
+    ZHANL TYPE ZZTCLPH-ZHANL,
+    ZXHYC TYPE ZZTLBJTJMX-ZZZCJ,
+    ZZZCJ TYPE ZZTLBJTJMX-ZZZCJ,
+    ESOKZ TYPE ZZTLBJTJI1-ESOKZ, " 采购类型
+    ZLBJJ TYPE ZZTLBJTJI1-ZYZXJ, "原零部件价格
+   END OF TY_MIDDLE.
+
+TYPES:BEGIN OF TY_JM3,
+      SEL TYPE C,                           "选择列
+      NO TYPE I,
+      BKLAS TYPE MBEW-BKLAS,                 "评估类型
+      ZHSLX TYPE ZZTDEHS-ZHSLX,
+      ZYCJG TYPE ZZTJGYC_I-ZYCJG,
+      MATNR TYPE MARA-MATNR,
+      MAKTX TYPE MAKT-MAKTX,
+      WERKS TYPE MARC-WERKS,
+      ZEINR TYPE MARA-ZEINR,
+      MEINS  TYPE MARA-MEINS,
+      ZLBJJ TYPE ZZTLBJTJI1-ZYZXJ, "零部件价格
+      ZYCJG1 TYPE P DECIMALS 5,       "商业价格1
+      ZYCJG2 TYPE P DECIMALS 5,       "商业价格2
+      ZYCJG3 TYPE P DECIMALS 5,       "商业价格3
+      ZXHYC TYPE ZZTLBJTJI1-ZXHSJ,  "结算单位
+      ZXHYCB TYPE ZZTLBJTJI1-ZXHSJ,  "结算单位
+      ZUNIT TYPE MARA-ZUNIT,       "结算单位  add by 叶天鹏 20121204
+      EKORG TYPE EINE-EKORG,
+      ESOKZ TYPE EINE-ESOKZ,
+  END OF TY_JM3.
+
+<font color ="#0000FF">****************add by yetp 2012-12-04************start</font>
+<font color ="#0000FF">***税率</font>
+TYPES: BEGIN OF TY_KONP,        " 税码
+         MWSKZ TYPE A003-MWSKZ,   " 销售税代码
+         KBETR TYPE KONP-KBETR,   " 价格 (条件金额或百分数 ) 无等级存在
+       END OF TY_KONP.
+
+<font color ="#0000FF">***牌号信息</font>
+TYPES:BEGIN OF TY_CLPH,
+      ZPHCD TYPE ZZTCLPH-ZPHCD,   "牌号代码
+      ZBILU TYPE ZZTCLPH-ZBILU,   "比率
+      ZHANL TYPE ZZTCLPH-ZHANL,   "含量
+      END OF TY_CLPH.
+
+<font color ="#0000FF">***定额核算表</font>
+TYPES:BEGIN OF TY_DEHS,
+      MATNR TYPE ZZTDEHS-MATNR,   "物料
+      WERKS TYPE ZZTDEHS-WERKS,   "工厂
+      LIFNR TYPE ZZTDEHS-LIFNR,   "供应商
+      EKORG TYPE ZZTDEHS-EKORG,   "采购组织
+      ZHSLX TYPE ZZTDEHS-ZHSLX,   "核算类型
+      ZXJZJ TYPE ZZTDEHS-ZXJZJ,   "现基准价
+      END OF  TY_DEHS.
+
+<font color ="#0000FF">***物料主数据</font>
+TYPES:BEGIN OF TY_MARA,
+       MATNR TYPE MARA-MATNR,
+       ZEINR TYPE MARA-ZEINR,   "图号
+       MEINS TYPE MARA-MEINS,   "基本单位
+       ZUNIT TYPE MARA-ZUNIT,   "结算单位
+       MAKTX TYPE MAKT-MAKTX,   "物料描述
+      END OF TY_MARA.
+
+<font color ="#0000FF">***供应商数据</font>
+TYPES:BEGIN OF TY_LFA1,
+      LIFNR TYPE LFA1-LIFNR,
+      J_1KFTBUS TYPE LFA1-J_1KFTBUS, " 业务类型
+      END OF TY_LFA1.
+
+<font color ="#0000FF">***物料的工厂数据</font>
+TYPES: BEGIN OF TY_MARC,
+         MATNR TYPE MARC-MATNR,
+         WERKS TYPE MARC-WERKS,
+         SOBSL TYPE MARC-SOBSL,
+         LVORM TYPE MARC-LVORM,  " 删除标志
+         MMSTA TYPE MARC-MMSTA,  " 物料状态
+        END OF TY_MARC.
+
+<font color ="#0000FF">***零部件调价单--行项目</font>
+TYPES:BEGIN OF TY_ESOKZ,
+           ZDJBH TYPE ZZTLBJTJI1-ZDJBH,
+           MATNR TYPE ZZTLBJTJI1-MATNR,
+           WERKS TYPE ZZTLBJTJI1-WERKS,
+           LIFNR TYPE ZZTLBJTJI1-LIFNR,
+           EKORG TYPE ZZTLBJTJI1-EKORG,
+           ESOKZ TYPE ZZTLBJTJI1-ESOKZ, " 采购信息记录分类
+         END OF TY_ESOKZ.
+
+<font color ="#0000FF">***商业价格</font>
+TYPES:BEGIN OF TY_MBEW,
+      MATNR TYPE MARA-MATNR,
+      BWKEY TYPE MBEW-BWKEY,
+      ZYCJG1 TYPE MBEW-VJBWH,       "商业价格1
+      ZYCJG2 TYPE MBEW-VJBWH,       "商业价格2
+      ZYCJG3 TYPE MBEW-VJBWH,       "商业价格3
+      BWPEI TYPE MBEW-BWPEI,        "价格单位
+      BKLAS TYPE MBEW-BKLAS,        "评估类
+      STPRS TYPE MBEW-STPRS,        "标准价    ”add by yetp 2014-07-12
+      PEINH TYPE MBEW-PEINH,        "标准价价格单位 "add by yetp 2014-07-12
+      END OF TY_MBEW.
+
+<font color ="#0000FF">***物料的计量单位</font>
+TYPES:BEGIN OF TY_MARM,
+      MATNR TYPE MARM-MATNR,
+      MEINH TYPE MARM-MEINH,
+      UMREZ TYPE MARM-UMREZ, " 基本计量单位转换分子
+      UMREN TYPE MARM-UMREN, "转换为基本计量单位的分母
+      END OF TY_MARM.
+
+<font color ="#0000FF">***通用价</font>
+TYPES:BEGIN OF TY_TYJ,
+      ZCLID TYPE ZZTCLPH-ZCLID,
+      ZZTYJ TYPE ZZTCLPH-ZZTYJ,
+      END OF TY_TYJ.
+
+<font color ="#0000FF">***</font>
+TYPES: BEGIN OF TY_EORD,
+           MATNR TYPE EORD-MATNR,
+           WERKS TYPE EORD-WERKS,
+           LIFNR TYPE EORD-LIFNR,
+           EKORG TYPE EORD-EKORG,
+        END OF TY_EORD.
+
+TYPES:BEGIN OF TY_LBJ,
+      MATNR TYPE MARA-MATNR,
+      LIFNR TYPE LFA1-LIFNR,
+      ZHSLX TYPE ZZTDEHS-ZHSLX,
+      EKORG TYPE ZZTDEWH-EKORG,
+      MWSKZ TYPE EINE-MWSKZ,
+      ZXHYC TYPE  ZZTLBJTJI1-ZZZCJ,
+      ZLBJJ TYPE ZZTLBJTJI1-ZYZXJ, "零部件价格
+      END OF TY_LBJ.
+<font color ="#0000FF">****************add by yetp 2012-12-04************end</font>
+<font color ="#0000FF">****************add bb yetp 2013-03-06************start</font>
+TYPES:BEGIN OF TY_JM4,
+      SEL TYPE C,
+      NO TYPE I,
+      BKLAS TYPE MBEW-BKLAS,                 "评估类型
+      MATNR TYPE MARA-MATNR,
+      MAKTX TYPE MAKT-MAKTX,
+      WERKS TYPE MARC-WERKS,
+      ZEINR TYPE MARA-ZEINR,
+      MEINS  TYPE MARA-MEINS,
+      ZLBJJ TYPE ZZTLBJTJI1-ZYZXJ,   "零部件价格
+      ZYCJG1 TYPE P DECIMALS 5,       "商业价格1
+      ZYCJG2 TYPE P DECIMALS 5,       "商业价格2
+      ZYCJG3 TYPE P DECIMALS 5,       "商业价格3
+      ZXHYCB TYPE ZZTLBJTJI1-ZXHSJ,  "结算单位
+      ZUNIT TYPE MARA-ZUNIT,         "结算单位
+      EKORG TYPE EINE-EKORG,
+      ESOKZ TYPE EINE-ESOKZ,
+      END OF TY_JM4.
+
+TYPES: BEGIN OF TY_JM4_DATA,
+           MATNR TYPE EORD-MATNR,
+           WERKS TYPE EORD-WERKS,
+           LIFNR TYPE EORD-LIFNR,
+           EKORG TYPE EORD-EKORG,
+           ESOKZ TYPE EINE-ESOKZ,
+           MAKTX TYPE MAKT-MAKTX,
+           ZEINR TYPE MARA-ZEINR,
+           MEINS  TYPE MARA-MEINS,
+           ZLBJJ TYPE ZZTLBJTJI1-ZYZXJ,   "零部件价格
+           ZUNIT TYPE MARA-ZUNIT,         "结算单位
+        END OF TY_JM4_DATA.
+<font color ="#0000FF">****************add by yetp 2013-03-06************end</font>
+<font color ="#0000FF">****************add by yetp 20140702************start</font>
+TYPES:BEGIN OF TY_LIFNR,
+      LIFNR TYPE LFA1-LIFNR,
+      END OF TY_LIFNR.
+<font color ="#0000FF">****************add by yetp 20140702************end</font>
+<font color ="#0000FF">***********************************************************************</font>
+<font color ="#0000FF">* 内表&工作区声明</font>
+<font color ="#0000FF">************************************************************************</font>
+DATA:GT_HEAD TYPE STANDARD TABLE OF ZZLBJYC_H,
+     W_HEAD TYPE ZZLBJYC_H,
+     GT_DB_ITEM TYPE STANDARD TABLE OF ZZLBJYC_I,
+     W_DB_ITEM TYPE ZZLBJYC_I,
+     GT_STAT TYPE STANDARD TABLE OF TY_STAT,
+     W_STAT TYPE TY_STAT,
+     GT_YCJG TYPE STANDARD TABLE OF TY_YCJG,
+     W_YCJG TYPE TY_YCJG,
+     W_HEAD2 TYPE TY_HEAD2,
+     GT_JM1 TYPE STANDARD TABLE OF TY_JM1,                  "TAB1参照的内表
+     W_JM1 TYPE TY_JM1,
+     G_CHANGE   TYPE C,
+     G_YCJG1    TYPE C,                                     "单选框：预测价格1
+     G_YCJG2    TYPE C,                                     "单选框：预测价格2
+     G_YCJG3    TYPE C,                                     "单选框：预测价格3
+     GT_JM2 TYPE STANDARD TABLE OF TY_JM2,                  "TAB2参照的内表
+     W_JM2 TYPE TY_JM2,
+     G_DOU_LINE  TYPE I,                                     "双击行
+     GT_JM3 TYPE STANDARD TABLE OF TY_JM3,                  "TAB3参照的内表
+     W_JM3 TYPE TY_JM3,
+     GT_MIDDLE TYPE STANDARD TABLE OF TY_MIDDLE,
+     W_MIDDLE TYPE TY_MIDDLE.
+<font color ="#0000FF">*     GT_CL TYPE STANDARD TABLE OF TY_CL,     delete by 叶天鹏 2012-12-041</font>
+<font color ="#0000FF">*     W_CL TYPE TY_CL</font>
+<font color ="#0000FF">***************************add by yetp 2012-12-04***********start</font>
+
+DATA: GT_KONP TYPE STANDARD TABLE OF TY_KONP,
+      W_KONP TYPE TY_KONP.
+
+DATA:GT_CLPH TYPE STANDARD TABLE OF TY_CLPH,
+      W_CLPH TYPE TY_CLPH.
+
+DATA:GT_DEHS TYPE STANDARD TABLE OF TY_DEHS,
+      W_DEHS TYPE TY_DEHS.
+
+DATA:GT_MARA TYPE STANDARD TABLE OF TY_MARA,
+      W_MARA TYPE TY_MARA.
+
+DATA:GT_LFA1 TYPE STANDARD TABLE OF TY_LFA1,
+      W_LFA1 TYPE TY_LFA1.
+
+DATA:GT_MARC TYPE STANDARD TABLE OF TY_MARC,
+      W_MARC TYPE TY_MARC.
+
+DATA:GT_ESOKZ TYPE STANDARD TABLE OF TY_ESOKZ,
+      W_ESOKZ TYPE TY_ESOKZ.
+
+DATA:GT_MBEW TYPE STANDARD TABLE OF TY_MBEW,
+      W_MBEW TYPE TY_MBEW.
+
+
+DATA:GT_TYJ TYPE STANDARD TABLE OF TY_TYJ,
+      W_TYJ TYPE TY_TYJ.
+
+DATA:GT_EORD TYPE STANDARD TABLE OF TY_EORD,
+      W_EORD TYPE TY_EORD.
+
+DATA:GT_LBJ TYPE STANDARD TABLE OF TY_LBJ,
+      W_LBJ TYPE TY_LBJ.
+<font color ="#0000FF">***************************add by yetp 2012-12-04***********end</font>
+<font color ="#0000FF">***************************add by yetp 2012-12-04***********start</font>
+DATA:GT_JM4 TYPE STANDARD TABLE OF TY_JM4,
+      W_JM4 TYPE TY_JM4.
+
+DATA:GT_JM4_DATA TYPE STANDARD TABLE OF TY_JM4_DATA,
+      W_JM4_DATA TYPE TY_JM4_DATA.
+<font color ="#0000FF">***************************add by yetp 2012-12-04***********end</font>
+<font color ="#0000FF">****************add by yetp 20140702************start</font>
+DATA:GT_LIFNR TYPE STANDARD TABLE OF TY_LIFNR,   "保存冻结的供应商记录
+     W_LIFNR TYPE TY_LIFNR.
+<font color ="#0000FF">****************add by yetp 20140702************end</font>
+
+<font color ="#0000FF">****************add by yetp 201407012************start</font>
+DATA:GT_JM4_599999 TYPE STANDARD TABLE OF TY_JM4.  "保存599999供应商物料
+<font color ="#0000FF">****************add by yetp 20140712************end</font>
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 字段符声明</font>
+<font color ="#0000FF">************************************************************************</font>
+FIELD-SYMBOLS: &lt;FS_JM1&gt; TYPE TY_JM1,
+               &lt;FS_JM2&gt; TYPE TY_JM2,
+               &lt;FS_JM3&gt; TYPE TY_JM3,
+               &lt;FS_MIDDLE&gt; TYPE TY_MIDDLE,
+               &lt;FS_CL&gt; TYPE TY_CL,
+               &lt;FS_YCJG&gt; TYPE TY_YCJG,
+               &lt;FS_CLPH&gt; TYPE TY_CLPH,
+               &lt;FS_DEHS&gt; TYPE TY_DEHS,
+               &lt;FS_MARA&gt;  TYPE TY_MARA,
+               &lt;FS_LFA1&gt; TYPE TY_LFA1,
+               &lt;FS_MBEW&gt; TYPE TY_MBEW,
+               &lt;FS_MARM&gt; TYPE TY_MARM,
+               &lt;FS_TYJ&gt;   TYPE TY_TYJ,
+               &lt;FS_EORD&gt; TYPE TY_EORD,
+               &lt;FS_LBJ&gt;  TYPE TY_LBJ,
+               &lt;FS_JM4_DATA&gt; TYPE TY_JM4_DATA,
+               &lt;FS_JM4&gt;      TYPE TY_JM4,
+               &lt;FS_LIFNR&gt;    TYPE TY_LIFNR,
+               &lt;FS_STAT&gt; TYPE TY_STAT.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 全局变量声明</font>
+<font color ="#0000FF">************************************************************************</font>
+DATA:OK_CODE TYPE SY-UCOMM,
+     SAVE_CODE TYPE SY-UCOMM,
+     G_NEW_OK    TYPE SY-UCOMM,                            "
+     G_ZSTAT TYPE ZZTJGYC_H-ZSTAT,                             "状态的下拉框
+     G_ZTZJG TYPE ZZTJGYC_H-ZTZJG,
+     GT_LIST TYPE VRM_VALUES,
+     G_LIST TYPE VRM_VALUES,
+     W_LIST TYPE VRM_VALUE,
+     g_cx_flag type c.  "= X ，价格预测查询 = space 采购信息
+
+
+<font color ="#0000FF">*查找界面上的两个字段</font>
+DATA: LIST_TYPE TYPE C LENGTH 10,   " 查找类型
+      SCR_CONTENT TYPE C LENGTH 18, " 查找的内容
+      G_LOOKUP_INDEX TYPE I,  " 记录当前查找时的索引，为下一次查找做参考
+      G_MAX_ROWS TYPE I.             " table control最多行数
+
+<font color ="#0000FF">*下拉链表数据定义</font>
+DATA: GT_LIST_DATA TYPE VRM_VALUES,
+      W_LIST_DATA TYPE VRM_VALUE,
+      G_MODIFY_CLLB TYPE C.
+<font color ="#0000FF">************************add by yetp 20121206**************start</font>
+                                                            "屏幕9002变量
+DATA:G_WERKS TYPE T001W-WERKS.                                 "工厂
+<font color ="#0000FF">************************add by yetp 20121206**************end</font>
+
+<font color ="#0000FF">************************add by yetp 20130305**************start</font>
+                                                            "屏幕9004变量
+DATA:G_WERKS_JM4 TYPE T001W-WERKS.                                 "工厂
+DATA:G_BTN_FLAG TYPE C.           "按钮可用标识
+DATA:P_CP1 TYPE C VALUE 'X' ,                "商业价格1
+     P_CP2 TYPE C,                "商业价格2
+     P_CP3 TYPE C.                "商业价格3
+<font color ="#0000FF">************************add by yetp 20130305**************end</font>
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 常数声明</font>
+<font color ="#0000FF">************************************************************************</font>
+CONSTANTS:C_DJLX_600 TYPE ZDJLX VALUE '600',                 "单据类型编号
+          C_ZSTAT TYPE DDOBJNAME VALUE 'ZSTATU',              "给状态下拉框赋初值,
+          C_ZTZJG TYPE DDOBJNAME VALUE 'ZTZJG',
+          C_STAT_ALL TYPE ZSTAT VALUE 'E999',
+          C_POS_GAP   TYPE I VALUE 1,
+          C_LIST_TYPE TYPE VRM_ID VALUE 'LIST_TYPE',     " 查找类型                     "行项目增加间隔
+          C_DJLX TYPE ZZTLBJTJH-ZDJLX VALUE '400',  "单据类型编号
+          C_DJLX_700 TYPE ZZTLBJTJH-ZDJLX VALUE '700', " add by yetp 20140705
+          C_STAT_ALL_TEXT TYPE STRING VALUE '全部'.
+
+<font color ="#0000FF">*&SPWIZARD: DECLARATION OF TABLECONTROL 'TAB1' ITSELF</font>
+CONTROLS: TAB1 TYPE TABLEVIEW USING SCREEN 9001.
+
+<font color ="#0000FF">*&SPWIZARD: DECLARATION OF TABLECONTROL 'TAB2' ITSELF</font>
+CONTROLS: TAB2 TYPE TABLEVIEW USING SCREEN 9002.
+
+<font color ="#0000FF">*&SPWIZARD: DECLARATION OF TABLECONTROL 'TAB3' ITSELF</font>
+CONTROLS: TAB3 TYPE TABLEVIEW USING SCREEN 9003.
+<font color ="#0000FF">*&SPWIZARD: DECLARATION OF TABLECONTROL 'TAB4' ITSELF</font>
+CONTROLS: TAB4 TYPE TABLEVIEW USING SCREEN 9004.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

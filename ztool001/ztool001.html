@@ -1,0 +1,767 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZTOOL001</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZTOOL001</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  财务会计凭证及发票凭证查询</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& report  y_cboii_test009</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  ZTOOL001 MESSAGE-ID ZPEOPLE..
+
+TYPE-POOLS: SLIS.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 引用表</font>
+<font color ="#0000FF">************************************************************************</font>
+TABLES:BSEG,
+       EKPO,
+       LFA1,
+       RSEG,
+       RBKP.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 类型字段</font>
+<font color ="#0000FF">************************************************************************</font>
+TYPES: BEGIN OF STRUCT_EXCEL,
+<font color ="#0000FF">*    ZXH TYPE I,</font>
+     BELNR TYPE BSEG-BELNR,   "会计凭证编号
+     BUZEI TYPE BSEG-BUZEI,   "行项目标识
+     KOSTL TYPE BSEG-KOSTL,   "成本中心
+END OF STRUCT_EXCEL.
+
+TYPES: BEGIN OF TY_BSEG,
+       ZXH TYPE I,             "序号
+       BELNR TYPE BSEG-BELNR,   "会计凭证编号
+       BUZEI TYPE BSEG-BUZEI,   "行项目标识
+       BUKRS TYPE BSEG-BUKRS,   "公司代码
+       GJAHR TYPE BSEG-GJAHR,   "会计年度
+       EBELN TYPE BSEG-EBELN,   "采购凭证号
+       EBELP TYPE BSEG-EBELP,   "采购凭证的项目编号
+       KOSTL TYPE BSEG-KOSTL,   "成本中心
+       MENGE TYPE BSEG-MENGE,   "数量
+       LIFNR TYPE BSEG-LIFNR,   "供应商或债权人的帐号
+      TXZ01 TYPE EKPO-TXZ01,   "短文本(物料描述)
+      NAME1 TYPE LFA1-NAME1,  "公司地址名(公司描述)
+  END OF TY_BSEG.
+
+TYPES:BEGIN OF TY_RSEG,
+       ZXH TYPE I,             "序号
+       BELNR TYPE RSEG-BELNR,   "发票凭证编号
+       BUZEI TYPE RSEG-BUZEI,   "发票行项目标识
+       BUKRS TYPE BSEG-BUKRS,   "公司代码
+       BUDAT TYPE BUDAT,        "过账日期
+       EBELN TYPE RSEG-EBELN,   "采购凭证号
+       EBELP TYPE RSEG-EBELP,   "采购凭证的项目编号
+       WRBTR TYPE RSEG-WRBTR,   "金额
+       MENGE TYPE RSEG-MENGE,   "数量
+       BSTME TYPE RSEG-BSTME,   "订单单位
+       WERKS TYPE RSEG-WERKS,   "工厂代码
+       SGTXT TYPE RSEG-SGTXT,   "文本
+       SHKZG TYPE RSEG-SHKZG,   "借方/贷方标识
+END OF TY_RSEG.
+
+TYPES:BEGIN OF TY_CHECKMSG,
+    ERR_MSG TYPE STRING,    "错误信息
+  END OF  TY_CHECKMSG.
+
+DATA: MONTH_TAB TYPE STANDARD TABLE OF P99SG_MONTH_TAB_ROW.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*全局变量</font>
+<font color ="#0000FF">************************************************************************</font>
+DATA:G_ERROR TYPE C. "导入数据检查结果标识，如果值为 X，表示数据存在问题
+<font color ="#0000FF">*** OLE EXCLE定义</font>
+DATA: G_SHEET TYPE OLE2_OBJECT,
+      G_ACTIVESHEET TYPE OLE2_OBJECT,
+      G_NEWSHEET TYPE OLE2_OBJECT,
+      G_APPL TYPE OLE2_OBJECT,
+      G_WORK TYPE OLE2_OBJECT,
+      G_CELL TYPE OLE2_OBJECT.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*内表&工作区</font>
+<font color ="#0000FF">************************************************************************</font>
+DATA  GT_RAW TYPE TRUXS_T_TEXT_DATA.
+DATA: LT_EXCEL TYPE STANDARD TABLE OF STRUCT_EXCEL,
+      LW_EXCEL TYPE STRUCT_EXCEL.
+
+DATA:I_FIELD_CAT TYPE SLIS_T_FIELDCAT_ALV, "alv是显示时要的属性
+    FIELD_CAT TYPE SLIS_FIELDCAT_ALV,
+     I_LAYOUT TYPE SLIS_LAYOUT_ALV,
+     I_REPID LIKE SY-REPID.
+
+DATA:LT_BSEG TYPE STANDARD TABLE OF TY_BSEG,
+       LW_BSEG TYPE TY_BSEG.
+
+DATA:LT_RSEG TYPE STANDARD TABLE OF TY_RSEG,
+       LW_RSEG TYPE TY_RSEG.
+
+DATA: LT_CHECKMSG TYPE STANDARD TABLE OF TY_CHECKMSG,
+     LW_CHECKMSG TYPE TY_CHECKMSG.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 字段符声明</font>
+<font color ="#0000FF">************************************************************************</font>
+FIELD-SYMBOLS: &lt;FS_BSEG&gt; TYPE TY_BSEG,
+               &lt;FS_RSEG&gt; TYPE TY_RSEG,
+               &lt;FS_EXCEL&gt; TYPE STRUCT_EXCEL.
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      define macro_fill_fieldcat</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       填充结构宏定义</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+DEFINE MACRO_FILL_FIELDCAT.
+  CLEAR FIELD_CAT.
+  &1 = &1 + 1.
+  FIELD_CAT-COL_POS    = &1.
+  FIELD_CAT-FIELDNAME  = &2.
+  FIELD_CAT-SELTEXT_L     = &3.
+  FIELD_CAT-SELTEXT_M     = &3.
+  FIELD_CAT-SELTEXT_S     = &3.
+  FIELD_CAT-NO_ZERO       = &4.
+  APPEND FIELD_CAT TO I_FIELD_CAT.
+END-OF-DEFINITION.
+
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 定义选择屏幕参数</font>
+<font color ="#0000FF">************************************************************************</font>
+SELECTION-SCREEN BEGIN OF BLOCK BLOCK2 WITH FRAME TITLE T2.
+PARAMETERS: P_1 TYPE C RADIOBUTTON GROUP G2 USER-COMMAND SEL DEFAULT 'X',     "采购信息查询
+            P_2 TYPE C RADIOBUTTON GROUP G2.                                  "已结算采购订单查询
+SELECTION-SCREEN END OF BLOCK BLOCK2.
+
+
+SELECTION-SCREEN BEGIN OF BLOCK BLOCK1 WITH FRAME TITLE T1.
+PARAMETERS: P_UPLOAD TYPE C RADIOBUTTON GROUP G1 USER-COMMAND SEL DEFAULT 'X' MODIF ID M1,
+            P_DOWN   TYPE C RADIOBUTTON GROUP G1 MODIF ID M1.
+PARAMETERS: P_FILE  LIKE RLGRAP-FILENAME MODIF ID M1.
+SELECT-OPTIONS:P_BUKRS FOR BSEG-BUKRS OBLIGATORY NO-EXTENSION NO INTERVALS DEFAULT '1010' MODIF ID M1,
+               P_GJAHR FOR BSEG-GJAHR OBLIGATORY NO-EXTENSION NO INTERVALS DEFAULT SY-DATUM+0(4) MODIF ID M1.
+SELECTION-SCREEN END OF BLOCK BLOCK1.
+
+SELECTION-SCREEN BEGIN OF BLOCK BLOCK3 WITH FRAME TITLE T3.
+SELECT-OPTIONS:P_BUKRS2 FOR RSEG-BUKRS OBLIGATORY NO-EXTENSION NO INTERVALS DEFAULT '1010' MODIF ID M2,
+               P_GJAHR2 FOR RSEG-GJAHR OBLIGATORY NO-EXTENSION NO INTERVALS DEFAULT SY-DATUM+0(4) MODIF ID M2.
+PARAMETER  P_MONAT(2) TYPE N MODIF ID M2.
+SELECTION-SCREEN END OF BLOCK BLOCK3.
+
+
+
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 屏幕输出之前处理</font>
+<font color ="#0000FF">************************************************************************</font>
+AT  SELECTION-SCREEN  OUTPUT .
+  LOOP  AT  SCREEN .
+    CASE  SCREEN-GROUP1.                    "屏幕组
+      WHEN  'M1' .
+        IF  P_1 EQ  'X' . "采购信息查询
+          SCREEN-ACTIVE = 1 .                "设置屏幕显示
+        ELSE .
+          SCREEN-ACTIVE = 0 .                "设置屏幕隐藏
+        ENDIF .
+      WHEN  'M2' .
+        IF  P_2 EQ  'X' .  "已结算采购订单查询
+          SCREEN-ACTIVE = 1 .
+        ELSE .
+          SCREEN-ACTIVE = 0 .
+        ENDIF .
+    ENDCASE .
+    MODIFY  SCREEN .                        "修改选择屏幕属性
+  ENDLOOP .
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* initialization 初始化事件</font>
+<font color ="#0000FF">************************************************************************</font>
+INITIALIZATION.
+  T1 = '采购信息查询'.
+  T2 = '查询信息类型'.
+  T3 = '已结算采购订单查询'.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*at selection screen                                                   *</font>
+<font color ="#0000FF">************************************************************************</font>
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR P_FILE.
+  PERFORM F4_HELP_FOR_FILENAME.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*& start-of-selection</font>
+<font color ="#0000FF">************************************************************************</font>
+START-OF-SELECTION.
+  CLEAR:G_ERROR.
+  IF P_1 = 'X'.   "采购信息查询
+    IF P_FILE IS INITIAL.
+      MESSAGE S000 DISPLAY LIKE 'E' WITH '请输入上传文件路径'.
+      STOP.
+    ENDIF.
+
+
+    IF P_UPLOAD = 'X'.
+      PERFORM CONVERT_XLS_TO_ITAB.
+      IF G_ERROR IS INITIAL.
+        PERFORM GETDATA.
+
+        PERFORM DISPLAY_BY_ALV.
+      ELSE.
+        PERFORM DISPLAY_ERROR.
+      ENDIF.
+    ELSE.
+      PERFORM DOWNLOAD_TEMPLATE.               "下载模板
+    ENDIF.
+  ELSE.         "已结算采购订单查询
+    PERFORM GETORDERDATA.
+    PERFORM DISPLAY_BY_ALV.
+  ENDIF.
+
+
+  .
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      form  f4_help_for_filename</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM F4_HELP_FOR_FILENAME .
+  DATA: L_FILE         TYPE STRING,
+        L_FILE_IMPORT  TYPE STRING,
+        L_PATH_INITIAL TYPE STRING,
+        LT_FILE_TABLE  TYPE FILETABLE,
+        LW_FILE        TYPE FILE_TABLE,
+        L_RC           TYPE I.
+
+  CLEAR: L_FILE,
+         L_FILE_IMPORT,
+         L_PATH_INITIAL,
+         LT_FILE_TABLE,
+         LW_FILE,
+         L_RC.
+
+  L_FILE = P_FILE.
+<font color ="#0000FF">*    CALL FUNCTION 'F4_FILENAME'</font>
+<font color ="#0000FF">*      EXPORTING</font>
+<font color ="#0000FF">*        field_name = 'P_FILE'</font>
+<font color ="#0000FF">*      IMPORTING</font>
+<font color ="#0000FF">*        file_name  = p_file.</font>
+  CALL METHOD CL_GUI_FRONTEND_SERVICES=&gt;FILE_OPEN_DIALOG
+    EXPORTING
+<font color ="#0000FF">*     window_title            =</font>
+<font color ="#0000FF">*     default_extension       =</font>
+<font color ="#0000FF">*     default_filename        =</font>
+      FILE_FILTER             = 'Excel 文件 (*.xls;*xlsx)|*.xls;*.xlsx'
+<font color ="#0000FF">*     with_encoding           =</font>
+<font color ="#0000FF">*     initial_directory       =</font>
+<font color ="#0000FF">*     multiselection          =</font>
+    CHANGING
+      FILE_TABLE              = LT_FILE_TABLE
+      RC                      = L_RC
+<font color ="#0000FF">*     user_action             =</font>
+<font color ="#0000FF">*     file_encoding           =</font>
+    EXCEPTIONS
+      FILE_OPEN_DIALOG_FAILED = 1
+      CNTL_ERROR              = 2
+      ERROR_NO_GUI            = 3
+      NOT_SUPPORTED_BY_GUI    = 4
+      OTHERS                  = 5.
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+               WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+  READ TABLE LT_FILE_TABLE INTO LW_FILE INDEX 1.
+  IF SY-SUBRC EQ 0.
+    P_FILE = LW_FILE-FILENAME.
+  ENDIF.
+
+
+ENDFORM.                    " f4_help_for_filename
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      form  getdata</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GETDATA.
+  TYPES: BEGIN OF TY_EKPO,
+     EBELN TYPE EKPO-EBELN,
+     EBELP TYPE EKPO-EBELP,
+     TXZ01 TYPE EKPO-TXZ01,   "短文本(物料描述)
+  END OF TY_EKPO.
+
+  TYPES: BEGIN OF TY_LFA1,
+       LIFNR TYPE LFA1-LIFNR,   "供应商或债权人的帐号
+       NAME1 TYPE LFA1-NAME1,  "公司地址名(公司描述)
+    END OF TY_LFA1.
+
+
+
+  DATA:
+        LT_EKPO TYPE STANDARD TABLE OF TY_EKPO,
+       LW_EKPO TYPE TY_EKPO,
+      LT_LFA1 TYPE STANDARD TABLE OF TY_LFA1,
+       LW_LFA1 TYPE TY_LFA1,
+      LW_A TYPE  TY_BSEG,
+      LW_B TYPE  TY_BSEG.
+
+  DATA: L_ZXH TYPE I,
+       L_BUZEI TYPE I,
+       T_BUZEI LIKE BSEG-BUZEI.
+
+
+  SELECT BELNR BUZEI BUKRS GJAHR EBELP KOSTL EBELN LIFNR MENGE
+    INTO CORRESPONDING FIELDS OF TABLE LT_BSEG
+    FROM BSEG
+    FOR ALL ENTRIES IN LT_EXCEL
+    WHERE BSEG~BELNR = LT_EXCEL-BELNR AND BSEG~BUZEI = LT_EXCEL-BUZEI AND  BSEG~GJAHR IN P_GJAHR AND  BSEG~BUKRS IN P_BUKRS.
+
+<font color ="#0000FF">*成本中心显示优化(后期显示规则变化，需修改) addtime:2019-1-5</font>
+  SORT LT_BSEG  BY BELNR BUZEI.
+  LOOP AT LT_EXCEL ASSIGNING &lt;FS_EXCEL&gt;.
+    CLEAR: LW_A,LW_B.
+    READ TABLE LT_BSEG INTO LW_A WITH KEY BELNR = &lt;FS_EXCEL&gt;-BELNR BUZEI = &lt;FS_EXCEL&gt;-BUZEI BINARY SEARCH.
+    IF LW_A-KOSTL IS INITIAL.
+      L_BUZEI = &lt;FS_EXCEL&gt;-BUZEI.
+      L_BUZEI = L_BUZEI - 1.
+      T_BUZEI = L_BUZEI.
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          INPUT  = T_BUZEI
+        IMPORTING
+          OUTPUT = T_BUZEI.
+
+      IF L_BUZEI &lt;&gt; 0.
+        READ TABLE LT_BSEG INTO LW_B WITH KEY BELNR = &lt;FS_EXCEL&gt;-BELNR BUZEI = T_BUZEI BINARY SEARCH.
+        IF LW_A-MENGE = LW_B-MENGE AND LW_B-KOSTL IS NOT INITIAL.
+          "符合要求，就取wb中的成本中心
+            &lt;FS_EXCEL&gt;-KOSTL = LW_B-KOSTL.
+        ENDIF.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+
+  LOOP AT LT_BSEG ASSIGNING &lt;FS_BSEG&gt;.
+    L_ZXH = L_ZXH + 1.
+    &lt;FS_BSEG&gt;-ZXH = L_ZXH.
+
+    CLEAR lw_excel.
+    IF &lt;FS_BSEG&gt;-KOSTL is INITIAL.
+        READ TABLE LT_EXCEL INTO lw_excel WITH KEY BELNR = &lt;FS_BSEG&gt;-BELNR BUZEI = &lt;FS_BSEG&gt;-BUZEI BINARY SEARCH.
+        &lt;FS_BSEG&gt;-KOSTL = lw_excel-KOSTL.
+    ENDIF.
+  ENDLOOP.
+  SORT LT_BSEG BY BELNR BUZEI.
+
+
+  SELECT TXZ01 EBELN EBELP
+  INTO CORRESPONDING FIELDS OF TABLE LT_EKPO
+  FROM EKPO
+   FOR ALL ENTRIES IN LT_BSEG
+   WHERE EKPO~EBELN = LT_BSEG-EBELN AND EKPO~EBELP = LT_BSEG-EBELP.
+  SORT LT_EKPO BY EBELN EBELP.
+
+
+  SELECT   NAME1 LIFNR
+     INTO CORRESPONDING FIELDS OF TABLE LT_LFA1
+   FROM LFA1
+   FOR ALL ENTRIES IN LT_BSEG
+    WHERE   LFA1~LIFNR =   LT_BSEG-LIFNR.
+  SORT LT_LFA1 BY LIFNR.
+
+
+
+  LOOP AT LT_BSEG ASSIGNING &lt;FS_BSEG&gt;.
+
+    READ TABLE LT_EKPO INTO LW_EKPO WITH KEY EBELN = &lt;FS_BSEG&gt;-EBELN EBELP = &lt;FS_BSEG&gt;-EBELP BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_BSEG&gt;-TXZ01 = LW_EKPO-TXZ01.
+    ENDIF.
+    READ TABLE LT_LFA1 INTO LW_LFA1 WITH KEY LIFNR = &lt;FS_BSEG&gt;-LIFNR  BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_BSEG&gt;-NAME1 = LW_LFA1-NAME1.
+    ENDIF.
+  ENDLOOP.
+
+  SORT LT_BSEG BY ZXH.
+
+ENDFORM.                   "getdata
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      form  convert_xls_to_itab</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CONVERT_XLS_TO_ITAB .
+  DATA:L_ERRNUM TYPE I,
+        TXT_ERR TYPE STRING.
+  CLEAR:LT_EXCEL,LW_CHECKMSG.
+
+  CALL FUNCTION 'TEXT_CONVERT_XLS_TO_SAP'
+    EXPORTING
+<font color ="#0000FF">*     i_field_seperator    =</font>
+      I_LINE_HEADER        = 'x'
+      I_TAB_RAW_DATA       = GT_RAW
+      I_FILENAME           = P_FILE
+    TABLES
+      I_TAB_CONVERTED_DATA = LT_EXCEL
+    EXCEPTIONS
+      CONVERSION_FAILED    = 1
+      OTHERS               = 2.
+
+
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">*   break-point.</font>
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+  IF LT_EXCEL[] IS INITIAL.
+    MESSAGE S000(ZPEOPLE) WITH '上传文件不包含任何有效数据' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+
+  LOOP AT LT_EXCEL ASSIGNING &lt;FS_EXCEL&gt;.
+    L_ERRNUM = L_ERRNUM + 1.
+    TXT_ERR = L_ERRNUM.
+<font color ="#0000FF">*    &lt;FS_EXCEL&gt;-ZXH = L_ERRNUM.</font>
+
+    IF &lt;FS_EXCEL&gt;-BELNR IS INITIAL.
+
+      CONCATENATE   '序号' TXT_ERR '凭证编号不能为空.'  INTO  LW_CHECKMSG-ERR_MSG.
+    ELSE.
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          INPUT  = &lt;FS_EXCEL&gt;-BELNR
+        IMPORTING
+          OUTPUT = &lt;FS_EXCEL&gt;-BELNR.
+    ENDIF.
+
+    IF &lt;FS_EXCEL&gt;-BUZEI IS INITIAL.
+      CONCATENATE  LW_CHECKMSG-ERR_MSG  '序号' TXT_ERR '凭证编号不能为空.' INTO  LW_CHECKMSG-ERR_MSG.
+    ELSE.
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          INPUT  = &lt;FS_EXCEL&gt;-BUZEI
+        IMPORTING
+          OUTPUT = &lt;FS_EXCEL&gt;-BUZEI.
+    ENDIF.
+  ENDLOOP.
+
+  "导入数据表存在错误
+  IF LT_CHECKMSG IS NOT INITIAL.
+    G_ERROR = 'X'.
+    EXIT.
+  ENDIF.
+
+
+ENDFORM.                    "convert_xls_to_itab
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  init_fieldcat</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_FIELDCAT.
+  DATA:L_COLPOS TYPE SLIS_FIELDCAT_ALV-COL_POS.
+  CLEAR:I_FIELD_CAT.
+  IF  P_2 EQ  'X' .  "已结算采购订单查询
+    MACRO_FILL_FIELDCAT:
+    L_COLPOS 'ZXH' '序号' '',
+    L_COLPOS 'BELNR' '会计凭证编号' '',
+    L_COLPOS 'BUZEI' '行项目标识' '',
+    L_COLPOS 'BUKRS' '公司代码' '',
+    L_COLPOS 'BUDAT' '过账日期' '',
+    L_COLPOS 'EBELN' '采购凭证号' '',
+    L_COLPOS 'EBELP' '采购凭证的项目编号' '',
+    L_COLPOS 'WRBTR' '金额' '',
+    L_COLPOS 'MENGE' '数量' '',
+    L_COLPOS 'BSTME' '订单单位' '',
+    L_COLPOS 'WERKS' '工厂代码' '',
+    L_COLPOS 'SGTXT' '文本' '',
+    L_COLPOS 'SHKZG' '借方/贷方标识' ''.
+  ELSE.
+    MACRO_FILL_FIELDCAT:
+    L_COLPOS 'ZXH' '序号' '',
+    L_COLPOS 'BELNR' '会计凭证编号' '',
+    L_COLPOS 'BUZEI' '行项目标识' '',
+    L_COLPOS 'BUKRS' '公司代码' '',
+    L_COLPOS 'GJAHR' '会计年度' '',
+    L_COLPOS 'EBELN' '采购凭证号' '',
+    L_COLPOS 'EBELP' '采购凭证的项目编号' '',
+    L_COLPOS 'KOSTL' '成本中心' '',
+    L_COLPOS 'LIFNR' '供应商或债权人的帐号' '',
+    L_COLPOS 'TXZ01' '短文本' '',
+    L_COLPOS 'NAME1' '公司地址名' ''.
+  ENDIF.
+
+ENDFORM.                    "INIT_FIELDCAT
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  init_layout</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_LAYOUT.
+  CLEAR I_LAYOUT.
+  I_LAYOUT-ZEBRA = 'X'.
+  I_LAYOUT-F2CODE = '&ETA'.
+  I_LAYOUT-DETAIL_POPUP = 'X'.
+  I_LAYOUT-COLWIDTH_OPTIMIZE = 'X'.
+ENDFORM.                    "init_layout
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  show_alv</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_ALV.
+
+  IF  P_2 EQ  'X' .  "已结算采购订单查询   todo
+    CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+      EXPORTING
+        I_CALLBACK_PROGRAM = SY-REPID
+        IS_LAYOUT          = I_LAYOUT
+        IT_FIELDCAT        = I_FIELD_CAT
+      TABLES
+        T_OUTTAB           = LT_RSEG.
+<font color ="#0000FF">*        PROGRAM_ERROR      = 1</font>
+<font color ="#0000FF">*        OTHERS             = 2.</font>
+    IF SY-SUBRC &lt;&gt; 0.
+      MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+              WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    ENDIF.
+  ELSE.
+    CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+      EXPORTING
+        I_CALLBACK_PROGRAM = SY-REPID
+        IS_LAYOUT          = I_LAYOUT
+        IT_FIELDCAT        = I_FIELD_CAT
+      TABLES
+        T_OUTTAB           = LT_BSEG.
+<font color ="#0000FF">*        PROGRAM_ERROR      = 1</font>
+<font color ="#0000FF">*        OTHERS             = 2.</font>
+    IF SY-SUBRC &lt;&gt; 0.
+      MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+              WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    ENDIF.
+  ENDIF.
+
+ENDFORM.                    "show_alv
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  display_by_alv</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_BY_ALV.
+  PERFORM INIT_LAYOUT.
+
+  PERFORM INIT_FIELDCAT.
+
+  PERFORM SHOW_ALV.
+ENDFORM.                    "display_by_alv
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DISPLAY_ERROR</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_ERROR.
+  WRITE '表格内有字段为空'.
+ENDFORM.                    "DISPLAY_ERROR
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DOWNLOAD_TEMPLATE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       下载模板</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DOWNLOAD_TEMPLATE .
+  CREATE OBJECT G_APPL 'EXCEL.APPLICATION'.
+  SET PROPERTY OF G_APPL 'VISIBLE' = 0.
+
+  CALL METHOD OF
+      G_APPL
+      'WORKBOOKS' = G_WORK.
+  CALL METHOD OF
+      G_WORK
+      'Add'  = G_WORK.
+
+  GET PROPERTY OF G_APPL 'ActiveSheet' = G_ACTIVESHEET.
+
+  SET PROPERTY OF G_ACTIVESHEET 'Name' = '采购入库表导入 '.
+
+  PERFORM FILL_CELL USING: 1 1 '凭证编号' 26 1,
+        1 2 '行项目' 26 1.
+
+
+  "EXCEL文件别存为
+  CALL METHOD OF
+      G_WORK
+      'SAVEAS'
+
+    EXPORTING
+      #1       = P_FILE.
+
+  "关闭文件
+  CALL METHOD OF
+      G_WORK
+      'close'.
+
+  "退出EXCEL
+  CALL METHOD OF
+      G_APPL
+      'QUIT'.
+  FREE OBJECT G_APPL.
+
+  MESSAGE S000 WITH '文件：' P_FILE ' 下载成功'.
+
+ENDFORM.                    " DOWNLOAD_TEMPLATE
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FILL_CELL</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;FU_ROW     text</font>
+<font color ="#0000FF">*      --&gt;FU_COLUMN  text</font>
+<font color ="#0000FF">*      --&gt;FU_VALUE   text</font>
+<font color ="#0000FF">*      --&gt;FU_COLOR   text</font>
+<font color ="#0000FF">*      --&gt;FU_BOLD    text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FILL_CELL USING  FU_ROW
+                      FU_COLUMN
+                      FU_VALUE
+                      FU_COLOR
+                      FU_BOLD.
+
+  DATA: L_CELL  TYPE OLE2_OBJECT,
+        L_COLOR TYPE OLE2_OBJECT,
+        L_BOLD  TYPE OLE2_OBJECT.
+
+  "设置单元格内容
+  CALL METHOD OF
+      G_APPL
+      'Cells' = L_CELL
+    EXPORTING
+      #1      = FU_ROW
+      #2      = FU_COLUMN.
+
+  SET PROPERTY OF L_CELL 'Value'       =  FU_VALUE.
+
+  "设置单元格颜色
+  GET PROPERTY OF L_CELL 'Interior'    = L_COLOR.
+  SET PROPERTY OF L_COLOR 'ColorIndex' = FU_COLOR.
+
+  "设置单元格加粗
+  GET PROPERTY OF L_CELL 'Font' = L_BOLD.
+  SET PROPERTY OF L_BOLD 'Bold' = FU_BOLD.
+
+ENDFORM.                    "fill_cell
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  getorderdata</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       获取已结算采购订单信息</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GETORDERDATA.
+  DATA L_ZXH TYPE I.
+  DATA BEG_DATE TYPE SY-DATUM.
+  DATA END_DATE TYPE SY-DATUM.
+
+  PERFORM CHECKMONAT.
+
+  CONCATENATE P_GJAHR2-LOW P_MONAT '01' INTO BEG_DATE.
+  CALL FUNCTION 'LAST_DAY_OF_MONTHS'
+    EXPORTING
+      DAY_IN            = BEG_DATE
+    IMPORTING
+      LAST_DAY_OF_MONTH = END_DATE
+    EXCEPTIONS
+      DAY_IN_NO_DATE    = 1
+      OTHERS            = 2.
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+              WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+
+  SELECT A~BELNR A~BUZEI A~BUKRS  A~EBELP A~EBELN A~WRBTR A~MENGE A~BSTME A~WERKS A~SGTXT A~SHKZG B~BUDAT
+    INTO CORRESPONDING FIELDS OF TABLE LT_RSEG
+    FROM RSEG AS A
+    INNER JOIN RBKP AS B ON A~BELNR = B~BELNR
+    WHERE A~GJAHR IN P_GJAHR2 AND  A~BUKRS IN P_BUKRS2 AND B~BUDAT BETWEEN BEG_DATE AND END_DATE.
+<font color ="#0000FF">*</font>
+
+  LOOP AT LT_RSEG ASSIGNING &lt;FS_RSEG&gt;.
+    L_ZXH = L_ZXH + 1.
+    &lt;FS_RSEG&gt;-ZXH = L_ZXH.
+  ENDLOOP.
+
+  SORT LT_RSEG BY BELNR BUZEI.
+
+ENDFORM.                    "getorderdata
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  checkmonat</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CHECKMONAT.
+  IF P_MONAT = ''.
+    MESSAGE S000 DISPLAY LIKE 'E' WITH '期间为必填项不能为空'.
+    STOP.
+  ENDIF.
+  IF P_MONAT &lt; 1 OR P_MONAT &gt; 12.
+    MESSAGE S000 DISPLAY LIKE 'E' WITH '期间不在范围，请输入1-12以内的值'.
+    STOP.
+  ENDIF.
+
+ENDFORM.                    "checkmonat
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* P_1         会计凭证查询</font>
+<font color ="#0000FF">* P_2         已结算采购订单查询</font>
+<font color ="#0000FF">* P_BUKRS         公司代码</font>
+<font color ="#0000FF">* P_BUKRS2         公司代码</font>
+<font color ="#0000FF">* P_DOWN         下载模板</font>
+<font color ="#0000FF">* P_FILE         文件路径(上传\下载)</font>
+<font color ="#0000FF">* P_GJAHR         年度</font>
+<font color ="#0000FF">* P_GJAHR2         年度</font>
+<font color ="#0000FF">* P_MONAT         期间</font>
+<font color ="#0000FF">* P_UPLOAD         上传</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPEOPLE</font>
+<font color ="#0000FF">*000   &1 &2 &3 &4</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

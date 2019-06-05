@@ -1,0 +1,216 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZHS050_DATA_FORM</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZHS050_DATA_FORM</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZHS050_DATA_FORM</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZHS050_DATA_FORM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  exit_command</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       工具条按钮处理</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM exit_command.
+  CASE sy-ucomm.
+    WHEN 'EXIT'.
+      PERFORM process_exit.
+    WHEN 'BACK'.
+      PERFORM process_back.
+    WHEN 'CLOSE'.
+      PERFORM process_close.
+  ENDCASE.
+
+ENDFORM.                    "exit_command
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  process_back</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       工具条后退按钮</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM process_back.
+  DATA: l_answer TYPE c.
+  CLEAR l_answer.
+
+  IF sy-datar = 'X' OR g_change = 'X'.
+    PERFORM confirm_window USING text-005 text-006 CHANGING l_answer.
+    IF l_answer = '1'.
+      g_new_code = 'B4'.
+    ELSEIF l_answer = '2'.
+      CLEAR g_change.
+      LEAVE TO SCREEN 0.
+    ENDIF.
+  ELSE.
+    LEAVE TO SCREEN 0.
+  ENDIF.
+ENDFORM.                    "process_back
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  process_exit</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       工具条退出按钮</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM process_exit.
+  DATA: l_answer TYPE c.
+  CLEAR l_answer.
+
+  IF sy-datar = 'X' OR g_change = 'X'.
+    PERFORM confirm_window USING text-005 text-006 CHANGING l_answer.
+    IF l_answer = '1'.
+      g_new_code = 'B4'.
+    ELSEIF l_answer = '2'.
+      CLEAR g_change.
+      SET SCREEN 0.
+      LEAVE SCREEN.
+    ENDIF.
+  ELSE.
+    SET SCREEN 0.
+    LEAVE SCREEN.
+  ENDIF.
+ENDFORM.                    "process_exit
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  process_close</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       工具条关闭按钮</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM process_close.
+  DATA: l_answer TYPE c.
+  CLEAR l_answer.
+
+  IF sy-datar = 'X' OR g_change = 'X'.
+    PERFORM confirm_window USING text-005 text-006 CHANGING l_answer.
+    IF l_answer = '1'.
+      g_new_code = 'B4'.
+    ELSEIF l_answer = '2'.
+      CLEAR g_change.
+      SET SCREEN 0.
+      LEAVE PROGRAM.
+    ENDIF.
+  ELSE.
+    SET SCREEN 0.
+    LEAVE PROGRAM.
+  ENDIF.
+ENDFORM.                    "process_close
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  check_filed_input</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       检查必输字段</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM check_filed_input .
+  "料别必输检查
+  IF w_yclxj-zclid IS INITIAL.
+    MESSAGE e026(zpeople).
+  ENDIF.
+
+  "牌号代码必输检查
+  IF w_yclxj-zphcd IS INITIAL.
+    MESSAGE e008(zpeople).
+  ENDIF.
+
+  "牌号名称必输检查
+  IF w_yclxj-zphnm IS INITIAL.
+    MESSAGE e010(zpeople).
+  ENDIF.
+
+  "价格必输检查
+  IF w_yclxj-zpric IS INITIAL.
+    MESSAGE e027(zpeople).
+  ENDIF.
+
+  "来源厂商必输检查
+  IF w_yclxj-zlycs IS INITIAL.
+    MESSAGE e028(zpeople).
+  ENDIF.
+
+  "联系方式必输检查
+  IF w_yclxj-zlxfs IS INITIAL.
+    MESSAGE e029(zpeople).
+  ENDIF.
+
+   "输入日期不能大于当前日期
+  if w_yclxj-zxjrq &gt; sy-datum.
+    message e187(zpeople).
+  endif.
+
+ENDFORM.                    "check_filed_input
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_statu_text</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       获取单据状态文本</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*FORM get_statu_text.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CLEAR w_dd07v.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CALL FUNCTION 'DDUT_DOMVALUE_TEXT_GET'</font>
+<font color ="#0000FF">*    EXPORTING</font>
+<font color ="#0000FF">*      name          = c_stat_domain</font>
+<font color ="#0000FF">*      value         = g_value</font>
+<font color ="#0000FF">*     LANGU         = SY-LANGU</font>
+<font color ="#0000FF">*     TEXTS_ONLY    = ' '</font>
+<font color ="#0000FF">*    IMPORTING</font>
+<font color ="#0000FF">*      dd07v_wa      = w_dd07v</font>
+<font color ="#0000FF">*    EXCEPTIONS</font>
+<font color ="#0000FF">*      not_found     = 1</font>
+<font color ="#0000FF">*      illegal_input = 2</font>
+<font color ="#0000FF">*      OTHERS        = 3.</font>
+<font color ="#0000FF">*  IF sy-subrc &lt;&gt; 0.</font>
+<font color ="#0000FF">* Implement suitable error handling here</font>
+<font color ="#0000FF">*  ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*ENDFORM.                    "get_statu_text</font>
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  set_cell_read</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       设置单元格为只读</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM set_cell_read .
+  LOOP AT SCREEN.
+    IF screen-name = 'W_YCLXJ-ZSTAU'.
+      IF w_yclxj-zstau = '存档'.
+        screen-input = 0.
+        MODIFY SCREEN.
+        EXIT.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.                    "set_cell_read
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  check_valid_phcd</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       如果牌号代码是无效的，报错。</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*FORM check_valid_phcd.</font>
+<font color ="#0000FF">*  DATA:lt_check TYPE STANDARD TABLE OF ty_ph,</font>
+<font color ="#0000FF">*       lw_check TYPE ty_ph.</font>
+<font color ="#0000FF">*  LOOP AT gt_yclxj INTO w_yclxj.</font>
+<font color ="#0000FF">*    SELECT zphcd</font>
+<font color ="#0000FF">*           zclid</font>
+<font color ="#0000FF">*      INTO CORRESPONDING FIELDS OF TABLE lt_check</font>
+<font color ="#0000FF">*      FROM zztclph</font>
+<font color ="#0000FF">*    WHERE zphcd = w_yclxj-zphcd.</font>
+<font color ="#0000FF">*    READ TABLE lt_check into lw_check WITH KEY zclid = w_yclxj-zclid.</font>
+<font color ="#0000FF">*    IF sy-subrc &lt;&gt; 0.</font>
+<font color ="#0000FF">*      MESSAGE e169(zpeople).</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*  ENDLOOP.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*ENDFORM.                    "check_valid_phcd</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

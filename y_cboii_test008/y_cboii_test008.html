@@ -1,0 +1,552 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>Y_CBOII_TEST008</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: Y_CBOII_TEST008</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  采购入库信息查询</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  Y_CBOII_TEST008</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  Y_CBOII_TEST008.
+TABLES:LFA1,"供应商主数据 (一般地区)
+       EKPO,"采购凭证项目
+       EINE,"采购信息记录 - 采购组织数据
+       EINA."采购信息记录 - 一般数据
+
+INCLUDE &lt;LIST&gt;.
+TYPE-POOLS:SLIS.
+
+DATA:I_FIELDCAT_ALV TYPE SLIS_T_FIELDCAT_ALV,"定义列标题（属性信息）
+     I_LAYOUT TYPE SLIS_LAYOUT_ALV,
+     I_FIELDCAT TYPE SLIS_FIELDCAT_ALV,"定义对象
+     I_EVENTS TYPE SLIS_T_EVENT,"alv事件
+     W_EVENTS LIKE LINE OF I_EVENTS,
+     I_LIST_COMMENTS TYPE SLIS_T_LISTHEADER,"alv表单标题区域设置
+     W_LIST_COMMENTS LIKE LINE OF I_LIST_COMMENTS,
+     W_REPID LIKE SY-REPID."当前程序
+
+
+
+
+
+<font color ="#0000FF">*定义内表字段</font>
+DATA:BEGIN OF HD_ITAB OCCURS 0,
+      INFNR LIKE EINE-INFNR,"采购信息记录
+      EKORG LIKE EINE-EKORG,"采购组织
+      MATNR LIKE EINA-MATNR,"物料编号
+      LIFNR LIKE EINA-LIFNR,"供应商
+      ERDAT LIKE EINE-ERDAT,"创建日期
+      LOEKZ LIKE EINE-LOEKZ,"删除标记
+      URZNR LIKE EINA-URZNR,"批准号
+      COLOR(4) TYPE C, "定义颜色
+      APLFZ LIKE EINE-APLFZ,"计划交货时间
+      NETPR LIKE EINE-NETPR,"净价
+      PEINH LIKE EINE-PEINH,"单位价格
+      DWJJ LIKE EINE-NETPR,"单位净价
+      BPRME LIKE EINE-BPRME,"订单价格单位
+      MAKTX LIKE MAKT-MAKTX,"物料名称
+      NAME1 LIKE LFA1-NAME1,"供应商名称
+      IICON LIKE ICON-NAME, "ICON 图标
+     END OF HD_ITAB.
+
+
+
+<font color ="#0000FF">*选择屏幕</font>
+SELECTION-SCREEN BEGIN OF BLOCK BLOCK1 WITH FRAME TITLE T1.
+SELECT-OPTIONS:S_INFNR FOR EINE-INFNR MEMORY ID INF."信息记录号码
+PARAMETERS:PR_LOEKZ TYPE C AS CHECKBOX DEFAULT ''."显示有删除标志的信息记录
+SELECT-OPTIONS:S_EKORG FOR EINE-EKORG MEMORY ID EKO."采购组织
+SELECT-OPTIONS:S_MATNR FOR EINA-MATNR MEMORY ID MAT."物料编号
+SELECT-OPTIONS:S_LIFNR FOR EINA-LIFNR MEMORY ID LIF."供应商编号
+SELECT-OPTIONS:S_ERDAT FOR EINA-ERDAT MEMORY ID ERD."创建日期
+SELECT-OPTIONS:S_URZNR FOR EINA-URZNR MEMORY ID URZ."批准号
+SELECTION-SCREEN END OF BLOCK BLOCK1.
+
+
+
+<font color ="#0000FF">*初始化事件</font>
+INITIALIZATION.
+  T1 = '采购查询'.
+
+
+<font color ="#0000FF">*屏幕开始事件</font>
+START-OF-SELECTION.
+  PERFORM GETDATA.
+  PERFORM EVENTS_BUILD.
+  PERFORM LAYOUT_BUILD.
+  PERFORM FIELDCAT_BUILD.
+  PERFORM ALV_DISPLAY_DATA.
+
+
+
+
+
+
+<font color ="#0000FF">*&--------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  getdata</font>
+<font color ="#0000FF">*&--------------------------------------------------------------------*</font>
+FORM GETDATA.
+  CLEAR HD_ITAB.
+  CLEAR HD_ITAB[].
+
+  IF PR_LOEKZ = ''.
+    SELECT * FROM EINE INNER JOIN EINA ON EINE~INFNR = EINA~INFNR INTO CORRESPONDING FIELDS OF HD_ITAB
+    WHERE EINE~INFNR IN S_INFNR AND EINE~EKORG IN S_EKORG AND EINA~MATNR IN S_MATNR AND EINA~LIFNR IN S_LIFNR AND EINA~LOEKZ &lt;&gt; 'X' AND EINE~ERDAT IN S_ERDAT AND EINA~URZNR IN S_URZNR
+    ORDER BY EINE~INFNR DESCENDING.
+      SELECT SINGLE MAKTX FROM MAKT INTO CORRESPONDING FIELDS OF HD_ITAB WHERE MATNR = HD_ITAB-MATNR.
+      SELECT SINGLE NAME1 FROM LFA1 INTO CORRESPONDING FIELDS OF HD_ITAB WHERE LIFNR = HD_ITAB-LIFNR.
+      APPEND HD_ITAB.
+      CLEAR HD_ITAB.
+    ENDSELECT.
+  ELSE.
+    SELECT * FROM EINE INNER JOIN EINA ON EINE~INFNR = EINA~INFNR INTO CORRESPONDING FIELDS OF HD_ITAB
+    WHERE EINE~INFNR IN S_INFNR AND EINE~EKORG IN S_EKORG AND EINA~MATNR IN S_MATNR AND EINA~LIFNR IN S_LIFNR AND EINE~ERDAT IN S_ERDAT AND EINA~URZNR IN S_URZNR
+    ORDER BY EINE~INFNR DESCENDING.
+      SELECT SINGLE MAKTX FROM MAKT INTO CORRESPONDING FIELDS OF HD_ITAB WHERE MATNR = HD_ITAB-MATNR.
+      SELECT SINGLE NAME1 FROM LFA1 INTO CORRESPONDING FIELDS OF HD_ITAB WHERE LIFNR = HD_ITAB-LIFNR.
+      APPEND HD_ITAB.
+      CLEAR HD_ITAB.
+    ENDSELECT.
+
+  ENDIF.
+
+  LOOP AT HD_ITAB.
+    IF HD_ITAB-LOEKZ = 'X'.
+      HD_ITAB-COLOR = 'C610'.
+      HD_ITAB-IICON = ICON_INCOMPLETE. "ICON圖標信息
+    ELSE.
+      HD_ITAB-IICON = ICON_CHECKED. "ICON圖標信息
+    ENDIF.
+    HD_ITAB-DWJJ = HD_ITAB-NETPR / HD_ITAB-PEINH.  "净价/价格单位
+
+    MODIFY HD_ITAB."更新
+    CLEAR HD_ITAB."CLEAR HEADER LINE
+  ENDLOOP.
+ENDFORM.                    "getdata
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&    FORM LAYOUT BUILD</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------------*</font>
+FORM LAYOUT_BUILD.
+  I_LAYOUT-ZEBRA = 'X'. "ALV表格按斑马线条纹显示
+  "i_layout-NO_VLINE = 'X'. "ALV表格顯示時無堅向線
+  I_LAYOUT-COLWIDTH_OPTIMIZE = 'X'. "将ALV字段宽度设置为最优化
+<font color ="#0000FF">*  i_layout-detail_initial_lines = 'X'.</font>
+<font color ="#0000FF">*  i_layout-detail_titlebar = '详细内容'.</font>
+<font color ="#0000FF">*  i_layout-box_fieldname  = 'LINE'.</font>
+  I_LAYOUT-INFO_FIELDNAME = 'COLOR'. "設置顏色FIELD
+  I_LAYOUT-NO_COLHEAD = ''.
+  W_REPID = SY-REPID.
+ENDFORM.                    "layout_build
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&    FORM FIELDCAT BUILD</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------------*</font>
+FORM FIELDCAT_BUILD.
+  REFRESH I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+  DATA COLUMN TYPE I VALUE 1.
+
+  I_FIELDCAT-COL_POS = COLUMN.
+  I_FIELDCAT-FIELDNAME = 'INFNR'.
+  I_FIELDCAT-SELTEXT_S = '采购信息记录'.
+  I_FIELDCAT-SELTEXT_M = '采购信息记录'.
+  I_FIELDCAT-SELTEXT_L = '采购信息记录'.
+  "i_fieldcat-reptext_ddic = '采购信息记录号'.
+  I_FIELDCAT-LZERO = 'X'. "字义字段前导以"0"的形式显示
+  I_FIELDCAT-KEY = 'X'.
+  I_FIELDCAT-HOTSPOT = 'X'."设置字段是否有热点(热点字段显示有下划线)
+  I_FIELDCAT-EMPHASIZE = 'C300'."设置字段颜色
+  APPEND I_FIELDCAT TO I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+
+  COLUMN = COLUMN + 1.
+  I_FIELDCAT-COL_POS = COLUMN.
+  I_FIELDCAT-FIELDNAME = 'LIFNR'.
+  I_FIELDCAT-SELTEXT_S = '供应商号码'.
+  I_FIELDCAT-SELTEXT_M = '供应商号码'.
+  I_FIELDCAT-SELTEXT_L = '供应商号码'.
+  "i_fieldcat-reptext_ddic = '供应商号码'.
+  I_FIELDCAT-LZERO = 'X'.
+  I_FIELDCAT-KEY = 'X'.
+  I_FIELDCAT-HOTSPOT = 'X'.
+  APPEND I_FIELDCAT TO I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+
+  COLUMN = COLUMN + 1.
+  I_FIELDCAT-COL_POS = COLUMN.
+  I_FIELDCAT-FIELDNAME = 'NAME1'.
+  I_FIELDCAT-SELTEXT_S = '供应商名称'.
+  I_FIELDCAT-SELTEXT_M = '供应商名称'.
+  I_FIELDCAT-SELTEXT_L = '供应商名称'.
+  "i_fieldcat-reptext_ddic = '供应商名称'.
+  I_FIELDCAT-LZERO = 'X'.
+  I_FIELDCAT-KEY = 'X'.
+  APPEND I_FIELDCAT TO I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+
+  COLUMN = COLUMN + 1.
+  I_FIELDCAT-COL_POS = COLUMN.
+  I_FIELDCAT-FIELDNAME = 'MATNR'.
+  I_FIELDCAT-SELTEXT_S = '物料编号'.
+  I_FIELDCAT-SELTEXT_M = '物料编号'.
+  I_FIELDCAT-SELTEXT_L = '物料编号'.
+  "i_fieldcat-reptext_ddic = '物料编号'.
+  I_FIELDCAT-LZERO = 'X'.
+  I_FIELDCAT-KEY = 'X'.
+  APPEND I_FIELDCAT TO I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+
+  COLUMN = COLUMN + 1.
+  I_FIELDCAT-COL_POS = COLUMN.
+  I_FIELDCAT-FIELDNAME = 'MAKTX'.
+  I_FIELDCAT-SELTEXT_S = '物料名称'.
+  I_FIELDCAT-SELTEXT_M = '物料名称'.
+  I_FIELDCAT-SELTEXT_L = '物料名称'.
+  "i_fieldcat-reptext_ddic = '物料名称'.
+  I_FIELDCAT-LZERO = 'X'.
+  I_FIELDCAT-KEY = 'X'.
+  APPEND I_FIELDCAT TO I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+
+  COLUMN = COLUMN + 1.
+  I_FIELDCAT-COL_POS = COLUMN.
+  I_FIELDCAT-FIELDNAME = 'NETPR'.
+  I_FIELDCAT-SELTEXT_S = '净价'.
+  I_FIELDCAT-SELTEXT_M = '净价'.
+  I_FIELDCAT-SELTEXT_L = '净价'.
+  "i_fieldcat-reptext_ddic = '净价'.
+  I_FIELDCAT-LZERO = 'X'.
+  I_FIELDCAT-KEY = 'X'.
+  APPEND I_FIELDCAT TO I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+
+  COLUMN = COLUMN + 1.
+  I_FIELDCAT-COL_POS = COLUMN.
+  I_FIELDCAT-FIELDNAME = 'PEINH'.
+  I_FIELDCAT-SELTEXT_S = '价格单位'.
+  I_FIELDCAT-SELTEXT_M = '价格单位'.
+  I_FIELDCAT-SELTEXT_L = '价格单位'.
+  "i_fieldcat-reptext_ddic = '价格单位'.
+  I_FIELDCAT-LZERO = 'X'.
+  I_FIELDCAT-KEY = 'X'.
+  APPEND I_FIELDCAT TO I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+
+  COLUMN = COLUMN + 1.
+  I_FIELDCAT-COL_POS = COLUMN.
+  I_FIELDCAT-FIELDNAME = 'DWJJ'.
+  I_FIELDCAT-SELTEXT_S = '单位净价'.
+  I_FIELDCAT-SELTEXT_M = '单位净价'.
+  I_FIELDCAT-SELTEXT_L = '单位净价'.
+  "i_fieldcat-reptext_ddic = '单位净价'.
+  I_FIELDCAT-LZERO = 'X'.
+  I_FIELDCAT-KEY = 'X'.
+  APPEND I_FIELDCAT TO I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+
+  COLUMN = COLUMN + 1.
+  I_FIELDCAT-COL_POS = COLUMN.
+  I_FIELDCAT-FIELDNAME = 'BPRME'.
+  I_FIELDCAT-SELTEXT_S = '计量单位'.
+  I_FIELDCAT-SELTEXT_M = '计量单位'.
+  I_FIELDCAT-SELTEXT_L = '计量单位'.
+  "i_fieldcat-reptext_ddic = '计量单位'.
+  I_FIELDCAT-LZERO = 'X'.
+  I_FIELDCAT-KEY = 'X'.
+  APPEND I_FIELDCAT TO I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+
+  COLUMN = COLUMN + 1.
+  I_FIELDCAT-COL_POS = COLUMN.
+  I_FIELDCAT-FIELDNAME = 'EKORG'.
+  I_FIELDCAT-SELTEXT_S = '采购组织'.
+  I_FIELDCAT-SELTEXT_M = '采购组织'.
+  I_FIELDCAT-SELTEXT_L = '采购组织'.
+  "i_fieldcat-reptext_ddic = '采购组织'.
+  I_FIELDCAT-LZERO = 'X'.
+  I_FIELDCAT-KEY = 'X'.
+  APPEND I_FIELDCAT TO I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+
+  COLUMN = COLUMN + 1.
+  I_FIELDCAT-COL_POS = COLUMN.
+  I_FIELDCAT-FIELDNAME = 'APLFZ'.
+  I_FIELDCAT-SELTEXT_S = '计划交货时间'.
+  I_FIELDCAT-SELTEXT_M = '计划交货时间'.
+  I_FIELDCAT-SELTEXT_L = '计划交货时间'.
+  "i_fieldcat-reptext_ddic = '计划交货时间'.
+  I_FIELDCAT-LZERO = 'X'.
+  I_FIELDCAT-KEY = 'X'.
+  I_FIELDCAT-EMPHASIZE = 'C211'.
+  APPEND I_FIELDCAT TO I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+
+  COLUMN = COLUMN + 1.
+  I_FIELDCAT-COL_POS = COLUMN.
+  I_FIELDCAT-FIELDNAME = 'ERDAT'.
+  I_FIELDCAT-SELTEXT_S = '创建日期'.
+  I_FIELDCAT-SELTEXT_M = '创建日期'.
+  I_FIELDCAT-SELTEXT_L = '创建日期'.
+  "i_fieldcat-reptext_ddic = '创建日期'.
+  I_FIELDCAT-LZERO = 'X'.
+  I_FIELDCAT-KEY = 'X'.
+  APPEND I_FIELDCAT TO I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+
+  COLUMN = COLUMN + 1.
+  I_FIELDCAT-COL_POS = COLUMN.
+  I_FIELDCAT-FIELDNAME = 'LOEKZ'.
+  I_FIELDCAT-SELTEXT_S = '删除标志'.
+  I_FIELDCAT-SELTEXT_M = '删除标志'.
+  I_FIELDCAT-SELTEXT_L = '删除标志'.
+  "i_fieldcat-reptext_ddic = '删除标志'.
+  I_FIELDCAT-LZERO = 'X'.
+  I_FIELDCAT-KEY = 'X'.
+  APPEND I_FIELDCAT TO I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+
+  COLUMN = COLUMN + 1.
+  I_FIELDCAT-COL_POS = COLUMN.
+  I_FIELDCAT-FIELDNAME = 'URZNR'.
+  I_FIELDCAT-SELTEXT_S = '批准标记'.
+  I_FIELDCAT-SELTEXT_M = '批准标记'.
+  I_FIELDCAT-SELTEXT_L = '批准标记'.
+  "i_fieldcat-reptext_ddic = '批准标记'.
+  I_FIELDCAT-LZERO = 'X'.
+  I_FIELDCAT-KEY = 'X'.
+  I_FIELDCAT-EMPHASIZE = 'C211'.
+  APPEND I_FIELDCAT TO I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+
+  COLUMN = COLUMN + 1.
+  I_FIELDCAT-COL_POS = COLUMN.
+  I_FIELDCAT-FIELDNAME = 'IICON'.
+<font color ="#0000FF">*  i_fieldcat-SELTEXT_S = '图标'.</font>
+<font color ="#0000FF">*  i_fieldcat-SELTEXT_M = 'ICON'.</font>
+  I_FIELDCAT-SELTEXT_L = 'ICON'.
+  I_FIELDCAT-HOTSPOT = 'X'.
+  I_FIELDCAT-ICON = 'X'.
+  "i_fieldcat-reptext_ddic = '批准标记'.
+  "i_fieldcat-LZERO = 'X'.
+  "i_fieldcat-KEY = 'X'.
+  "i_fieldcat-Emphasize = 'C211'.
+  APPEND I_FIELDCAT TO I_FIELDCAT_ALV.
+  CLEAR I_FIELDCAT.
+
+ENDFORM.                    "fieldcat_build
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&    FORM ALV DISPLAY DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------------*</font>
+FORM ALV_DISPLAY_DATA.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      I_CALLBACK_PROGRAM      = W_REPID
+      I_GRID_TITLE            = '采购信息记录汇总查询'
+      IS_LAYOUT               = I_LAYOUT
+      IT_FIELDCAT             = I_FIELDCAT_ALV[]
+      IT_EVENTS               = I_EVENTS[]
+          "I_SAVE  = 'A'
+      I_CALLBACK_USER_COMMAND = 'USER_COMMAND' "USER_COMMAND EVENT
+    TABLES
+      T_OUTTAB                = HD_ITAB[]
+    EXCEPTIONS
+      PROGRAM_ERROR           = 1
+      OTHERS                  = 2.
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+          WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+ENDFORM.                    "alv_display_data
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  user_command</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;I_UCOMM    text</font>
+<font color ="#0000FF">*      --&gt;I_SELFIELD text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM USER_COMMAND USING I_UCOMM TYPE SY-UCOMM I_SELFIELD TYPE SLIS_SELFIELD.
+
+  CASE I_UCOMM.
+    WHEN '&IC1'.  "对于热点链接，所对应的动作码为"&IC1"
+      IF I_SELFIELD-FIELDNAME EQ 'INFNR'. "判断用户当前单击的是哪列
+        PERFORM CALL_TRAN USING I_SELFIELD. "调用自定义事务
+      ENDIF.
+  ENDCASE.
+ENDFORM.                    "user_command
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  call_tran</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;I_SELFIELD text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CALL_TRAN USING I_SELFIELD TYPE SLIS_SELFIELD.
+  "SET SCREEN 0.  "返回主屏幕
+  READ TABLE HD_ITAB INDEX I_SELFIELD-TABINDEX.  "i_selfield-tabindex 当击行索引，从内表中提取数据
+
+  IF SY-SUBRC = 0.
+    SET PARAMETER ID 'MAT' FIELD HD_ITAB-MATNR. "MAT指参数ID
+    SET PARAMETER ID 'LIF' FIELD HD_ITAB-LIFNR.
+    SET PARAMETER ID 'EKO' FIELD HD_ITAB-EKORG.
+    SET PARAMETER ID 'INF' FIELD HD_ITAB-INFNR.
+
+    CALL TRANSACTION 'ME13'."AND SKIP FIRST SCREEN "调用其它事务 ME13是我们要调用的事务
+  ENDIF.
+ENDFORM.                    "call_tran
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  ALV_TOP_OF_PAGE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM ALV_TOP_OF_PAGE. "ALV表头信息
+  CLEAR:I_LIST_COMMENTS.
+  W_LIST_COMMENTS-TYP = 'H'.
+  W_LIST_COMMENTS-KEY = ''.
+  W_LIST_COMMENTS-INFO = '采购信息记录查询报表'.
+  APPEND W_LIST_COMMENTS TO I_LIST_COMMENTS.
+  CLEAR W_LIST_COMMENTS.
+
+  DATA:DATE_TEMP(30) TYPE C.
+  WRITE: SY-DATUM TO DATE_TEMP MM/DD/YYYY.
+  CONCATENATE '日期:' DATE_TEMP INTO DATE_TEMP.
+  CONCATENATE DATE_TEMP  '.   IT部' INTO DATE_TEMP.
+
+
+  W_LIST_COMMENTS-TYP = 'S'.
+  W_LIST_COMMENTS-KEY = ''.
+  W_LIST_COMMENTS-INFO = DATE_TEMP.
+  APPEND W_LIST_COMMENTS TO I_LIST_COMMENTS.
+  CLEAR W_LIST_COMMENTS.
+
+  CALL FUNCTION 'REUSE_ALV_COMMENTARY_WRITE'  "输出注释
+    EXPORTING
+      IT_LIST_COMMENTARY       = I_LIST_COMMENTS
+      I_LOGO                   = 'ENJOYSAP_LOGO'
+      I_END_OF_LIST_GRID       = 'X'
+<font color ="#0000FF">*     I_ALV_FORM               =</font>
+            .
+
+ENDFORM.                    "ALV_TOP_OF_PAGE
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  ALV_END_OF_LIST</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM ALV_END_OF_LIST.
+  CLEAR: I_LIST_COMMENTS.
+<font color ="#0000FF">*  w_list_comments-typ = 'S'.</font>
+<font color ="#0000FF">*  w_list_comments-info = 'Create By IT DEPARTMENT'.</font>
+<font color ="#0000FF">*  APPEND w_list_comments TO i_list_comments.</font>
+<font color ="#0000FF">*  CLEAR w_list_comments.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  CALL FUNCTION 'REUSE_ALV_COMMENTARY_WRITE'</font>
+<font color ="#0000FF">*    EXPORTING</font>
+<font color ="#0000FF">*      IT_LIST_COMMENTARY       = i_list_comments</font>
+<font color ="#0000FF">**      I_LOGO                   = 'ENJOYSAP_LOGO'</font>
+<font color ="#0000FF">*      I_END_OF_LIST_GRID       = 'X'</font>
+<font color ="#0000FF">**     I_ALV_FORM               =</font>
+<font color ="#0000FF">*            .</font>
+
+  CLEAR:I_LIST_COMMENTS.
+  W_LIST_COMMENTS-TYP = 'S'.
+  W_LIST_COMMENTS-INFO = '确认:________采购申请人:___________________'.
+  APPEND W_LIST_COMMENTS TO I_LIST_COMMENTS.
+  CLEAR W_LIST_COMMENTS.
+
+  W_LIST_COMMENTS-TYP = 'S'.
+  W_LIST_COMMENTS-INFO = 'Create By Information Department'.
+  APPEND W_LIST_COMMENTS TO I_LIST_COMMENTS.
+  CLEAR W_LIST_COMMENTS.
+
+  DATA:DATA_TEMP(30) TYPE C.
+  CONCATENATE '打印者：' SY-UNAME INTO DATA_TEMP.
+  W_LIST_COMMENTS-TYP = 'S'.
+  W_LIST_COMMENTS-INFO = DATA_TEMP.
+  APPEND W_LIST_COMMENTS TO I_LIST_COMMENTS.
+  CLEAR W_LIST_COMMENTS.
+
+  CALL FUNCTION 'REUSE_ALV_COMMENTARY_WRITE'
+    EXPORTING
+      IT_LIST_COMMENTARY = I_LIST_COMMENTS
+      I_LOGO             = 'ENJOYSAP_LOGO'
+      I_END_OF_LIST_GRID = 'X'
+<font color ="#0000FF">*     I_ALV_FORM         =</font>
+    .
+
+ENDFORM.                    "ALV_END_OF_LIST
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  events_build</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM EVENTS_BUILD.
+  CALL FUNCTION 'REUSE_ALV_EVENTS_GET' "输出一个内表类型是SLIS_T_EVENT，行项为SLIS_ALV_EVENT,包含两个字段，一个是事件名称，另一个是处理事件的FORM名称
+   EXPORTING
+     I_LIST_TYPE           = 0
+   IMPORTING
+     ET_EVENTS             = I_EVENTS
+   EXCEPTIONS
+     LIST_TYPE_WRONG       = 1
+     OTHERS                = 2
+            .
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+           WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+  READ TABLE I_EVENTS WITH KEY NAME = 'TOP_OF_PAGE' INTO W_EVENTS.
+
+  IF SY-SUBRC = 0.
+    MOVE 'ALV_TOP_OF_PAGE' TO W_EVENTS-FORM.
+    MODIFY I_EVENTS FROM W_EVENTS INDEX SY-TABIX.
+  ENDIF.
+
+  READ TABLE I_EVENTS INTO W_EVENTS WITH KEY NAME = 'USER_COMMAND'.
+
+  IF SY-SUBRC EQ 0.
+    W_EVENTS-NAME = 'USER_COMMAND'.
+    MODIFY I_EVENTS FROM W_EVENTS INDEX SY-TABIX.
+  ENDIF.
+
+  READ TABLE I_EVENTS WITH KEY NAME = 'END_OF_LIST' INTO W_EVENTS.
+
+  IF SY-SUBRC = 0.
+    MOVE 'ALV_END_OF_LIST' TO W_EVENTS-FORM.
+    MODIFY I_EVENTS FROM W_EVENTS INDEX SY-TABIX.
+  ENDIF.
+
+ENDFORM.                    "events_build
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

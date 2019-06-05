@@ -1,0 +1,129 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>Y_CBOII_TEST014</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: Y_CBOII_TEST014</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  批量新增采购订单</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  Y_CBOII_TEST014</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&批量新增库存转储订单</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  Y_CBOII_TEST014.
+
+DATA:LW_HEADER LIKE  BAPIMEPOHEADER,
+     LW_HEADERX LIKE  BAPIMEPOHEADERX,
+     LW_ITEMS LIKE BAPIMEPOITEM,
+     LW_ITEMSX LIKE BAPIMEPOITEMX,
+     LW_CHEDULE LIKE BAPIMEPOSCHEDULE,
+     LW_CHEDULEX LIKE BAPIMEPOSCHEDULX,
+     LW_RETURN LIKE BAPIRET2,
+
+     GT_ITEMS  LIKE TABLE OF BAPIMEPOITEM,
+     GT_ITEMSX  LIKE TABLE OF BAPIMEPOITEMX,
+     GT_RETURN   LIKE TABLE OF BAPIRET2,
+     GT_CHEDULE  LIKE TABLE OF BAPIMEPOSCHEDULE,
+     GT_CHEDULEX  LIKE TABLE OF BAPIMEPOSCHEDULX.
+
+DATA:LV_NUM TYPE BAPIMEPOHEADER-PO_NUMBER.
+
+
+
+START-OF-SELECTION.
+  LW_HEADER-DOC_TYPE = 'UB'.        "采购订单类型
+  LW_HEADER-SUPPL_PLNT = '1000'.       "供应商/供货工厂
+  LW_HEADER-PURCH_ORG = '1001'.       "采购组织
+  LW_HEADER-PUR_GROUP = 'B01'.       "采购组
+  LW_HEADER-COMP_CODE = '1000'.       "公司代码
+  LW_HEADER-CURRENCY = 'CNY'.
+  LW_HEADER-DOC_DATE =  SY-DATUM.        "凭证日期 默认当前日期
+  LW_HEADER-LANGU = SY-LANGU.
+  LW_HEADER-STATUS = '9'.            " 状态
+
+
+  LW_HEADERX-DOC_TYPE = 'X'.        "采购订单类型
+  LW_HEADERX-SUPPL_PLNT = 'X'.       "供应商/供货工厂
+  LW_HEADERX-PURCH_ORG = 'X'.       "采购组织
+  LW_HEADERX-PUR_GROUP = 'X'.       "采购组
+  LW_HEADERX-COMP_CODE = 'X'.       "公司代码
+  LW_HEADERX-CURRENCY = 'X'.
+  LW_HEADERX-DOC_DATE =  'X'.        "凭证日期 默认当前日期
+  LW_HEADERX-LANGU = 'X'.
+  LW_HEADERX-STATUS = 'X'.
+
+
+  LW_ITEMS-PO_ITEM =  '00010'.     "行项目号
+  LW_ITEMS-MATERIAL = '101001025020046'.         "物料号
+  CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+    EXPORTING
+      INPUT  = LW_ITEMS-MATERIAL
+    IMPORTING
+      OUTPUT = LW_ITEMS-MATERIAL.
+  LW_ITEMS-QUANTITY = 521.         "采购订单数量
+  LW_ITEMS-PO_UNIT = 'EA'.          "采购订单的计量单位
+  LW_ITEMS-PLANT = 'L002'.         "工厂
+  LW_ITEMS-STGE_LOC = 'L010'.       "库存地点
+  APPEND LW_ITEMS TO GT_ITEMS.
+
+  LW_ITEMSX-PO_ITEM =  '00010'.
+  LW_ITEMSX-MATERIAL = 'X'.
+  LW_ITEMSX-PLANT = 'X'.
+  LW_ITEMSX-STGE_LOC = 'X'.
+  LW_ITEMSX-QUANTITY = 'X'.
+  LW_ITEMS-PO_UNIT = 'X'.
+<font color ="#0000FF">*    lw_itemsX-ITEM_CAT = 'X'.</font>
+  APPEND LW_ITEMSX TO GT_ITEMSX.
+
+  LW_CHEDULE-PO_ITEM = '00010'.                "行项目号
+  LW_CHEDULE-SCHED_LINE = 0001.                 "采购凭证的项目编号
+  lw_chedule-DEL_DATCAT_EXT = 'D'.
+  LW_CHEDULE-DELIVERY_DATE = SY-DATUM.         "交货日期 todo：待修改
+  APPEND LW_CHEDULE TO GT_CHEDULE.
+
+  LW_CHEDULEX-PO_ITEM = '00010'.
+  LW_CHEDULEX-SCHED_LINE = 0001.
+  lw_cheduleX-DEL_DATCAT_EXT = 'X'.
+  LW_CHEDULEX-DELIVERY_DATE = 'X'.
+  APPEND LW_CHEDULEX TO GT_CHEDULEX.
+
+
+    CALL FUNCTION 'BAPI_PO_CREATE1'
+    EXPORTING
+      POHEADER         = LW_HEADER
+      POHEADERX        = LW_HEADERX
+      NO_PRICE_FROM_PO = 'X'
+    IMPORTING
+      EXPPURCHASEORDER = LV_NUM
+    TABLES
+      RETURN           = GT_RETURN
+      POITEM           = GT_ITEMS
+      POITEMX          = GT_ITEMSX
+      POSCHEDULE       = GT_CHEDULE
+      POSCHEDULEX      = GT_CHEDULEX.
+
+IF SY-SUBRC = 0.
+  CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+   EXPORTING
+     WAIT          = 'X'.
+  WRITE LV_NUM.
+  ELSE.
+<font color ="#0000FF">*      LOOP AT GT_RETURN INTO LW_RETURN.</font>
+<font color ="#0000FF">*    WRITE: / SY-TABIX,':gt_return-TYPE=',LW_RETURN-TYPE,</font>
+<font color ="#0000FF">*           / SY-TABIX,':gt_return-MESSAGE=',LW_RETURN-MESSAGE.</font>
+<font color ="#0000FF">*  ENDLOOP.</font>
+   CALL FUNCTION 'BAPI_TRANSACTION_ROLLBACK'.
+ENDIF.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

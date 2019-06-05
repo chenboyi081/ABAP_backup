@@ -1,0 +1,2083 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZSD020_DATA_FORM</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZSD020_DATA_FORM</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZSD020_DATA_FORM</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZSD020_DATA_FORM</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+FORM GET_DATA_WKP.
+  TYPES: BEGIN OF TY_LIKP,
+          VBELN TYPE LIKP-VBELN,
+          WADAT_IST TYPE LIKP-WADAT_IST,
+          KNKLI TYPE LIKP-KNKLI,    " add by huangcz 20121207
+         END OF TY_LIKP.
+  DATA: LT_LIKP TYPE STANDARD TABLE OF TY_LIKP,
+        LW_LIKP TYPE TY_LIKP.
+  DATA:L_ZXH TYPE I.
+<font color ="#0000FF">*获取符合条件的记录</font>
+  SELECT VBELN                                       "开票凭证
+         KUNNR AS ZSDF                               "售达方
+         FKART                                       "开票类别
+         FKDAT                                       "出具发票日期
+         FKTYP                                       "出具发票类别
+         VKORG                                       "销售组织
+         VTWEG                                       "分销渠道
+         SPART                                       "产品组
+         VBTYP                                       "凭证类别
+         VSTEL                                       "装运点
+    INTO CORRESPONDING FIELDS OF TABLE GT_WKP
+    FROM VKDFS
+  WHERE VBELN IN S_PZH
+    AND KUNNR IN S_SDF
+    AND VKORG IN S_XSZZ
+    AND FKART IN S_KPLB
+    AND FKDAT IN S_CJFPRQ
+    AND FKTYP IN S_CJFPLB.
+
+  IF GT_WKP IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  SELECT KUNNR
+         SORTL
+         NAME1
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE GT_KNA1 “del by yetp 20180709</font>
+    INTO TABLE GT_KNA1 "add by yetp 20180709
+    FROM KNA1.
+  SORT GT_KNA1 BY KUNNR.
+
+  "如果是与订单相关(A)的发票类型
+  PERFORM GET_DATA_A.
+  "如果是公司间(I)的发票类型
+  PERFORM GET_DATA_I.
+  "如果是与交货相关(L)的发票类型
+  PERFORM GET_DATA_L.
+
+  "删除未开票数量为0的数据
+  DELETE GT_ALV_WKP WHERE ZWKQTY IS INITIAL. "add by yetp 2015630
+
+  IF GT_ALV_WKP IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  " 获取单位文本
+  SELECT MSEHI
+         MSEHL
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE GT_T006A  ”del by yetp 20180709</font>
+    INTO TABLE GT_T006A  "add by yetp 20180710
+    FROM T006A
+  WHERE SPRAS = '1'.
+  SORT GT_T006A BY MSEHI.
+
+  SELECT FKART
+         VTEXT
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE GT_TVFKT  " del by yetp 201807011</font>
+    INTO TABLE GT_TVFKT
+    FROM TVFKT
+    FOR ALL ENTRIES IN GT_WKP
+  WHERE FKART = GT_WKP-FKART
+    AND SPRAS = '1'.
+  SORT GT_TVFKT BY FKART.
+
+
+
+  IF S_GZRQ IS NOT INITIAL.
+    DELETE GT_ALV_WKP WHERE ZGZRQ NOT IN S_GZRQ.
+  ENDIF.
+
+  " 如果选择屏幕上销售凭证不为空，则删除其余
+  IF S_VBELN IS NOT INITIAL.
+    DELETE GT_ALV_WKP WHERE ZCKDJ NOT IN S_VBELN.
+  ENDIF.
+
+<font color ="#0000FF">***del by yetp 20180711***start</font>
+<font color ="#0000FF">*  IF GT_ALV_WKP IS INITIAL.</font>
+<font color ="#0000FF">*    MESSAGE S050 DISPLAY LIKE 'E'.</font>
+<font color ="#0000FF">*    STOP.</font>
+<font color ="#0000FF">*  ENDIF.</font>
+<font color ="#0000FF">***del by yetp 20180711***end</font>
+
+  SORT GT_WKP BY VBELN.
+
+<font color ="#0000FF">*  SORT gt_alv_wkp BY vbeln.</font>
+<font color ="#0000FF">*  DELETE ADJACENT DUPLICATES FROM gt_alv_wkp COMPARING ALL FIELDS.</font>
+  LOOP AT GT_ALV_WKP ASSIGNING &lt;FS_ALV_WKP&gt;.
+    " 删除付款方不在选择条件内的
+    IF S_FKF IS NOT INITIAL.
+      IF &lt;FS_ALV_WKP&gt;-ZFKF NOT IN S_FKF.
+        DELETE GT_ALV_WKP.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+
+    " 设置各种参数
+    READ TABLE GT_WKP INTO W_WKP WITH KEY VBELN = &lt;FS_ALV_WKP&gt;-VBELN BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_ALV_WKP&gt;-FKART = W_WKP-FKART.   "开票类别
+      &lt;FS_ALV_WKP&gt;-FKDAT = W_WKP-FKDAT.   "出具发票日期
+      &lt;FS_ALV_WKP&gt;-FKTYP = W_WKP-FKTYP.   "出具发票类别
+      &lt;FS_ALV_WKP&gt;-VKORG = W_WKP-VKORG.   "销售组织
+      &lt;FS_ALV_WKP&gt;-VTWEG = W_WKP-VTWEG.   "分销渠道
+      &lt;FS_ALV_WKP&gt;-SPART = W_WKP-SPART.   "产品组
+      &lt;FS_ALV_WKP&gt;-VBTYP = W_WKP-VBTYP.   "凭证类别
+      &lt;FS_ALV_WKP&gt;-VSTEL = W_WKP-VSTEL.   "装运点
+    ENDIF.
+
+    L_ZXH = L_ZXH + 1.
+    &lt;FS_ALV_WKP&gt;-ZXH = L_ZXH.
+    &lt;FS_ALV_WKP&gt;-ZHJJE = &lt;FS_ALV_WKP&gt;-ZWKPJJ + &lt;FS_ALV_WKP&gt;-ZWKPSJ.
+    IF &lt;FS_ALV_WKP&gt;-FKART = 'S1' OR
+      &lt;FS_ALV_WKP&gt;-FKART = 'S3' OR
+      &lt;FS_ALV_WKP&gt;-FKART = 'G2' OR
+      &lt;FS_ALV_WKP&gt;-FKART = 'IVS' OR "add by yetp20150401
+      &lt;FS_ALV_WKP&gt;-FKART = 'ZRE' OR
+      &lt;FS_ALV_WKP&gt;-FKART = 'IG' "add byyetp20160426
+      .
+      &lt;FS_ALV_WKP&gt;-ZHJJE = 0 - &lt;FS_ALV_WKP&gt;-ZHJJE.
+      &lt;FS_ALV_WKP&gt;-ZWKPJJ = 0 - &lt;FS_ALV_WKP&gt;-ZWKPJJ.
+      &lt;FS_ALV_WKP&gt;-ZWKPSJ = 0 - &lt;FS_ALV_WKP&gt;-ZWKPSJ.
+    ENDIF.
+
+    "ig类型的数量为负
+    IF &lt;FS_ALV_WKP&gt;-FKART = 'IG'.
+      &lt;FS_ALV_WKP&gt;-ZWKQTY = 0 - &lt;FS_ALV_WKP&gt;-ZWKQTY. "add by yetp 20160429
+    ENDIF.
+
+    " 设置单位文本
+    READ TABLE GT_T006A INTO W_T006A WITH KEY MSEHI = &lt;FS_ALV_WKP&gt;-VRKME BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_ALV_WKP&gt;-MSEHL = W_T006A-MSEHL.
+    ENDIF.
+
+    "设置文本
+    READ TABLE GT_TVFKT INTO W_TVFKT WITH KEY FKART = &lt;FS_ALV_WKP&gt;-FKART BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_ALV_WKP&gt;-VTEXT = W_TVFKT-VTEXT.
+    ENDIF.
+
+    IF &lt;FS_ALV_WKP&gt;-AUGRU = '007'.
+      &lt;FS_ALV_WKP&gt;-COLOR = 'C610'.
+    ELSEIF &lt;FS_ALV_WKP&gt;-AUGRU = '008'.
+      &lt;FS_ALV_WKP&gt;-COLOR = 'C310'.
+    ENDIF.
+  ENDLOOP.
+
+
+  IF GT_ALV_WKP IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+ENDFORM.                    "get_data_wkp
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_data_ykp</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA_YKP.
+  TYPES:BEGIN OF TY_KPF,
+        ZKPF TYPE VBPA-KUNNR,
+        VBELN TYPE VBPA-VBELN,
+        END OF TY_KPF,
+
+        BEGIN OF TY_FKF,
+        ZFKF TYPE VBPA-KUNNR,
+        VBELN TYPE VBPA-VBELN,
+        END OF TY_FKF,
+
+        BEGIN OF TY_VBAK,
+          VBELN TYPE VBAK-VBELN,    " 销售凭证
+          AUGRU TYPE VBAK-AUGRU,    " 订购原因
+        END OF TY_VBAK,
+
+        BEGIN OF TY_LIPS,
+          VBELN TYPE LIPS-VBELN,
+          POSNR TYPE LIPS-POSNR,
+          VGBEL TYPE LIPS-VGBEL,  " 参考单据的单据编号
+          VGPOS TYPE LIPS-VGPOS,  " 参考项目的项目号
+          WADAT_IST TYPE LIKP-WADAT_IST,  " 实际货物移动日期
+        END OF TY_LIPS.
+
+  DATA:LT_KPF TYPE STANDARD TABLE OF TY_KPF,
+       LW_KPF TYPE TY_KPF,
+       L_ZXH TYPE I,
+       L_DEL(10),
+       LT_FKF TYPE STANDARD TABLE OF TY_FKF,
+       LW_FKF TYPE TY_FKF,
+       LT_VBAK TYPE STANDARD TABLE OF TY_VBAK,
+       LW_VBAK TYPE TY_VBAK,
+       LT_LIPS TYPE STANDARD TABLE OF TY_LIPS,
+       LW_LIPS TYPE TY_LIPS.
+  CLEAR:GT_KNA1,GT_TVFKT.
+<font color ="#0000FF">*获取满足条件的所有的记录</font>
+  SELECT VBRP~VBELN                                               "发票凭证号
+         POSNR                                                    "项目
+         KUNAG                                                    "售达方
+         MATNR                                                    "物料号
+         VKORG_AUFT                                               "销售组织
+         FKART                                                    "开票类别
+         FKDAT                                                    "出具发票日期
+         FKTYP                                                    "出具发票类别
+         PRODH                                                    "产品层次
+         VBRP~NETWR                                               "凭证净价
+         MWSBP                                                    "凭证税金
+         ARKTX                                                    "物料描述
+         FKIMG                                                    "开票数量
+         VRKME                                                    "销售单位
+         PRODH                                                    "产品层次
+         WERKS                                                    "工厂
+         VGBEL                                                    "参考凭证
+         VGPOS                                                    "参考凭证行项目
+         VBRP~ERNAM                                               "创建者
+         WAERK                                                    "货币
+         SFAKN                                                    "已取消的出具发票凭证编号
+         FKSTO                                                    " 出具发票凭证被取消  add by yetp 20180711
+        AUGRU_AUFT AS AUGRU
+<font color ="#0000FF">******************************** add by huangcz 20121206 begin ***************************************</font>
+       VBRK~KNKLI
+<font color ="#0000FF">******************************** add by huangcz 20121206 end ***************************************</font>
+    INTO CORRESPONDING FIELDS OF TABLE GT_YKP
+    FROM VBRP INNER JOIN VBRK
+    ON VBRP~VBELN = VBRK~VBELN
+  WHERE VBRP~VBELN IN S_PZH
+    AND KUNAG IN S_SDF
+    AND MATNR IN S_WLBM
+    AND VKORG_AUFT IN S_XSZZ
+    AND FKART IN S_KPLB
+    AND FKDAT IN S_CJFPRQ
+    AND FKTYP IN S_CJFPLB
+    AND PRODH IN S_CPCC
+    AND VBRK~KNKLI IN S_KNKLI.
+
+
+<font color ="#0000FF">***del by yetp 20180711****start</font>
+<font color ="#0000FF">*  IF GT_YKP IS INITIAL.</font>
+<font color ="#0000FF">*    MESSAGE S050 DISPLAY LIKE 'E'.</font>
+<font color ="#0000FF">*    STOP.</font>
+<font color ="#0000FF">*  ENDIF.</font>
+<font color ="#0000FF">***del by yetp 20180711****end</font>
+
+  SORT GT_YKP BY VBELN.
+<font color ="#0000FF">*  DELETE ADJACENT DUPLICATES FROM gt_ykp COMPARING ALL FIELDS.   " delete by huangcz</font>
+  IF P_CHECK = 'X'.
+
+<font color ="#0000FF">***add by yetp 20180711***start</font>
+    DELETE GT_YKP WHERE SFAKN IS NOT INITIAL OR FKSTO IS NOT INITIAL.
+<font color ="#0000FF">***add by yetp 20180711***end</font>
+
+
+<font color ="#0000FF">***del by yetp 20180711****start</font>
+<font color ="#0000FF">*    LOOP AT GT_YKP INTO W_YKP WHERE SFAKN IS NOT INITIAL.</font>
+<font color ="#0000FF">*      L_DEL = W_YKP-SFAKN.</font>
+<font color ="#0000FF">*      DELETE GT_YKP.</font>
+<font color ="#0000FF">*      DELETE GT_YKP WHERE VBELN = L_DEL.</font>
+<font color ="#0000FF">*    ENDLOOP.</font>
+    " 没有数据，则返回
+<font color ="#0000FF">*    IF GT_YKP IS INITIAL.</font>
+<font color ="#0000FF">*      MESSAGE S050 DISPLAY LIKE 'E'.</font>
+<font color ="#0000FF">*      STOP.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">***del by yetp 20180711****end</font>
+  ENDIF.
+
+  " 获取订单原因
+<font color ="#0000FF">*  SELECT vbak~vbeln</font>
+<font color ="#0000FF">*      augru</font>
+<font color ="#0000FF">*      INTO TABLE lt_vbak</font>
+<font color ="#0000FF">*      FROM vbak INNER JOIN lips</font>
+<font color ="#0000FF">*      on vbak~vbeln = lips~VGBEL</font>
+<font color ="#0000FF">*      FOR ALL ENTRIES IN gt_ykp</font>
+<font color ="#0000FF">*    WHERE vbeln = gt_ykp-vgbel</font>
+<font color ="#0000FF">*      AND augru = '007'.    " 已退换货</font>
+
+  " 删除订单原因
+  IF P_THH = 'X'.
+    DELETE GT_YKP WHERE AUGRU = '007'.
+
+<font color ="#0000FF">***del by yetp 20180711****start</font>
+    " 没有数据，则返回
+<font color ="#0000FF">*    IF GT_YKP IS INITIAL.</font>
+<font color ="#0000FF">*      MESSAGE S050 DISPLAY LIKE 'E'.</font>
+<font color ="#0000FF">*      STOP.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">***del by yetp 20180711****end</font>
+  ENDIF.
+
+<font color ="#0000FF">***add by yetp 20180711****start</font>
+  IF GT_YKP IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+<font color ="#0000FF">***add by yetp 20180711****end</font>
+
+  SELECT MSEHI
+         MSEHL
+    INTO TABLE GT_T006A
+    FROM T006A
+<font color ="#0000FF">*    FOR ALL ENTRIES IN gt_ykp   " delete by huangcz</font>
+  WHERE SPRAS = '1'.
+<font color ="#0000FF">*    AND msehi = gt_ykp-vrkme.</font>
+  SORT GT_T006A BY MSEHI.
+
+  SELECT KUNNR
+         SORTL                                                    "检索项
+         NAME1
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE GT_KNA1   "del by yetp 20180711</font>
+     INTO TABLE GT_KNA1  "add by yetp 20180711
+    FROM KNA1.
+  SORT GT_KNA1 BY KUNNR.
+
+  SELECT FKART
+         VTEXT
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE GT_TVFKT "del by yetp 20180711</font>
+    INTO TABLE GT_TVFKT
+    FROM TVFKT
+<font color ="#0000FF">*    FOR ALL ENTRIES IN gt_wkp    " delete by huangcz 20130124</font>
+  WHERE SPRAS = '1'.
+<font color ="#0000FF">*    AND fkart = gt_wkp-fkart.</font>
+  SORT GT_TVFKT BY FKART.
+
+  SELECT
+    KUNNR AS ZKPF
+    VBELN
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE LT_KPF "del by yetp 20180711</font>
+    INTO TABLE LT_KPF  "add by yetp 20180711
+    FROM VBPA
+    FOR ALL ENTRIES IN GT_YKP
+  WHERE VBELN = GT_YKP-VBELN
+    AND PARVW = 'RE'.
+  SORT LT_KPF BY VBELN.
+
+  SELECT
+    KUNNR AS ZFKF
+    VBELN
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE LT_FKF "del by yetp 20180711</font>
+    INTO TABLE LT_FKF
+    FROM VBPA
+    FOR ALL ENTRIES IN GT_YKP
+  WHERE VBELN = GT_YKP-VBELN
+    AND PARVW = 'RG'.
+  SORT LT_FKF BY VBELN.
+
+  " 获取外向交货单的前数据
+  SELECT LIPS~VBELN
+    POSNR
+    VGBEL
+    VGPOS
+    WADAT_IST " 实际货物移动日期
+    INTO TABLE LT_LIPS
+    FROM LIPS INNER JOIN LIKP
+    ON LIPS~VBELN = LIKP~VBELN
+    FOR ALL ENTRIES IN GT_YKP
+  WHERE LIPS~VBELN = GT_YKP-VGBEL
+    AND POSNR = GT_YKP-VGPOS.
+  SORT LT_LIPS BY VBELN POSNR.
+
+  LOOP AT GT_YKP ASSIGNING &lt;FS_YKP&gt;.
+    " 删除‘取消发票’类型
+    IF P_CHECK = 'X' AND  &lt;FS_YKP&gt;-FKART = 'S1'.
+      DELETE GT_YKP.
+      CONTINUE.
+    ENDIF.
+
+    L_ZXH = L_ZXH + 1.
+    &lt;FS_YKP&gt;-ZXH = L_ZXH.
+    &lt;FS_YKP&gt;-ZHJJE = &lt;FS_YKP&gt;-NETWR + &lt;FS_YKP&gt;-MWSBP.
+    IF &lt;FS_YKP&gt;-FKART = 'S1' OR
+      &lt;FS_YKP&gt;-FKART = 'S3' OR
+      &lt;FS_YKP&gt;-FKART = 'G2' OR
+      &lt;FS_YKP&gt;-FKART = 'IVS' OR "add by yetp 20150401
+      &lt;FS_YKP&gt;-FKART = 'ZRE'OR
+      &lt;FS_YKP&gt;-FKART = 'IG'. "add by yetp 20160426
+      &lt;FS_YKP&gt;-ZHJJE = 0 - &lt;FS_YKP&gt;-ZHJJE.
+      &lt;FS_YKP&gt;-NETWR = 0 - &lt;FS_YKP&gt;-NETWR.
+      &lt;FS_YKP&gt;-MWSBP = 0 - &lt;FS_YKP&gt;-MWSBP.
+    ENDIF.
+
+    "ig类型已开票类型数量为负
+    IF &lt;FS_YKP&gt;-FKART = 'IG'.
+      &lt;FS_YKP&gt;-FKIMG = 0 - &lt;FS_YKP&gt;-FKIMG.
+    ENDIF.
+
+    READ TABLE LT_KPF INTO LW_KPF WITH KEY VBELN = &lt;FS_YKP&gt;-VBELN BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_YKP&gt;-ZKPF = LW_KPF-ZKPF.
+    ENDIF.
+
+    READ TABLE LT_FKF INTO LW_FKF WITH KEY VBELN = &lt;FS_YKP&gt;-VBELN BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_YKP&gt;-ZFKF = LW_FKF-ZFKF.
+    ENDIF.
+
+    " 删除付款方不在选择条件内的
+    IF S_FKF IS NOT INITIAL.
+      IF &lt;FS_YKP&gt;-ZFKF NOT IN S_FKF.
+        DELETE GT_YKP.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+
+    READ TABLE GT_T006A INTO W_T006A WITH KEY MSEHI = &lt;FS_YKP&gt;-VRKME BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_YKP&gt;-MSEHL = W_T006A-MSEHL.
+    ENDIF.
+
+    READ TABLE GT_KNA1 INTO W_KNA1 WITH KEY KUNNR = &lt;FS_YKP&gt;-KUNAG BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_YKP&gt;-SORTL = W_KNA1-SORTL.
+      &lt;FS_YKP&gt;-ZSDFNM = W_KNA1-NAME1.
+    ENDIF.
+
+    READ TABLE GT_TVFKT INTO W_TVFKT WITH KEY FKART = &lt;FS_YKP&gt;-FKART BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_YKP&gt;-VTEXT = W_TVFKT-VTEXT.
+    ENDIF.
+    "回写开票方名称
+    READ TABLE GT_KNA1 INTO W_KNA1 WITH KEY KUNNR = &lt;FS_YKP&gt;-ZKPF BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_YKP&gt;-ZKPFNM = W_KNA1-NAME1.
+    ENDIF.
+    "回写付款方名称
+    READ TABLE GT_KNA1 INTO W_KNA1 WITH KEY KUNNR = &lt;FS_YKP&gt;-ZFKF BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_YKP&gt;-ZFKFNM = W_KNA1-NAME1.
+    ENDIF.
+    "获取发票的金税号码
+    PERFORM READ_JS CHANGING &lt;FS_YKP&gt;.
+
+    " 设置颜色
+    IF &lt;FS_YKP&gt;-AUGRU = '007'.
+      &lt;FS_YKP&gt;-COLOR = 'C610'.
+    ELSEIF &lt;FS_YKP&gt;-AUGRU = '008'.
+      &lt;FS_YKP&gt;-COLOR = 'C310'.
+    ENDIF.
+
+    " 设置外向交货单的参考单据
+    READ TABLE LT_LIPS INTO LW_LIPS WITH KEY VBELN = &lt;FS_YKP&gt;-VGBEL
+                                             POSNR = &lt;FS_YKP&gt;-VGPOS BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_YKP&gt;-ZCKDJ = LW_LIPS-VGBEL.
+      &lt;FS_YKP&gt;-ZCKXM = LW_LIPS-VGPOS.
+      &lt;FS_YKP&gt;-ZGZRQ = LW_LIPS-WADAT_IST.
+    ENDIF.
+  ENDLOOP.
+
+  " 如果销售凭证不为空，则删除其余的
+  IF S_VBELN IS NOT INITIAL.
+    DELETE GT_YKP WHERE ZCKDJ NOT IN S_VBELN.
+  ENDIF.
+
+  " 如果过账日期不为空，删除不在范围内的
+  IF S_GZRQ IS NOT INITIAL.
+    DELETE GT_YKP WHERE ZGZRQ NOT IN S_GZRQ.
+  ENDIF.
+
+  IF GT_YKP IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+ENDFORM.                    "get_data_ykp
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  display_alv</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_ALV.
+  PERFORM FILL_LAYOUT.
+
+
+  IF P_CB1 = 'X'.   "明细
+
+    PERFORM FILL_FIELDCAT.
+    IF P_WKP = 'X'.
+      PERFORM SHOW_WKP.
+    ELSE.
+      PERFORM SHOW_YKP.
+    ENDIF.
+  ELSE.    "汇总
+    PERFORM FILL_FIELDCAT_ZONG.
+    IF P_WKP = 'X'.
+      PERFORM SHOW_WKP_ZONG.
+    ELSE.
+      PERFORM SHOW_YKP_ZONG.
+    ENDIF.
+
+  ENDIF.
+
+ENDFORM.                    "display_alv
+
+<font color ="#0000FF">*********add   2015-11-21*******************</font>
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  fill_fieldcat</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FILL_FIELDCAT_ZONG.
+  DATA:L_COLPOS TYPE SLIS_FIELDCAT_ALV-COL_POS.
+  CLEAR:GT_FIELDCAT.
+  IF P_WKP = 'X'.
+    MACRO_FILL_FIELDCAT:
+   L_COLPOS 'FKDAT' '出具发票日期' '' 8,
+   L_COLPOS 'ZCKDJ' '销售凭证' 'X' 10,
+   L_COLPOS 'VBELN' '参考开票凭证' 'X' 10,
+   L_COLPOS 'ZSDF' '售达方' 'X' 10,
+   L_COLPOS 'ZSDFNM' '售达方名称' '' 35,
+   L_COLPOS 'SORTL' '检索项' '' 10,
+   L_COLPOS 'ZHJJE' '合计金额' '' 15.
+  ELSE.
+    MACRO_FILL_FIELDCAT:
+    L_COLPOS 'FKDAT' '出具发票日期' '' 8,
+    L_COLPOS 'ZCKDJ' '销售凭证' 'X' 10,
+    L_COLPOS 'VBELN' '参考开票凭证' 'X' 10,
+    L_COLPOS 'KUNAG' '售达方' 'X' 10,
+    L_COLPOS 'ZSDFNM' '售达方名称' '' 35,
+    L_COLPOS 'SORTL' '检索项' '' 10,
+    L_COLPOS 'ZHJJE' '合计金额' '' 15.
+  ENDIF.
+
+
+  CLEAR W_FIELDCAT.
+  L_COLPOS = L_COLPOS + 1.
+  W_FIELDCAT-COL_POS    = L_COLPOS.
+  W_FIELDCAT-FIELDNAME  = 'COLOR'.
+  APPEND W_FIELDCAT TO GT_FIELDCAT.
+
+ENDFORM.                    "fill_fieldcat
+
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  show_wkp</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_WKP_ZONG.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+
+     I_CALLBACK_PROGRAM                = SY-REPID
+     I_CALLBACK_PF_STATUS_SET          = 'SET_PF_STATUS'
+     I_CALLBACK_USER_COMMAND           = 'ALV_USER_COMMAND'
+
+     IS_LAYOUT                         = W_LAYOUT
+     IT_FIELDCAT                       = GT_FIELDCAT
+
+    TABLES
+      T_OUTTAB                          = GT_ALV_WKP_ZONG
+<font color ="#0000FF">*   EXCEPTIONS</font>
+<font color ="#0000FF">*     PROGRAM_ERROR                     = 1</font>
+<font color ="#0000FF">*     OTHERS                            = 2</font>
+            .
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+ENDFORM.                    "show_wkp
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  show_ykp</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_YKP_ZONG.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+
+     I_CALLBACK_PROGRAM                = SY-REPID
+     I_CALLBACK_PF_STATUS_SET          = 'SET_PF_STATUS'
+
+     IS_LAYOUT                         = W_LAYOUT
+     IT_FIELDCAT                       = GT_FIELDCAT
+
+    TABLES
+      T_OUTTAB                          = GT_YKP_ZONG
+<font color ="#0000FF">*   EXCEPTIONS</font>
+<font color ="#0000FF">*     PROGRAM_ERROR                     = 1</font>
+<font color ="#0000FF">*     OTHERS                            = 2</font>
+            .
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+ENDFORM.                    "show_ykp
+
+
+<font color ="#0000FF">*********end   2015-11-21*******************</font>
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  show_wkp</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_WKP.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+<font color ="#0000FF">*     I_INTERFACE_CHECK                 = ' '</font>
+<font color ="#0000FF">*     I_BYPASSING_BUFFER                = ' '</font>
+<font color ="#0000FF">*     I_BUFFER_ACTIVE                   = ' '</font>
+     I_CALLBACK_PROGRAM                = SY-REPID
+     I_CALLBACK_PF_STATUS_SET          = 'SET_PF_STATUS'
+     I_CALLBACK_USER_COMMAND           = 'ALV_USER_COMMAND'
+<font color ="#0000FF">*     I_CALLBACK_TOP_OF_PAGE            = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE       = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_END_OF_LIST       = ' '</font>
+<font color ="#0000FF">*     I_STRUCTURE_NAME                  =</font>
+<font color ="#0000FF">*     I_BACKGROUND_ID                   = ' '</font>
+<font color ="#0000FF">*     I_GRID_TITLE                      =</font>
+<font color ="#0000FF">*     I_GRID_SETTINGS                   = gs_grid_settings</font>
+     IS_LAYOUT                         = W_LAYOUT
+     IT_FIELDCAT                       = GT_FIELDCAT
+<font color ="#0000FF">*     IT_EXCLUDING                      =</font>
+<font color ="#0000FF">*     IT_SPECIAL_GROUPS                 =</font>
+<font color ="#0000FF">*     IT_SORT                           =</font>
+<font color ="#0000FF">*     IT_FILTER                         =</font>
+<font color ="#0000FF">*     IS_SEL_HIDE                       =</font>
+<font color ="#0000FF">*     I_DEFAULT                         = 'X'</font>
+<font color ="#0000FF">*     I_SAVE                            = ' '</font>
+<font color ="#0000FF">*     IS_VARIANT                        =</font>
+<font color ="#0000FF">*     IT_EVENTS                         =</font>
+<font color ="#0000FF">*     IT_EVENT_EXIT                     =</font>
+<font color ="#0000FF">*     IS_PRINT                          =</font>
+<font color ="#0000FF">*     IS_REPREP_ID                      =</font>
+<font color ="#0000FF">*     I_SCREEN_START_COLUMN             = 0</font>
+<font color ="#0000FF">*     I_SCREEN_START_LINE               = 0</font>
+<font color ="#0000FF">*     I_SCREEN_END_COLUMN               = 0</font>
+<font color ="#0000FF">*     I_SCREEN_END_LINE                 = 0</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_TOP                 = 0</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_END                 = 0</font>
+<font color ="#0000FF">*     IT_ALV_GRAPHICS                   =</font>
+<font color ="#0000FF">*     IT_HYPERLINK                      =</font>
+<font color ="#0000FF">*     IT_ADD_FIELDCAT                   =</font>
+<font color ="#0000FF">*     IT_EXCEPT_QINFO                   =</font>
+<font color ="#0000FF">*     IR_SALV_FULLSCREEN_ADAPTER        =</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">*     ES_EXIT_CAUSED_BY_USER            =</font>
+    TABLES
+      T_OUTTAB                          = GT_ALV_WKP
+<font color ="#0000FF">*   EXCEPTIONS</font>
+<font color ="#0000FF">*     PROGRAM_ERROR                     = 1</font>
+<font color ="#0000FF">*     OTHERS                            = 2</font>
+            .
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+ENDFORM.                    "show_wkp
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  show_ykp</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_YKP.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+<font color ="#0000FF">*     I_INTERFACE_CHECK                 = ' '</font>
+<font color ="#0000FF">*     I_BYPASSING_BUFFER                = ' '</font>
+<font color ="#0000FF">*     I_BUFFER_ACTIVE                   = ' '</font>
+     I_CALLBACK_PROGRAM                = SY-REPID
+     I_CALLBACK_PF_STATUS_SET          = 'SET_PF_STATUS'
+<font color ="#0000FF">*     I_CALLBACK_USER_COMMAND           = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_TOP_OF_PAGE            = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_TOP_OF_PAGE       = ' '</font>
+<font color ="#0000FF">*     I_CALLBACK_HTML_END_OF_LIST       = ' '</font>
+<font color ="#0000FF">*     I_STRUCTURE_NAME                  =</font>
+<font color ="#0000FF">*     I_BACKGROUND_ID                   = ' '</font>
+<font color ="#0000FF">*     I_GRID_TITLE                      =</font>
+<font color ="#0000FF">*     I_GRID_SETTINGS                   =</font>
+     IS_LAYOUT                         = W_LAYOUT
+     IT_FIELDCAT                       = GT_FIELDCAT
+<font color ="#0000FF">*     IT_EXCLUDING                      =</font>
+<font color ="#0000FF">*     IT_SPECIAL_GROUPS                 =</font>
+<font color ="#0000FF">*     IT_SORT                           =</font>
+<font color ="#0000FF">*     IT_FILTER                         =</font>
+<font color ="#0000FF">*     IS_SEL_HIDE                       =</font>
+<font color ="#0000FF">*     I_DEFAULT                         = 'X'</font>
+<font color ="#0000FF">*     I_SAVE                            = ' '</font>
+<font color ="#0000FF">*     IS_VARIANT                        =</font>
+<font color ="#0000FF">*     IT_EVENTS                         =</font>
+<font color ="#0000FF">*     IT_EVENT_EXIT                     =</font>
+<font color ="#0000FF">*     IS_PRINT                          =</font>
+<font color ="#0000FF">*     IS_REPREP_ID                      =</font>
+<font color ="#0000FF">*     I_SCREEN_START_COLUMN             = 0</font>
+<font color ="#0000FF">*     I_SCREEN_START_LINE               = 0</font>
+<font color ="#0000FF">*     I_SCREEN_END_COLUMN               = 0</font>
+<font color ="#0000FF">*     I_SCREEN_END_LINE                 = 0</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_TOP                 = 0</font>
+<font color ="#0000FF">*     I_HTML_HEIGHT_END                 = 0</font>
+<font color ="#0000FF">*     IT_ALV_GRAPHICS                   =</font>
+<font color ="#0000FF">*     IT_HYPERLINK                      =</font>
+<font color ="#0000FF">*     IT_ADD_FIELDCAT                   =</font>
+<font color ="#0000FF">*     IT_EXCEPT_QINFO                   =</font>
+<font color ="#0000FF">*     IR_SALV_FULLSCREEN_ADAPTER        =</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     E_EXIT_CAUSED_BY_CALLER           =</font>
+<font color ="#0000FF">*     ES_EXIT_CAUSED_BY_USER            =</font>
+    TABLES
+      T_OUTTAB                          = GT_YKP
+<font color ="#0000FF">*   EXCEPTIONS</font>
+<font color ="#0000FF">*     PROGRAM_ERROR                     = 1</font>
+<font color ="#0000FF">*     OTHERS                            = 2</font>
+            .
+  IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+  ENDIF.
+ENDFORM.                    "show_ykp
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  FILL_LAYOUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       填充ALV的结构</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FILL_LAYOUT .
+  CLEAR W_LAYOUT.
+  W_LAYOUT-ZEBRA = 'X'.
+  W_LAYOUT-COLWIDTH_OPTIMIZE = 'X'.
+  IF P_WKP = 'X'.
+    W_LAYOUT-BOX_FIELDNAME  = 'SEL'.
+  ENDIF.
+  W_LAYOUT-INFO_FIELDNAME = 'COLOR'.
+ENDFORM.                    " FILL_LAYOUT
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  fill_fieldcat</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FILL_FIELDCAT.
+  DATA:L_COLPOS TYPE SLIS_FIELDCAT_ALV-COL_POS.
+  CLEAR:GT_FIELDCAT.
+  IF P_WKP = 'X'.
+<font color ="#0000FF">*    clear w_fieldcat.</font>
+<font color ="#0000FF">*    l_colpos = l_colpos + 1.</font>
+<font color ="#0000FF">*    w_fieldcat-col_pos    = l_colpos.</font>
+<font color ="#0000FF">*    w_fieldcat-fieldname  = 'SEL'.</font>
+<font color ="#0000FF">*    w_fieldcat-no_out       = 'X'.</font>
+<font color ="#0000FF">*    APPEND w_fieldcat TO gt_fieldcat.</font>
+
+    MACRO_FILL_FIELDCAT:
+      L_COLPOS 'ZXH' '序号' '' 2,
+      L_COLPOS 'ZKPF' '开票方' 'X' 10,
+      L_COLPOS 'ZKPFNM' '开票方名称' '' 35,
+      L_COLPOS 'ZFKF' '付款方' 'X' 10,
+      L_COLPOS 'ZFKFNM' '付款方名称' '' 35,
+      L_COLPOS 'ZSDF' '售达方' 'X' 10,
+      L_COLPOS 'ZSDFNM' '售达方名称' '' 35,
+      L_COLPOS 'SORTL' '检索项' '' 10,
+      L_COLPOS 'KNKLI' '信贷账户号' 'X' 10,
+      L_COLPOS 'WAERK' '货币' '' 3,
+      L_COLPOS 'FKTYP' '出具发票类别' ''  1,
+      L_COLPOS 'FKDAT' '出具发票日期' '' 8,
+      L_COLPOS 'FKART' '开票类别' '' 4,
+      L_COLPOS 'VTEXT' '开票类型名称' '' 20,
+      L_COLPOS 'VBELN' '参考开票凭证' 'X' 10,
+      L_COLPOS 'POSNR' '项目' 'X' 3,
+      L_COLPOS 'ZGZRQ' '过账日期' '' 8,
+      L_COLPOS 'ZCKDJ' '销售凭证' 'X' 10,
+      L_COLPOS 'MATNR' '物料编码' 'X' 18,
+      L_COLPOS 'ARKTX' '物料描述' '' 40,
+      L_COLPOS 'ZWKQTY' '未开票数量' '' 15,
+      L_COLPOS 'MSEHL' '销售单位' '' 30,
+      L_COLPOS 'ZWKPJJ' '凭证净价' '' 15,
+      L_COLPOS 'ZWKPSJ' '凭证税金' '' 15,
+      L_COLPOS 'ZHJJE' '合计金额' '' 15,
+      L_COLPOS 'VKORG' '销售组织' '' 4,
+      L_COLPOS 'VTWEG' '分销渠道' '' 2,
+      L_COLPOS 'SPART' '产品组' '' 2,
+      L_COLPOS 'VBTYP' '凭证类别' '' 1,
+      L_COLPOS 'VSTEL' '装运点' '' 4,
+      L_COLPOS 'AUGRU' '订单原因' '' 3.
+  ELSE.
+    MACRO_FILL_FIELDCAT:
+      L_COLPOS 'ZXH' '序号' '' 2,
+      L_COLPOS 'ZKPF' '开票方' 'X' 10,
+      L_COLPOS 'ZKPFNM' '开票方名称' '' 35,
+      L_COLPOS 'ZFKF' '付款方' 'X' 10,
+      L_COLPOS 'ZFKFNM' '付款方名称' '' 35,
+      L_COLPOS 'KUNAG' '售达方' 'X' 10,
+      L_COLPOS 'ZSDFNM' '售达方名称' '' 35,
+      L_COLPOS 'SORTL' '检索项' '' 10,
+      L_COLPOS 'KNKLI' '信贷账户号' 'X' 10,
+      L_COLPOS 'WAERK' '货币' '' 3,
+      L_COLPOS 'ZJSHM' '发票的金税号码' '' 15,
+      L_COLPOS 'VBELN' '发票凭证号' 'X' 10,
+      L_COLPOS 'POSNR' '项目' '' 3,
+      L_COLPOS 'FKTYP' '出具发票类别' '' 1,
+      L_COLPOS 'FKDAT' '出具发票日期' '' 8,
+      L_COLPOS 'FKART' '开票类别' '' 4,
+      L_COLPOS 'VTEXT' '开票类型名称' '' 20,
+      L_COLPOS 'ZGZRQ' '过账日期' '' 8,
+      L_COLPOS 'NETWR' '凭证净价' '' 15,
+      L_COLPOS 'MWSBP' '凭证税金' '' 15,
+      L_COLPOS 'ZHJJE' '合计金额' '' 15,
+      L_COLPOS 'MATNR' '物料编码' 'X' 18,
+      L_COLPOS 'ARKTX' '物料描述' '' 40,
+      L_COLPOS 'FKIMG' '开票数量' '' 15,
+      L_COLPOS 'MSEHL' '销售单位' '' 30,
+      L_COLPOS 'PRODH' '产品层次' '' 2,
+      L_COLPOS 'WERKS' '工厂' '' 4,
+      L_COLPOS 'VGBEL' '参考开票凭证' 'X' 10,
+      L_COLPOS 'VGPOS' '参考开票凭证项目' '' 3,
+      L_COLPOS 'ZCKDJ' '销售凭证' 'X' 10,
+      L_COLPOS 'AUGRU' '订单原因' '' 4,
+      L_COLPOS 'ERNAM' '创建者' '' 12.
+
+    CLEAR W_FIELDCAT.
+    L_COLPOS = L_COLPOS + 1.
+    W_FIELDCAT-COL_POS    = L_COLPOS.
+    W_FIELDCAT-FIELDNAME  = 'COLOR'.
+    APPEND W_FIELDCAT TO GT_FIELDCAT.
+  ENDIF.
+ENDFORM.                    "fill_fieldcat
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SET_PF_STATUS</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       设置GUI状态</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;RT_EXTAB   text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SET_PF_STATUS USING RT_EXTAB TYPE SLIS_T_EXTAB.
+  DATA: LT_EXTAB TYPE SLIS_T_EXTAB,
+        LW_EXTAB TYPE SLIS_EXTAB.
+  IF P_WKP = SPACE OR P_CB2 = 'X'.
+    LW_EXTAB-FCODE = '&VF04'.
+    APPEND LW_EXTAB TO LT_EXTAB.
+  ENDIF.
+  SET PF-STATUS 'STANDARD_FULLSCREEN' EXCLUDING LT_EXTAB.
+ENDFORM.                    "SET_PF_STATUS
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  ALV_USER_COMMAND</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       alv的处理事件</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;R_UCOMM      text</font>
+<font color ="#0000FF">*      --&gt;RS_SELFIELD  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM ALV_USER_COMMAND USING R_UCOMM     LIKE SY-UCOMM
+                        RS_SELFIELD TYPE SLIS_SELFIELD.
+  DATA: LR_VBELN TYPE RANGE OF VKDFS-VBELN WITH HEADER LINE.
+  CASE R_UCOMM.
+    WHEN '&VF04'.
+
+      CLEAR LR_VBELN[].
+      LOOP AT GT_ALV_WKP INTO W_WKP WHERE SEL = 'X'.
+<font color ="#0000FF">***add by yetp 20180925*********start</font>
+        IF P_CK = 'X'.
+        READ TABLE GT_ALV_WKP ASSIGNING &lt;FS_ALV_WKP&gt; WITH KEY ZCKDJ = W_WKP-ZCKDJ SEL = SPACE.
+        IF SY-SUBRC = 0.
+          MESSAGE E000 WITH W_WKP-ZCKDJ ':没有被全部选择'.
+        ENDIF.
+        ENDIF.
+<font color ="#0000FF">***add by yetp 20180925*********end</font>
+        CLEAR LR_VBELN.
+        LR_VBELN-SIGN = 'I'.
+        LR_VBELN-OPTION = 'EQ'.
+        LR_VBELN-LOW = W_WKP-VBELN.
+        APPEND LR_VBELN.
+      ENDLOOP.
+
+      IF LR_VBELN[] IS  NOT INITIAL.
+        SUBMIT SDBILLDL WITH S_VBELN IN LR_VBELN AND RETURN.
+      ENDIF.
+  ENDCASE.
+ENDFORM.                    "alv_user_command
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_data_a</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*FORM get_data_a.</font>
+<font color ="#0000FF">*  TYPES:BEGIN OF ty_vbap,</font>
+<font color ="#0000FF">*        vbeln TYPE vbap-vbeln,</font>
+<font color ="#0000FF">*        posnr TYPE vbap-posnr,</font>
+<font color ="#0000FF">*        arktx TYPE vbap-arktx,</font>
+<font color ="#0000FF">*        matnr TYPE vbap-matnr,</font>
+<font color ="#0000FF">*        kwmeng TYPE vbap-kwmeng,</font>
+<font color ="#0000FF">*        netwr TYPE vbap-netwr,</font>
+<font color ="#0000FF">*        zmeng TYPE vbap-zmeng,</font>
+<font color ="#0000FF">*        mwsbp TYPE vbap-mwsbp,</font>
+<font color ="#0000FF">*        waerk TYPE vbak-waerk,</font>
+<font color ="#0000FF">*        vrkme TYPE vbap-vrkme,</font>
+<font color ="#0000FF">*        msehl TYPE t006a-msehl,</font>
+<font color ="#0000FF">*        augru TYPE vbak-augru,  " 拒绝原因</font>
+<font color ="#0000FF">*       END OF ty_vbap,</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*        BEGIN OF ty_vbak,</font>
+<font color ="#0000FF">*        vbeln TYPE vbak-vbeln,</font>
+<font color ="#0000FF">*        waerk TYPE vbak-waerk,</font>
+<font color ="#0000FF">*          augru TYPE vbak-augru,  " 拒绝原因</font>
+<font color ="#0000FF">*        END OF ty_vbak.</font>
+<font color ="#0000FF">*  DATA:lt_vbak TYPE STANDARD TABLE OF ty_vbak,</font>
+<font color ="#0000FF">*       lw_vbak TYPE ty_vbak,</font>
+<font color ="#0000FF">*       lt_vbap TYPE STANDARD TABLE OF ty_vbap,</font>
+<font color ="#0000FF">*       lw_vbap TYPE ty_vbap.</font>
+<font color ="#0000FF">*  CLEAR:gt_vbrp,gt_vbpa_kpf,gt_vbpa_fkf,g_fkimg,g_netwr,g_mwsbp.</font>
+<font color ="#0000FF">*  SELECT vbap~vbeln</font>
+<font color ="#0000FF">*         posnr                                              "项目</font>
+<font color ="#0000FF">*         matnr</font>
+<font color ="#0000FF">*         arktx</font>
+<font color ="#0000FF">*         kwmeng                                             "订单数量</font>
+<font color ="#0000FF">*         zmeng                                              "目标数量</font>
+<font color ="#0000FF">*         vrkme                                              "销售单位</font>
+<font color ="#0000FF">*         vbap~netwr                                         "订单净价</font>
+<font color ="#0000FF">*         mwsbp                                              "订单税金</font>
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE lt_vbap</font>
+<font color ="#0000FF">*    FROM vbap INNER JOIN vkdfs</font>
+<font color ="#0000FF">*    ON vbap~vbeln = vkdfs~vbeln</font>
+<font color ="#0000FF">*  WHERE vkdfs~vbeln IN s_pzh</font>
+<font color ="#0000FF">*    AND fktyp = 'A'</font>
+<font color ="#0000FF">*    AND kunnr IN s_sdf</font>
+<font color ="#0000FF">*    AND vkorg IN s_xszz</font>
+<font color ="#0000FF">*    AND fkart IN s_kplb</font>
+<font color ="#0000FF">*    AND fkdat IN s_cjfprq.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  " 没有数据则返回</font>
+<font color ="#0000FF">*  IF lt_vbap IS INITIAL.</font>
+<font color ="#0000FF">*    RETURN.</font>
+<font color ="#0000FF">*  ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  SELECT vbeln</font>
+<font color ="#0000FF">*         waerk</font>
+<font color ="#0000FF">*         augru</font>
+<font color ="#0000FF">*    INTO TABLE lt_vbak</font>
+<font color ="#0000FF">*    FROM vbak</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN lt_vbap</font>
+<font color ="#0000FF">*  WHERE vbeln = lt_vbap-vbeln.</font>
+<font color ="#0000FF">*  SORT lt_vbak BY vbeln.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  SELECT vbrp~vbeln</font>
+<font color ="#0000FF">*         aubel</font>
+<font color ="#0000FF">*         aupos</font>
+<font color ="#0000FF">*         fkimg                                          "已开票数量</font>
+<font color ="#0000FF">*         vbrp~netwr                                     "已开票净价</font>
+<font color ="#0000FF">*         mwsbp                                          "已开票税金</font>
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE gt_vbrp</font>
+<font color ="#0000FF">*    FROM vbrp INNER JOIN vbrk</font>
+<font color ="#0000FF">*    ON vbrp~vbeln = vbrk~vbeln</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN lt_vbap</font>
+<font color ="#0000FF">*  WHERE aubel = lt_vbap-vbeln</font>
+<font color ="#0000FF">*    AND aupos = lt_vbap-posnr</font>
+<font color ="#0000FF">*    AND sfakn = ''                                      "已取消的出具发票凭证编号</font>
+<font color ="#0000FF">*    AND fksto &lt;&gt; 'X'.                                   "出具发票凭证被取消</font>
+<font color ="#0000FF">*  "获取开票方</font>
+<font color ="#0000FF">*  SELECT kunnr</font>
+<font color ="#0000FF">*         vbeln</font>
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE gt_vbpa_kpf</font>
+<font color ="#0000FF">*    FROM vbpa</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN lt_vbap</font>
+<font color ="#0000FF">*  WHERE vbeln = lt_vbap-vbeln</font>
+<font color ="#0000FF">*    AND parvw = 'RE'.</font>
+<font color ="#0000FF">*  SORT gt_vbpa_kpf BY vbeln.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  "获取付款方</font>
+<font color ="#0000FF">*  SELECT kunnr</font>
+<font color ="#0000FF">*         vbeln</font>
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE gt_vbpa_fkf</font>
+<font color ="#0000FF">*    FROM vbpa</font>
+<font color ="#0000FF">*    FOR ALL ENTRIES IN lt_vbap</font>
+<font color ="#0000FF">*  WHERE vbeln = lt_vbap-vbeln</font>
+<font color ="#0000FF">*    AND parvw = 'RG'.</font>
+<font color ="#0000FF">*  SORT gt_vbpa_fkf BY vbeln.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  LOOP AT gt_wkp ASSIGNING &lt;fs_wkp&gt; WHERE fktyp = 'A'.</font>
+<font color ="#0000FF">*    READ TABLE gt_vbpa_kpf INTO w_vbpa_kpf WITH KEY vbeln = &lt;fs_wkp&gt;-vbeln BINARY SEARCH.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      &lt;fs_wkp&gt;-zkpf = w_vbpa_kpf-kunnr.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    READ TABLE gt_vbpa_fkf INTO w_vbpa_fkf WITH KEY vbeln = &lt;fs_wkp&gt;-vbeln BINARY SEARCH.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      &lt;fs_wkp&gt;-zfkf = w_vbpa_fkf-kunnr.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    READ TABLE gt_kna1 INTO w_kna1 WITH KEY kunnr = &lt;fs_wkp&gt;-zsdf BINARY SEARCH.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      &lt;fs_wkp&gt;-sortl = w_kna1-sortl.</font>
+<font color ="#0000FF">*      &lt;fs_wkp&gt;-zsdfnm = w_kna1-name1.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">**回写开票方名称</font>
+<font color ="#0000FF">*    READ TABLE gt_kna1 INTO w_kna1 WITH KEY kunnr = &lt;fs_wkp&gt;-zkpf BINARY SEARCH.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      &lt;fs_wkp&gt;-zkpfnm = w_kna1-name1.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">**回写付款方名称</font>
+<font color ="#0000FF">*    READ TABLE gt_kna1 INTO w_kna1 WITH KEY kunnr = &lt;fs_wkp&gt;-zfkf BINARY SEARCH.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      &lt;fs_wkp&gt;-zfkfnm = w_kna1-name1.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*  ENDLOOP.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*  LOOP AT lt_vbap INTO lw_vbap.</font>
+<font color ="#0000FF">*    READ TABLE lt_vbak INTO lw_vbak WITH KEY vbeln = lw_vbap-vbeln BINARY SEARCH.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      lw_vbap-waerk = lw_vbak-waerk.</font>
+<font color ="#0000FF">*      lw_vbap-augru = lw_vbak-augru.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    READ TABLE gt_t006a INTO w_t006a WITH KEY msehi = lw_vbap-vrkme BINARY SEARCH.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      lw_vbap-msehl = w_t006a-msehl.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    LOOP AT gt_vbrp INTO w_vbrp WHERE aubel = lw_vbap-vbeln</font>
+<font color ="#0000FF">*                                        AND aupos = lw_vbap-posnr.                                                       "已开票的数量累加</font>
+<font color ="#0000FF">*      g_fkimg = g_fkimg + w_vbrp-fkimg.</font>
+<font color ="#0000FF">*      g_netwr = g_netwr + w_vbrp-netwr.</font>
+<font color ="#0000FF">*      g_mwsbp = g_mwsbp + w_vbrp-mwsbp.</font>
+<font color ="#0000FF">*    ENDLOOP.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    LOOP AT gt_wkp INTO w_wkp WHERE fktyp = 'A' AND vbeln = lw_vbap-vbeln.</font>
+<font color ="#0000FF">*      w_wkp-waerk = lw_vbap-waerk.</font>
+<font color ="#0000FF">*      w_wkp-posnr = lw_vbap-posnr.</font>
+<font color ="#0000FF">*      w_wkp-matnr = lw_vbap-matnr.</font>
+<font color ="#0000FF">*      w_wkp-arktx = lw_vbap-arktx.</font>
+<font color ="#0000FF">*      w_wkp-vrkme = lw_vbap-vrkme.</font>
+<font color ="#0000FF">*      w_wkp-msehl = lw_vbap-msehl.</font>
+<font color ="#0000FF">*      w_wkp-augru = lw_vbap-augru.</font>
+<font color ="#0000FF">*      w_wkp-zckdj = lw_vbap-vbeln.</font>
+<font color ="#0000FF">*      IF lw_vbap-kwmeng IS NOT INITIAL.</font>
+<font color ="#0000FF">*        w_wkp-zwkqty = lw_vbap-kwmeng - g_fkimg.</font>
+<font color ="#0000FF">*      ELSEIF lw_vbap-zmeng IS NOT INITIAL.</font>
+<font color ="#0000FF">*        w_wkp-zwkqty = lw_vbap-zmeng - g_fkimg.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">*      w_wkp-zwkpjj = lw_vbap-netwr - g_netwr.</font>
+<font color ="#0000FF">*      w_wkp-zwkpsj = lw_vbap-mwsbp - g_mwsbp.</font>
+<font color ="#0000FF">*      MOVE-CORRESPONDING w_wkp TO w_alv_wkp.</font>
+<font color ="#0000FF">*      APPEND w_alv_wkp TO gt_alv_wkp.</font>
+<font color ="#0000FF">*    ENDLOOP.</font>
+<font color ="#0000FF">*    CLEAR:g_fkimg,g_netwr,g_mwsbp, lw_vbap.</font>
+<font color ="#0000FF">*  ENDLOOP.</font>
+<font color ="#0000FF">*ENDFORM.                    "get_data_a</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_data_a</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       优化取数逻辑</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA_A.
+  TYPES:BEGIN OF TY_VBAP,
+        VBELN TYPE VBAP-VBELN,
+        POSNR TYPE VBAP-POSNR,
+        ARKTX TYPE VBAP-ARKTX,
+        MATNR TYPE VBAP-MATNR,
+        KWMENG TYPE VBAP-KWMENG,
+        NETWR TYPE VBAP-NETWR,
+        ZMENG TYPE VBAP-ZMENG,
+        MWSBP TYPE VBAP-MWSBP,
+        WAERK TYPE VBAK-WAERK,
+        VRKME TYPE VBAP-VRKME,
+        AUGRU TYPE VBAK-AUGRU,  " 拒绝原因
+        KNKLI TYPE VBAK-KNKLI,  " 信贷账户号
+        KUNNR TYPE VKDFS-KUNNR,
+       END OF TY_VBAP.
+
+  DATA: LT_VBAP TYPE STANDARD TABLE OF TY_VBAP,
+        LW_VBAP TYPE TY_VBAP,
+        LT_VBRP TYPE STANDARD TABLE OF TY_VBRP,
+        LW_VBRP TYPE TY_VBRP.
+  FIELD-SYMBOLS: &lt;FS_VBAP&gt; TYPE TY_VBAP.
+
+  SELECT VBAP~VBELN
+         POSNR
+         ARKTX                                            "项目
+         MATNR
+         KWMENG                                             "订单数量
+         VBAP~NETWR                                         "订单净价
+         ZMENG                                              "目标数量
+         MWSBP                                              "订单税金
+         VBAK~WAERK
+         VRKME                                              "销售单位
+        VBAK~AUGRU
+        VBAK~KNKLI
+        VKDFS~KUNNR
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE LT_VBAP  "del by yetp 20180711</font>
+    INTO TABLE LT_VBAP "add by yetp 20180711
+    FROM VBAP INNER JOIN VBAK
+    ON VBAP~VBELN = VBAK~VBELN
+    INNER JOIN VKDFS
+    ON VBAP~VBELN = VKDFS~VBELN
+  WHERE VKDFS~VBELN IN S_PZH
+    AND MATNR IN S_WLBM
+    AND VBAK~KNKLI IN S_KNKLI         " 信贷账户号
+    AND FKTYP = 'A'
+    AND VKDFS~KUNNR IN S_SDF
+    AND VKDFS~VKORG IN S_XSZZ
+    AND VKDFS~FKART IN S_KPLB
+    AND VKDFS~FKDAT IN S_CJFPRQ.
+
+  " 没有数据则返回
+  IF LT_VBAP IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  " 获取已开票数据
+  SELECT VBRP~VBELN
+         AUBEL
+         AUPOS
+         FKIMG                                          "已开票数量
+         VBRP~NETWR                                     "已开票净价
+         MWSBP                                          "已开票税金
+    INTO CORRESPONDING FIELDS OF TABLE GT_VBRP
+    FROM VBRP INNER JOIN VBRK
+    ON VBRP~VBELN = VBRK~VBELN
+    FOR ALL ENTRIES IN LT_VBAP
+  WHERE AUBEL = LT_VBAP-VBELN
+    AND AUPOS = LT_VBAP-POSNR
+    AND SFAKN = ''                                      "已取消的出具发票凭证编号
+    AND FKSTO &lt;&gt; 'X'.                                   "出具发票凭证被取消
+
+  " 根据凭证号做累加
+  IF GT_VBRP IS NOT INITIAL.
+    SORT GT_VBRP BY AUBEL AUPOS.
+    LOOP AT GT_VBRP ASSIGNING &lt;FS_VBRP&gt;.
+      IF LW_VBRP-AUBEL &lt;&gt; &lt;FS_VBRP&gt;-AUBEL OR LW_VBRP-AUPOS &lt;&gt; &lt;FS_VBRP&gt;-AUPOS.
+        IF LW_VBRP IS NOT INITIAL.
+          APPEND LW_VBRP TO LT_VBRP.
+        ENDIF.
+        MOVE &lt;FS_VBRP&gt; TO LW_VBRP.
+      ELSE.
+        LW_VBRP-FKIMG = LW_VBRP-FKIMG + &lt;FS_VBRP&gt;-FKIMG.
+        LW_VBRP-NETWR = LW_VBRP-NETWR + &lt;FS_VBRP&gt;-NETWR.
+        LW_VBRP-MWSBP = LW_VBRP-MWSBP + &lt;FS_VBRP&gt;-MWSBP.
+      ENDIF.
+    ENDLOOP.
+    IF LW_VBRP IS NOT INITIAL.
+      APPEND LW_VBRP TO LT_VBRP.
+    ENDIF.
+    SORT LT_VBRP BY AUBEL AUPOS.
+  ENDIF.
+  "获取开票方
+  SELECT VBELN
+         KUNNR
+    INTO TABLE GT_VBPA_KPF
+    FROM VBPA
+    FOR ALL ENTRIES IN LT_VBAP
+  WHERE VBELN = LT_VBAP-VBELN
+    AND PARVW = 'RE'.
+  SORT GT_VBPA_KPF BY VBELN.
+
+  "获取付款方
+  SELECT VBELN
+         KUNNR
+    INTO TABLE GT_VBPA_FKF
+    FROM VBPA
+    FOR ALL ENTRIES IN LT_VBAP
+  WHERE VBELN = LT_VBAP-VBELN
+    AND PARVW = 'RG'.
+  SORT GT_VBPA_FKF BY VBELN.
+
+  CLEAR:GT_PZ_XS. "add by yetp 20180914
+
+  LOOP AT LT_VBAP ASSIGNING &lt;FS_VBAP&gt;.
+    CLEAR W_WKP.
+    W_WKP-VBELN = &lt;FS_VBAP&gt;-VBELN.
+    W_WKP-ZSDF = &lt;FS_VBAP&gt;-KUNNR.
+    W_WKP-KNKLI = &lt;FS_VBAP&gt;-KNKLI.
+
+    " 读取已开票的金额
+    CLEAR LW_VBRP.
+    READ TABLE LT_VBRP INTO LW_VBRP WITH KEY AUBEL = &lt;FS_VBAP&gt;-VBELN
+                                             AUPOS = &lt;FS_VBAP&gt;-POSNR BINARY SEARCH.
+    IF SY-SUBRC = 0.
+    ENDIF.
+
+    " 设置开票方
+    READ TABLE GT_VBPA_KPF INTO W_VBPA_KPF WITH KEY VBELN = &lt;FS_VBAP&gt;-VBELN BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      W_WKP-ZKPF = W_VBPA_KPF-KUNNR.
+
+      " 回写开票方名称
+      READ TABLE GT_KNA1 INTO W_KNA1 WITH KEY KUNNR = W_WKP-ZKPF BINARY SEARCH.
+      IF SY-SUBRC = 0.
+        W_WKP-ZKPFNM = W_KNA1-NAME1.
+      ENDIF.
+    ENDIF.
+
+    " 设置付款方
+    READ TABLE GT_VBPA_FKF INTO W_VBPA_FKF WITH KEY VBELN = &lt;FS_VBAP&gt;-VBELN BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      W_WKP-ZFKF = W_VBPA_FKF-KUNNR.
+
+      " 回写付款方名称
+      READ TABLE GT_KNA1 INTO W_KNA1 WITH KEY KUNNR = W_WKP-ZFKF BINARY SEARCH.
+      IF SY-SUBRC = 0.
+        W_WKP-ZFKFNM = W_KNA1-NAME1.
+      ENDIF.
+    ENDIF.
+
+    READ TABLE GT_KNA1 INTO W_KNA1 WITH KEY KUNNR = W_WKP-ZSDF BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      W_WKP-SORTL = W_KNA1-SORTL.
+      W_WKP-ZSDFNM = W_KNA1-NAME1.
+    ENDIF.
+
+    W_WKP-WAERK = &lt;FS_VBAP&gt;-WAERK.
+    W_WKP-POSNR = &lt;FS_VBAP&gt;-POSNR.
+    W_WKP-MATNR = &lt;FS_VBAP&gt;-MATNR.
+    W_WKP-ARKTX = &lt;FS_VBAP&gt;-ARKTX.
+    W_WKP-VRKME = &lt;FS_VBAP&gt;-VRKME.
+    W_WKP-AUGRU = &lt;FS_VBAP&gt;-AUGRU.
+    W_WKP-ZCKDJ = &lt;FS_VBAP&gt;-VBELN.
+    IF &lt;FS_VBAP&gt;-KWMENG IS NOT INITIAL.
+      W_WKP-ZWKQTY = &lt;FS_VBAP&gt;-KWMENG - LW_VBRP-FKIMG.
+    ELSEIF &lt;FS_VBAP&gt;-ZMENG IS NOT INITIAL.
+      W_WKP-ZWKQTY = &lt;FS_VBAP&gt;-ZMENG - LW_VBRP-FKIMG.
+    ENDIF.
+    W_WKP-ZWKPJJ = &lt;FS_VBAP&gt;-NETWR - LW_VBRP-NETWR.
+    W_WKP-ZWKPSJ = &lt;FS_VBAP&gt;-MWSBP - LW_VBRP-MWSBP.
+
+    APPEND W_WKP TO GT_ALV_WKP.
+
+<font color ="#0000FF">*********add by yetp 20180914******start</font>
+    IF P_CK = 'X'.
+      CLEAR:W_PZ_XS.
+      W_PZ_XS-ZCKDJ = W_WKP-ZCKDJ.
+      W_PZ_XS-SL    = W_WKP-ZWKQTY.
+
+      COLLECT W_PZ_XS INTO GT_PZ_XS. "根据销售订单汇总未开票数量
+    ENDIF.
+
+<font color ="#0000FF">*********add by yetp 20180914******end</font>
+  ENDLOOP.
+  FREE LT_VBRP.
+ENDFORM.                    "get_data_a
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_data_i</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA_I.
+  TYPES:BEGIN OF TY_LIPS,
+        VGBEL TYPE LIPS-VGBEL,
+        VGPOS TYPE LIPS-VGPOS,
+        EBELP TYPE EKPO-EBELP,
+        VBELN TYPE LIPS-VBELN,
+        MATNR TYPE EKPO-MATNR,
+        WAERS TYPE EKKO-WAERS,
+        POSNR TYPE LIPS-POSNR,
+        LFIMG TYPE LIPS-LFIMG,
+        ARKTX TYPE LIPS-ARKTX,                             "物料描述
+        VRKME TYPE LIPS-VRKME,                             "销售单位
+        ZWKPJJ TYPE P DECIMALS 2,
+        ZWKPSJ TYPE P DECIMALS 2,
+        AUGRU TYPE VBAK-AUGRU,
+        KNKLI TYPE LIKP-KNKLI,    " 信贷账户号
+        KUNNR TYPE VKDFS-KUNNR,
+        WADAT_IST TYPE LIKP-WADAT_IST,
+       END OF TY_LIPS,
+
+       BEGIN OF TY_VBUK,
+         VBELN TYPE VBUK-VBELN,   " 凭证号
+         WBSTK TYPE VBUK-WBSTK,   " 货物移动状态总计
+       END OF TY_VBUK.
+
+  DATA:LT_LIPS TYPE STANDARD TABLE OF TY_LIPS,
+       LW_LIPS TYPE TY_LIPS,
+       LT_VBUK TYPE STANDARD TABLE OF TY_VBUK,
+       LW_VBUK TYPE TY_VBUK,
+       LT_VBRP TYPE STANDARD TABLE OF TY_VBRP,
+       LW_VBRP TYPE TY_VBRP.
+
+  FIELD-SYMBOLS:&lt;FS_LIPS&gt; TYPE TY_LIPS.
+  CLEAR:GT_VBRP,GT_VBPA_KPF,GT_VBPA_FKF."g_fkimg,g_netwr,g_mwsbp.
+  SELECT LIPS~VBELN
+         POSNR
+         ARKTX
+         LFIMG                                        "未开票数量
+         VRKME                                        "销售单位
+         VGPOS
+         VGBEL
+        LIKP~KNKLI
+        VKDFS~KUNNR
+        LIKP~WADAT_IST
+   INTO CORRESPONDING FIELDS OF TABLE LT_LIPS
+   FROM LIPS INNER JOIN LIKP
+    ON LIPS~VBELN = LIKP~VBELN
+   INNER JOIN VKDFS
+   ON LIPS~VBELN = VKDFS~VBELN
+  WHERE VKDFS~VBELN IN S_PZH
+    AND LIKP~KNKLI IN S_KNKLI
+    AND LIKP~WADAT_IST IN S_GZRQ
+    AND LIPS~MATNR IN S_WLBM
+    AND FKTYP = 'I'
+    AND VKDFS~KUNNR IN S_SDF
+    AND VKDFS~VKORG IN S_XSZZ
+    AND VKDFS~FKART IN S_KPLB
+    AND VKDFS~FKDAT IN S_CJFPRQ.
+
+  " 没有数据则返回
+  IF LT_LIPS IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  " 获取过账状态
+  SELECT VBELN
+    WBSTK
+    INTO TABLE LT_VBUK
+    FROM VBUK
+    FOR ALL ENTRIES IN LT_LIPS
+  WHERE VBELN = LT_LIPS-VBELN.
+  SORT LT_VBUK BY VBELN.
+
+  " 删除未过账的提货单号
+  LOOP AT LT_LIPS ASSIGNING &lt;FS_LIPS&gt;.
+    READ TABLE LT_VBUK INTO LW_VBUK WITH KEY VBELN = &lt;FS_LIPS&gt;-VBELN BINARY SEARCH.
+    IF SY-SUBRC &lt;&gt; 0.
+      DELETE LT_LIPS.
+      CONTINUE.
+    ELSE.
+      IF LW_VBUK-WBSTK &lt;&gt; 'C'.
+        DELETE LT_LIPS.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+    &lt;FS_LIPS&gt;-EBELP = &lt;FS_LIPS&gt;-VGPOS.
+  ENDLOOP.
+
+
+  SELECT EKPO~EBELN
+        EBELP
+        WAERS                                         "货币
+        MATNR
+        NETWR
+        MWSKZ
+        MENGE
+   INTO CORRESPONDING FIELDS OF TABLE GT_EKKO
+   FROM EKKO INNER JOIN EKPO
+   ON EKKO~EBELN = EKPO~EBELN
+   FOR ALL ENTRIES IN LT_LIPS
+  WHERE EKPO~EBELN = LT_LIPS-VGBEL
+   AND EKPO~EBELP = LT_LIPS-EBELP.
+  SORT GT_EKKO BY EBELN EBELP.
+
+  SELECT MWSKZ                                       "获取采购订单下的税率
+    A003~KNUMH
+    KBETR
+    INTO TABLE GT_KONP
+    FROM A003 INNER JOIN KONP
+    ON A003~KNUMH = KONP~KNUMH
+    FOR ALL ENTRIES IN GT_EKKO
+  WHERE A003~KAPPL = 'TX'
+    AND MWSKZ = GT_EKKO-MWSKZ
+    AND KOPOS = '01'.
+
+  SORT GT_KONP BY MWSKZ.
+  LOOP AT GT_EKKO ASSIGNING &lt;FS_EKKO&gt;.
+    READ TABLE GT_KONP INTO W_KONP WITH KEY MWSKZ = &lt;FS_EKKO&gt;-MWSKZ BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      &lt;FS_EKKO&gt;-KBETR = W_KONP-KBETR.
+    ENDIF.
+  ENDLOOP.
+  SELECT VBRP~VBELN
+         AUBEL
+         AUPOS
+         FKIMG                                          "已开票数量
+         VBRP~NETWR
+         MWSBP
+        AUGRU_AUFT AS AUGRU
+    INTO CORRESPONDING FIELDS OF TABLE GT_VBRP
+    FROM VBRP INNER JOIN VBRK
+    ON VBRP~VBELN = VBRK~VBELN
+    FOR ALL ENTRIES IN LT_LIPS
+  WHERE VGBEL = LT_LIPS-VGBEL
+    AND VGPOS = LT_LIPS-VGPOS
+    AND SFAKN = ''                                      "已取消的出具发票凭证编号
+    AND FKSTO &lt;&gt; 'X'.                                   "出具发票凭证被取消
+
+  " 根据凭证号做累加
+  IF GT_VBRP IS NOT INITIAL.
+    SORT GT_VBRP BY AUBEL AUPOS.
+    CLEAR LW_VBRP.
+    LOOP AT GT_VBRP ASSIGNING &lt;FS_VBRP&gt;.
+      IF LW_VBRP-AUBEL &lt;&gt; &lt;FS_VBRP&gt;-AUBEL OR LW_VBRP-AUPOS &lt;&gt; &lt;FS_VBRP&gt;-AUPOS.
+        IF LW_VBRP IS NOT INITIAL.
+          APPEND LW_VBRP TO LT_VBRP.
+        ENDIF.
+        MOVE &lt;FS_VBRP&gt; TO LW_VBRP.
+      ELSE.
+        LW_VBRP-FKIMG = LW_VBRP-FKIMG + &lt;FS_VBRP&gt;-FKIMG.
+        LW_VBRP-NETWR = LW_VBRP-NETWR + &lt;FS_VBRP&gt;-NETWR.
+        LW_VBRP-MWSBP = LW_VBRP-MWSBP + &lt;FS_VBRP&gt;-MWSBP.
+      ENDIF.
+    ENDLOOP.
+    IF LW_VBRP IS NOT INITIAL.
+      APPEND LW_VBRP TO LT_VBRP.
+    ENDIF.
+    SORT LT_VBRP BY AUBEL AUPOS.
+  ENDIF.
+
+<font color ="#0000FF">*  LOOP AT gt_wkp ASSIGNING &lt;fs_wkp&gt; WHERE fktyp = 'I'.</font>
+<font color ="#0000FF">*    &lt;fs_wkp&gt;-zkpf = &lt;fs_wkp&gt;-zsdf.</font>
+<font color ="#0000FF">*    &lt;fs_wkp&gt;-zfkf = &lt;fs_wkp&gt;-zsdf.</font>
+<font color ="#0000FF">*    READ TABLE gt_kna1 INTO w_kna1 WITH KEY kunnr = &lt;fs_wkp&gt;-zsdf BINARY SEARCH.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      &lt;fs_wkp&gt;-sortl = w_kna1-sortl.</font>
+<font color ="#0000FF">*      &lt;fs_wkp&gt;-zsdfnm = w_kna1-name1.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">**回写开票方名称</font>
+<font color ="#0000FF">*    READ TABLE gt_kna1 INTO w_kna1 WITH KEY kunnr = &lt;fs_wkp&gt;-zkpf BINARY SEARCH.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      &lt;fs_wkp&gt;-zkpfnm = w_kna1-name1.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">**回写付款方名称</font>
+<font color ="#0000FF">*    READ TABLE gt_kna1 INTO w_kna1 WITH KEY kunnr = &lt;fs_wkp&gt;-zfkf BINARY SEARCH.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      &lt;fs_wkp&gt;-zfkfnm = w_kna1-name1.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*  ENDLOOP.</font>
+
+<font color ="#0000FF">*  LOOP AT lt_lips INTO lw_lips.</font>
+<font color ="#0000FF">*    LOOP AT gt_vbrp INTO w_vbrp WHERE aubel = lw_lips-vbeln</font>
+<font color ="#0000FF">*                                       AND aupos = lw_lips-vgpos.                                                    "已开票的数量累加</font>
+<font color ="#0000FF">*      g_fkimg = g_fkimg + w_vbrp-fkimg.</font>
+<font color ="#0000FF">*      g_netwr = g_netwr + w_vbrp-netwr.</font>
+<font color ="#0000FF">*      g_mwsbp = g_mwsbp + w_vbrp-mwsbp.</font>
+<font color ="#0000FF">*      lw_lips-augru = w_vbrp-augru.</font>
+<font color ="#0000FF">*    ENDLOOP.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    READ TABLE gt_ekko INTO w_ekko WITH KEY ebeln = lw_lips-vgbel</font>
+<font color ="#0000FF">*                                             ebelp = lw_lips-ebelp.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      lw_lips-waers = w_ekko-waers.</font>
+<font color ="#0000FF">*      lw_lips-matnr = w_ekko-matnr.</font>
+<font color ="#0000FF">*      lw_lips-zwkpjj = w_ekko-netwr * lw_lips-lfimg / w_ekko-menge - g_netwr.</font>
+<font color ="#0000FF">*      lw_lips-zwkpsj = w_ekko-netwr * lw_lips-lfimg * w_ekko-kbetr / w_ekko-menge / 1000 - g_mwsbp.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    LOOP AT gt_wkp INTO w_wkp WHERE fktyp = 'I' AND vbeln = lw_lips-vbeln.</font>
+<font color ="#0000FF">*      w_wkp-waerk = lw_lips-waers.</font>
+<font color ="#0000FF">*      w_wkp-posnr = lw_lips-posnr.</font>
+<font color ="#0000FF">*      w_wkp-matnr = lw_lips-matnr.</font>
+<font color ="#0000FF">*      w_wkp-arktx = lw_lips-arktx.</font>
+<font color ="#0000FF">*      w_wkp-vrkme = lw_lips-vrkme.</font>
+<font color ="#0000FF">*      w_wkp-zckdj = lw_lips-vgbel.</font>
+<font color ="#0000FF">*      w_wkp-zckxm = lw_lips-vgpos.</font>
+<font color ="#0000FF">*      READ TABLE gt_t006a INTO w_t006a WITH KEY msehi = w_wkp-vrkme BINARY SEARCH.</font>
+<font color ="#0000FF">*      IF sy-subrc = 0.</font>
+<font color ="#0000FF">*        w_wkp-msehl = w_t006a-msehl.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">*      w_wkp-zwkqty = lw_lips-lfimg - g_fkimg.</font>
+<font color ="#0000FF">*      w_wkp-zwkpjj = lw_lips-zwkpjj.</font>
+<font color ="#0000FF">*      w_wkp-zwkpsj = lw_lips-zwkpsj.</font>
+<font color ="#0000FF">*      w_wkp-augru = lw_lips-augru.</font>
+<font color ="#0000FF">*      MOVE-CORRESPONDING w_wkp TO w_alv_wkp.</font>
+<font color ="#0000FF">*      APPEND w_alv_wkp TO gt_alv_wkp.</font>
+<font color ="#0000FF">*    ENDLOOP.</font>
+<font color ="#0000FF">*    CLEAR:g_fkimg,g_netwr,g_mwsbp.</font>
+<font color ="#0000FF">*  ENDLOOP.</font>
+
+  CLEAR:GT_PZ_CG. "add by yetp 20180914
+
+  LOOP AT LT_LIPS INTO LW_LIPS.
+    CLEAR W_WKP.
+    W_WKP-VBELN = LW_LIPS-VBELN.
+    W_WKP-ZSDF = LW_LIPS-KUNNR.
+    W_WKP-ZKPF = W_WKP-ZSDF.
+    W_WKP-ZFKF = W_WKP-ZSDF.
+    W_WKP-ZGZRQ = LW_LIPS-WADAT_IST.
+
+    READ TABLE GT_KNA1 INTO W_KNA1 WITH KEY KUNNR = LW_LIPS-KUNNR BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      W_WKP-SORTL = W_KNA1-SORTL.
+      W_WKP-ZSDFNM = W_KNA1-NAME1.
+
+      "回写开票方名称
+      W_WKP-ZKPFNM = W_KNA1-NAME1.
+      " 回写付款方名称
+      W_WKP-ZFKFNM = W_KNA1-NAME1.
+    ENDIF.
+
+    " 读取已开票的金额
+    CLEAR W_VBRP.
+    READ TABLE LT_VBRP INTO W_VBRP WITH KEY AUBEL = LW_LIPS-VGBEL
+                                            AUPOS = LW_LIPS-VGPOS BINARY SEARCH.
+
+
+    READ TABLE GT_EKKO INTO W_EKKO WITH KEY EBELN = LW_LIPS-VGBEL
+                                             EBELP = LW_LIPS-EBELP BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      LW_LIPS-WAERS = W_EKKO-WAERS.
+      LW_LIPS-MATNR = W_EKKO-MATNR.
+      LW_LIPS-ZWKPJJ = W_EKKO-NETWR * LW_LIPS-LFIMG / W_EKKO-MENGE - W_VBRP-NETWR.
+      LW_LIPS-ZWKPSJ = W_EKKO-NETWR * LW_LIPS-LFIMG * W_EKKO-KBETR / W_EKKO-MENGE / 1000 - W_VBRP-MWSBP.
+    ENDIF.
+
+    W_WKP-WAERK = LW_LIPS-WAERS.
+    W_WKP-POSNR = LW_LIPS-POSNR.
+    W_WKP-MATNR = LW_LIPS-MATNR.
+    W_WKP-ARKTX = LW_LIPS-ARKTX.
+    W_WKP-VRKME = LW_LIPS-VRKME.
+    W_WKP-ZCKDJ = LW_LIPS-VGBEL.
+    W_WKP-ZCKXM = LW_LIPS-VGPOS.
+    W_WKP-ZWKQTY = LW_LIPS-LFIMG - W_VBRP-FKIMG.
+    W_WKP-ZWKPJJ = LW_LIPS-ZWKPJJ.
+    W_WKP-ZWKPSJ = LW_LIPS-ZWKPSJ.
+    W_WKP-AUGRU = W_VBRP-AUGRU.
+    W_WKP-KNKLI = LW_LIPS-KNKLI.
+
+    APPEND W_WKP TO GT_ALV_WKP.
+
+
+<font color ="#0000FF">*********add by yetp 20180914******start</font>
+
+    IF P_CK = 'X'.
+      CLEAR:W_PZ_CG.
+      W_PZ_CG-ZCKDJ = W_WKP-ZCKDJ.
+      W_PZ_CG-SL    = W_WKP-ZWKQTY.
+
+      COLLECT W_PZ_CG INTO GT_PZ_CG. "根据采购订单汇总未开票数量
+    ENDIF.
+
+<font color ="#0000FF">*********add by yetp 20180914******end</font>
+
+  ENDLOOP.
+  FREE LT_VBRP.
+ENDFORM.                    "get_data_i
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  get_data_l</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM GET_DATA_L.
+  TYPES:BEGIN OF TY_LIPS,
+        VGBEL TYPE LIPS-VGBEL,
+        VGPOS TYPE LIPS-VGPOS,
+        VBELN TYPE LIPS-VBELN,
+        MATNR TYPE VBAP-MATNR,
+        WAERK TYPE VBAK-WAERK,
+        POSNR TYPE LIPS-POSNR,
+        LFIMG TYPE LIPS-LFIMG,
+        ARKTX TYPE LIPS-ARKTX,                             "物料描述
+        VRKME TYPE LIPS-VRKME,                             "销售单位
+        ZJDJ TYPE P DECIMALS 4,
+        ZSJ TYPE P DECIMALS 4,
+        ZKPF TYPE VBPA-KUNNR,
+        ZFKF TYPE VBPA-KUNNR,
+        AUGRU TYPE VBAK-AUGRU,  " 拒绝原因
+        KNKLI TYPE VBAK-KNKLI,  " 信贷账户号
+        KUNNR TYPE VKDFS-KUNNR,
+        WADAT_IST TYPE LIKP-WADAT_IST,
+       END OF TY_LIPS,
+
+        BEGIN OF TY_VBAP,
+        VBELN TYPE VBAP-VBELN,
+        POSNR TYPE VBAP-POSNR,
+        WAERK TYPE VBAK-WAERK,
+        MATNR TYPE VBAP-MATNR,
+        NETWR TYPE VBAP-NETWR,                               "订单净价
+        MWSBP TYPE VBAP-MWSBP,                               "订单税金
+        KWMENG TYPE VBAP-KWMENG,
+        AUGRU TYPE VBAK-AUGRU,
+       END OF TY_VBAP,
+
+       BEGIN OF TY_VBUK,
+         VBELN TYPE VBUK-VBELN,   " 凭证号
+         WBSTK TYPE VBUK-WBSTK,   " 货物移动状态总计
+       END OF TY_VBUK.
+  DATA:LT_LIPS TYPE STANDARD TABLE OF TY_LIPS,
+       LW_LIPS TYPE TY_LIPS,
+       LT_VBAP TYPE STANDARD TABLE OF TY_VBAP,
+       LW_VBAP TYPE TY_VBAP,
+       LT_VBUK TYPE STANDARD TABLE OF TY_VBUK,
+       LW_VBUK TYPE TY_VBUK,
+       LT_VBRP TYPE STANDARD TABLE OF TY_VBRP,
+       LW_VBRP TYPE TY_VBRP.
+  FIELD-SYMBOLS:&lt;FS_LIPS&gt; TYPE TY_LIPS.
+  CLEAR:GT_VBRP,GT_VBPA_KPF,GT_VBPA_FKF."g_fkimg,g_netwr,g_mwsbp.
+  SELECT VGBEL
+         VGPOS
+         LIPS~VBELN
+         POSNR                                              "项目
+         LFIMG                                              "提货单数量
+         ARKTX                                              "物料描述
+         VRKME                                              "销售单位
+        LIKP~KNKLI
+        VKDFS~KUNNR
+        LIKP~WADAT_IST
+    INTO CORRESPONDING FIELDS OF TABLE LT_LIPS
+    FROM LIPS INNER JOIN LIKP
+    ON LIPS~VBELN = LIKP~VBELN
+    INNER JOIN VKDFS
+    ON LIPS~VBELN = VKDFS~VBELN
+  WHERE VKDFS~VBELN IN S_PZH
+    AND LIKP~KNKLI IN S_KNKLI
+    AND LIKP~WADAT_IST IN S_GZRQ
+    AND LIPS~MATNR IN S_WLBM
+    AND FKTYP = 'L'
+    AND VKDFS~KUNNR IN S_SDF
+    AND VKDFS~VKORG IN S_XSZZ
+    AND VKDFS~FKART IN S_KPLB
+    AND VKDFS~FKDAT IN S_CJFPRQ.
+
+  " 没有数据则返回
+  IF LT_LIPS IS INITIAL.
+    RETURN.
+  ENDIF.
+
+  " 获取过账状态
+  SELECT VBELN
+    WBSTK
+    INTO TABLE LT_VBUK
+    FROM VBUK
+    FOR ALL ENTRIES IN LT_LIPS
+  WHERE VBELN = LT_LIPS-VBELN.
+  SORT LT_VBUK BY VBELN.
+
+  " 删除未过账的提货单号
+  LOOP AT LT_LIPS ASSIGNING &lt;FS_LIPS&gt;.
+    READ TABLE LT_VBUK INTO LW_VBUK WITH KEY VBELN = &lt;FS_LIPS&gt;-VBELN BINARY SEARCH.
+    IF SY-SUBRC &lt;&gt; 0.
+      DELETE LT_LIPS.
+      CONTINUE.
+    ELSE.
+      IF LW_VBUK-WBSTK &lt;&gt; 'C'.
+        DELETE LT_LIPS.
+        CONTINUE.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+
+  SELECT VBAP~VBELN
+         POSNR
+         VBAK~WAERK                                               "货币
+         MATNR
+         VBAP~NETWR                                               "订单净价
+         MWSBP                                                    "订单税金
+         KWMENG                                                   "订单数量
+        AUGRU
+    INTO TABLE LT_VBAP
+    FROM VBAP INNER JOIN VBAK
+    ON VBAP~VBELN = VBAK~VBELN
+    FOR ALL ENTRIES IN LT_LIPS
+  WHERE VBAP~VBELN = LT_LIPS-VGBEL
+    AND VBAP~POSNR = LT_LIPS-VGPOS.
+  SORT LT_VBAP BY VBELN POSNR.
+
+  SELECT VGBEL
+         VGPOS
+         FKIMG                                          "已开票数量
+         VBRP~VBELN                                     "开票凭证      添加于 2017-12-22
+         VBRP~POSNR                                     "出具发票项目  添加于 2017-12-22
+         VBRP~NETWR                                     "已开票净价
+         MWSBP                                          "已开票税金
+         AUGRU_AUFT AS AUGRU
+    INTO CORRESPONDING FIELDS OF TABLE GT_VBRP
+    FROM VBRP INNER JOIN VBRK
+    ON VBRP~VBELN = VBRK~VBELN
+    FOR ALL ENTRIES IN LT_LIPS
+  WHERE VGBEL = LT_LIPS-VBELN
+    AND VGPOS = LT_LIPS-POSNR
+    AND SFAKN = ''                                      "已取消的出具发票凭证编号
+    AND FKSTO &lt;&gt; 'X'.                                   "出具发票凭证被取消
+
+  " 根据凭证号做累加
+  IF GT_VBRP IS NOT INITIAL.
+    SORT GT_VBRP BY VGBEL VGPOS.
+    LOOP AT GT_VBRP ASSIGNING &lt;FS_VBRP&gt;.
+      IF LW_VBRP-VGBEL &lt;&gt; &lt;FS_VBRP&gt;-VGBEL OR LW_VBRP-VGPOS &lt;&gt; &lt;FS_VBRP&gt;-VGPOS.
+        IF LW_VBRP IS NOT INITIAL.
+          APPEND LW_VBRP TO LT_VBRP.
+        ENDIF.
+        MOVE &lt;FS_VBRP&gt; TO LW_VBRP.
+      ELSE.
+        LW_VBRP-FKIMG = LW_VBRP-FKIMG + &lt;FS_VBRP&gt;-FKIMG.
+        LW_VBRP-NETWR = LW_VBRP-NETWR + &lt;FS_VBRP&gt;-NETWR.
+        LW_VBRP-MWSBP = LW_VBRP-MWSBP + &lt;FS_VBRP&gt;-MWSBP.
+      ENDIF.
+    ENDLOOP.
+    IF LW_VBRP IS NOT INITIAL.
+      APPEND LW_VBRP TO LT_VBRP.
+    ENDIF.
+    SORT LT_VBRP BY VGBEL VGPOS.
+  ENDIF.
+
+  SELECT VBELN
+    KUNNR
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE GT_VBPA_KPF "del by yetp 20180711</font>
+    INTO TABLE GT_VBPA_KPF "add by yetp 20180711
+    FROM VBPA
+    FOR ALL ENTRIES IN LT_LIPS
+  WHERE VBELN = LT_LIPS-VGBEL
+    AND PARVW = 'RE'.
+  SORT GT_VBPA_KPF BY VBELN.
+
+  SELECT
+    VBELN
+    KUNNR
+<font color ="#0000FF">*    INTO CORRESPONDING FIELDS OF TABLE GT_VBPA_FKF  "del by yetp 20180711</font>
+    INTO  TABLE GT_VBPA_FKF "add by yetp 20180711
+    FROM VBPA
+    FOR ALL ENTRIES IN LT_LIPS
+  WHERE VBELN = LT_LIPS-VGBEL
+    AND PARVW = 'RG'.
+  SORT GT_VBPA_FKF BY VBELN.
+
+<font color ="#0000FF">*  LOOP AT lt_lips INTO lw_lips.</font>
+<font color ="#0000FF">*    READ TABLE gt_vbpa_kpf INTO w_vbpa_kpf WITH KEY vbeln = lw_lips-vgbel BINARY SEARCH.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      lw_lips-zkpf = w_vbpa_kpf-kunnr.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    READ TABLE gt_vbpa_fkf INTO w_vbpa_fkf WITH KEY vbeln = lw_lips-vgbel BINARY SEARCH.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      lw_lips-zfkf = w_vbpa_fkf-kunnr.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    LOOP AT gt_vbrp INTO w_vbrp WHERE vgbel = lw_lips-vbeln</font>
+<font color ="#0000FF">*                                       AND vgpos = lw_lips-posnr.</font>
+<font color ="#0000FF">*      "已开票的数量累加</font>
+<font color ="#0000FF">*      g_fkimg = g_fkimg + w_vbrp-fkimg.</font>
+<font color ="#0000FF">*      g_netwr = g_netwr + w_vbrp-netwr.</font>
+<font color ="#0000FF">*      g_mwsbp = g_mwsbp + w_vbrp-mwsbp.</font>
+<font color ="#0000FF">*      lw_lips-augru = w_vbrp-augru.</font>
+<font color ="#0000FF">*    ENDLOOP.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    READ TABLE lt_vbap INTO lw_vbap WITH KEY vbeln = lw_lips-vgbel</font>
+<font color ="#0000FF">*                                             posnr = lw_lips-vgpos BINARY SEARCH.</font>
+<font color ="#0000FF">*    IF sy-subrc = 0.</font>
+<font color ="#0000FF">*      lw_lips-matnr = lw_vbap-matnr.</font>
+<font color ="#0000FF">*      lw_lips-waerk = lw_vbap-waerk.</font>
+<font color ="#0000FF">*      IF lw_vbap-kwmeng &lt;&gt; 0.</font>
+<font color ="#0000FF">*        lw_lips-zjdj = lw_vbap-netwr / lw_vbap-kwmeng.</font>
+<font color ="#0000FF">*        lw_lips-zsj = lw_vbap-mwsbp / lw_vbap-kwmeng.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">*      lw_lips-augru = lw_vbap-augru.</font>
+<font color ="#0000FF">*    ELSE.</font>
+<font color ="#0000FF">*      CLEAR lw_vbap.</font>
+<font color ="#0000FF">*    ENDIF.</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*    LOOP AT gt_wkp INTO w_wkp WHERE fktyp = 'L' AND vbeln = lw_lips-vbeln.</font>
+<font color ="#0000FF">*      w_wkp-waerk = lw_lips-waerk.</font>
+<font color ="#0000FF">*      w_wkp-posnr = lw_lips-posnr.</font>
+<font color ="#0000FF">*      w_wkp-matnr = lw_lips-matnr.</font>
+<font color ="#0000FF">*      w_wkp-arktx = lw_lips-arktx.</font>
+<font color ="#0000FF">*      w_wkp-vrkme = lw_lips-vrkme.</font>
+<font color ="#0000FF">*      w_wkp-zckdj = lw_lips-vgbel.</font>
+<font color ="#0000FF">*      w_wkp-zckxm = lw_lips-vgpos.</font>
+<font color ="#0000FF">*      READ TABLE gt_t006a INTO w_t006a WITH KEY msehi = w_wkp-vrkme BINARY SEARCH.</font>
+<font color ="#0000FF">*      IF sy-subrc = 0.</font>
+<font color ="#0000FF">*        w_wkp-msehl = w_t006a-msehl.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">*      w_wkp-zkpf = lw_lips-zkpf.</font>
+<font color ="#0000FF">*      w_wkp-zfkf = lw_lips-zfkf.</font>
+<font color ="#0000FF">*      w_wkp-augru = lw_lips-augru.</font>
+<font color ="#0000FF">*      w_wkp-zwkqty = lw_lips-lfimg - g_fkimg.</font>
+<font color ="#0000FF">*      w_wkp-zwkpjj = w_wkp-zwkqty * lw_lips-zjdj.</font>
+<font color ="#0000FF">*      w_wkp-zwkpsj = w_wkp-zwkqty * lw_lips-zsj.</font>
+<font color ="#0000FF">*      " 防止先除后乘出现的误差</font>
+<font color ="#0000FF">*      IF lw_vbap IS NOT INITIAL.</font>
+<font color ="#0000FF">*        w_wkp-zwkpjj = w_wkp-zwkqty * lw_vbap-netwr / lw_vbap-kwmeng.</font>
+<font color ="#0000FF">*        w_wkp-zwkpsj = w_wkp-zwkqty * lw_vbap-mwsbp / lw_vbap-kwmeng.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">*      READ TABLE gt_kna1 INTO w_kna1 WITH KEY kunnr = w_wkp-zsdf BINARY SEARCH.</font>
+<font color ="#0000FF">*      IF sy-subrc = 0.</font>
+<font color ="#0000FF">*        w_wkp-sortl = w_kna1-sortl.</font>
+<font color ="#0000FF">*        w_wkp-zsdfnm = w_kna1-name1.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">**回写开票方名称</font>
+<font color ="#0000FF">*      READ TABLE gt_kna1 INTO w_kna1 WITH KEY kunnr = w_wkp-zkpf BINARY SEARCH.</font>
+<font color ="#0000FF">*      IF sy-subrc = 0.</font>
+<font color ="#0000FF">*        w_wkp-zkpfnm = w_kna1-name1.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">**回写付款方名称</font>
+<font color ="#0000FF">*      READ TABLE gt_kna1 INTO w_kna1 WITH KEY kunnr = w_wkp-zfkf BINARY SEARCH.</font>
+<font color ="#0000FF">*      IF sy-subrc = 0.</font>
+<font color ="#0000FF">*        w_wkp-zfkfnm = w_kna1-name1.</font>
+<font color ="#0000FF">*      ENDIF.</font>
+<font color ="#0000FF">*      MOVE-CORRESPONDING w_wkp TO w_alv_wkp.</font>
+<font color ="#0000FF">*      APPEND w_alv_wkp TO gt_alv_wkp.</font>
+<font color ="#0000FF">*    ENDLOOP.</font>
+<font color ="#0000FF">*    CLEAR:g_fkimg,g_netwr,g_mwsbp.</font>
+<font color ="#0000FF">*  ENDLOOP.</font>
+  LOOP AT LT_LIPS INTO LW_LIPS.
+    CLEAR W_WKP.
+    W_WKP-VBELN = LW_LIPS-VBELN.
+    W_WKP-ZSDF = LW_LIPS-KUNNR.
+    W_WKP-KNKLI = LW_LIPS-KNKLI.
+    W_WKP-ZGZRQ = LW_LIPS-WADAT_IST.
+
+    " 设置开票方
+    READ TABLE GT_VBPA_KPF INTO W_VBPA_KPF WITH KEY VBELN = LW_LIPS-VGBEL BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      W_WKP-ZKPF = W_VBPA_KPF-KUNNR.
+    ENDIF.
+
+    " 设置付款方
+    READ TABLE GT_VBPA_FKF INTO W_VBPA_FKF WITH KEY VBELN = LW_LIPS-VGBEL BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      W_WKP-ZFKF = W_VBPA_FKF-KUNNR.
+    ENDIF.
+
+    " 读取已开票的数量
+    CLEAR LW_VBRP.
+    READ TABLE LT_VBRP INTO LW_VBRP WITH KEY VGBEL = LW_LIPS-VBELN
+                                            VGPOS = LW_LIPS-POSNR BINARY SEARCH.
+
+    " 读取销售订单数据
+    READ TABLE LT_VBAP INTO LW_VBAP WITH KEY VBELN = LW_LIPS-VGBEL
+                                             POSNR = LW_LIPS-VGPOS BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      LW_LIPS-MATNR = LW_VBAP-MATNR.
+      LW_LIPS-WAERK = LW_VBAP-WAERK.
+      IF LW_VBAP-KWMENG &lt;&gt; 0.
+        LW_LIPS-ZJDJ = LW_VBAP-NETWR / LW_VBAP-KWMENG.
+        LW_LIPS-ZSJ = LW_VBAP-MWSBP / LW_VBAP-KWMENG.
+      ENDIF.
+      LW_LIPS-AUGRU = LW_VBAP-AUGRU.
+    ELSE.
+      CLEAR LW_VBAP.
+    ENDIF.
+
+    W_WKP-WAERK = LW_LIPS-WAERK.
+    W_WKP-POSNR = LW_LIPS-POSNR.
+    W_WKP-MATNR = LW_LIPS-MATNR.
+    W_WKP-ARKTX = LW_LIPS-ARKTX.
+    W_WKP-VRKME = LW_LIPS-VRKME.
+    W_WKP-ZCKDJ = LW_LIPS-VGBEL.
+    W_WKP-ZCKXM = LW_LIPS-VGPOS.
+    W_WKP-AUGRU = LW_LIPS-AUGRU.
+    W_WKP-ZWKQTY = LW_LIPS-LFIMG - LW_VBRP-FKIMG.
+    W_WKP-ZWKPJJ = W_WKP-ZWKQTY * LW_LIPS-ZJDJ.
+    W_WKP-ZWKPSJ = W_WKP-ZWKQTY * LW_LIPS-ZSJ.
+    " 防止先除后乘出现的误差
+    IF LW_VBAP IS NOT INITIAL.
+      W_WKP-ZWKPJJ = W_WKP-ZWKQTY * LW_VBAP-NETWR / LW_VBAP-KWMENG.
+      W_WKP-ZWKPSJ = W_WKP-ZWKQTY * LW_VBAP-MWSBP / LW_VBAP-KWMENG.
+    ENDIF.
+    READ TABLE GT_KNA1 INTO W_KNA1 WITH KEY KUNNR = W_WKP-ZSDF BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      W_WKP-SORTL = W_KNA1-SORTL.
+      W_WKP-ZSDFNM = W_KNA1-NAME1.
+    ENDIF.
+<font color ="#0000FF">*回写开票方名称</font>
+    READ TABLE GT_KNA1 INTO W_KNA1 WITH KEY KUNNR = W_WKP-ZKPF BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      W_WKP-ZKPFNM = W_KNA1-NAME1.
+    ENDIF.
+<font color ="#0000FF">*回写付款方名称</font>
+    READ TABLE GT_KNA1 INTO W_KNA1 WITH KEY KUNNR = W_WKP-ZFKF BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      W_WKP-ZFKFNM = W_KNA1-NAME1.
+    ENDIF.
+
+    APPEND W_WKP TO GT_ALV_WKP.
+
+<font color ="#0000FF">*********add by yetp 20180914******start</font>
+
+    IF P_CK = 'X'.
+      CLEAR:W_PZ_XS.
+      W_PZ_XS-ZCKDJ = W_WKP-ZCKDJ.
+      W_PZ_XS-SL    = W_WKP-ZWKQTY.
+
+      COLLECT W_PZ_XS INTO GT_PZ_XS. "根据销售订单汇总未开票数量
+    ENDIF.
+
+<font color ="#0000FF">*********add by yetp 20180914******end</font>
+
+  ENDLOOP.
+  FREE LT_VBRP.
+ENDFORM.                    "get_data_l
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  read_js</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       读取发票的金税号码</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      &lt;--P_&lt;FS_DATA&gt;  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM READ_JS CHANGING P_DATA TYPE TY_YKP.
+  DATA: L_NAME TYPE THEAD-TDNAME,
+        LT_LINE TYPE STANDARD TABLE OF TLINE,
+        LW_LINE TYPE TLINE.
+
+  CLEAR P_DATA-ZJSHM.
+
+  READ TABLE GT_JSHM INTO W_JSHM WITH KEY VBELN = P_DATA-VBELN BINARY SEARCH.
+  IF SY-SUBRC = 0.
+    P_DATA-ZJSHM = W_JSHM-ZJSHM.
+  ELSE.
+
+    L_NAME = P_DATA-VBELN.
+
+    CALL FUNCTION 'READ_TEXT'
+      EXPORTING
+<font color ="#0000FF">*     CLIENT                        = SY-MANDT</font>
+        ID                            = 'Z005'
+        LANGUAGE                      = '1'
+        NAME                          = L_NAME
+        OBJECT                        = 'VBBK'
+<font color ="#0000FF">*     ARCHIVE_HANDLE                = 0</font>
+<font color ="#0000FF">*     LOCAL_CAT                     = ' '</font>
+<font color ="#0000FF">*   IMPORTING</font>
+<font color ="#0000FF">*     HEADER                        =</font>
+     TABLES
+        LINES                         = LT_LINE
+     EXCEPTIONS
+       ID                            = 1
+       LANGUAGE                      = 2
+       NAME                          = 3
+       NOT_FOUND                     = 4
+       OBJECT                        = 5
+       REFERENCE_CHECK               = 6
+       WRONG_ACCESS_TO_ARCHIVE       = 7
+       OTHERS                        = 8
+              .
+    IF SY-SUBRC &lt;&gt; 0.
+<font color ="#0000FF">* Implement suitable error handling here</font>
+      W_JSHM-VBELN = P_DATA-VBELN.
+      W_JSHM-ZJSHM = P_DATA-ZJSHM.
+      APPEND W_JSHM TO GT_JSHM.
+      SORT GT_JSHM BY VBELN.
+      RETURN.
+    ENDIF.
+    READ TABLE LT_LINE INTO LW_LINE INDEX 1.
+    IF SY-SUBRC = 0.
+      P_DATA-ZJSHM = LW_LINE-TDLINE.
+    ENDIF.
+
+    W_JSHM-VBELN = P_DATA-VBELN.
+    W_JSHM-ZJSHM = P_DATA-ZJSHM.
+    APPEND W_JSHM TO GT_JSHM.
+    SORT GT_JSHM BY VBELN.
+  ENDIF.
+ENDFORM.                    " SET_TDLINE
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DEAL_DATA_CK</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DEAL_DATA_CK .
+  TYPES:BEGIN OF TY_VBAP,
+         VBELN TYPE VBAP-VBELN,
+         POSNR TYPE VBAP-POSNR,
+         KWMENG TYPE VBAP-KWMENG,
+         ZMENG  TYPE VBAP-ZMENG,  " 借贷项的订单数量
+        END OF TY_VBAP.
+
+  TYPES:BEGIN OF TY_EKPO,
+         EBELN TYPE EKPO-EBELN,
+         EBELP TYPE EKPO-EBELP,
+         MENGE TYPE EKPO-MENGE,
+        END OF TY_EKPO.
+
+  DATA:LT_VBAP TYPE STANDARD TABLE OF TY_VBAP,
+       LW_VBAP TYPE TY_VBAP.
+  DATA:LT_EKPO TYPE STANDARD TABLE OF TY_EKPO,
+       LW_EKPO TYPE TY_EKPO.
+
+
+  FIELD-SYMBOLS:&lt;LFS_VBAP&gt; TYPE TY_VBAP,
+                &lt;LFS_EKPO&gt; TYPE TY_EKPO.
+
+  CLEAR:GT_SL.
+  "汇总销售订单的数量
+  IF GT_PZ_XS IS NOT INITIAL.
+    SELECT VBELN
+      POSNR
+      KWMENG
+      ZMENG
+      INTO TABLE LT_VBAP
+      FROM VBAP
+      FOR ALL ENTRIES IN GT_PZ_XS
+    WHERE VBELN = GT_PZ_XS-ZCKDJ
+      AND ABGRU = SPACE.
+
+
+    LOOP AT LT_VBAP ASSIGNING &lt;LFS_VBAP&gt;.
+      CLEAR:W_SL.
+      W_SL-ZCKDJ = &lt;LFS_VBAP&gt;-VBELN.
+      IF &lt;LFS_VBAP&gt;-KWMENG IS INITIAL  .
+        W_SL-SL = &lt;LFS_VBAP&gt;-ZMENG.
+      ELSE.
+        W_SL-SL = &lt;LFS_VBAP&gt;-KWMENG.
+      ENDIF.
+
+      COLLECT W_SL INTO GT_SL.
+    ENDLOOP.
+
+  ENDIF.
+
+
+  "汇总采购订单数量
+  IF GT_PZ_CG IS NOT INITIAL.
+    SELECT EBELN
+      EBELP
+      MENGE
+      INTO TABLE LT_EKPO
+      FROM EKPO
+      FOR ALL ENTRIES IN GT_PZ_CG
+    WHERE EBELN = GT_PZ_CG-ZCKDJ
+      AND LOEKZ = SPACE.
+
+    LOOP AT LT_EKPO ASSIGNING &lt;LFS_EKPO&gt;.
+      CLEAR:W_SL.
+      W_SL-ZCKDJ = &lt;LFS_EKPO&gt;-EBELN.
+      W_SL-SL = &lt;LFS_EKPO&gt;-MENGE.
+      COLLECT W_SL INTO GT_SL.
+    ENDLOOP.
+  ENDIF.
+
+  SORT GT_SL BY ZCKDJ.
+
+  "将已经出库的采购订单，销售订单的内表合一
+  APPEND LINES OF GT_PZ_CG TO GT_PZ_XS.
+
+  "获取完全出库订单
+  LOOP AT GT_PZ_XS  ASSIGNING &lt;FS_PZ_XS&gt;.
+    READ TABLE GT_SL ASSIGNING &lt;FS_SL&gt; WITH  KEY ZCKDJ = &lt;FS_PZ_XS&gt;-ZCKDJ BINARY SEARCH.
+    IF SY-SUBRC = 0.
+      IF &lt;FS_PZ_XS&gt;-SL &lt;&gt; &lt;FS_SL&gt;-SL.
+        DELETE GT_PZ_XS."删除没有完全出库的订单数据
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+
+  SORT GT_PZ_XS BY ZCKDJ.
+
+  "在未开票信息中排出未完全出库的订单
+  LOOP AT GT_ALV_WKP ASSIGNING &lt;FS_ALV_WKP&gt;.
+    READ TABLE GT_PZ_XS ASSIGNING &lt;FS_PZ_XS&gt; WITH KEY ZCKDJ = &lt;FS_ALV_WKP&gt;-ZCKDJ BINARY SEARCH.
+    IF SY-SUBRC &lt;&gt; 0.
+      DELETE GT_ALV_WKP.
+    ENDIF.
+  ENDLOOP.
+
+
+  IF GT_ALV_WKP IS INITIAL.
+    MESSAGE S050 DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  SORT GT_ALV_WKP BY ZCKDJ.
+
+ENDFORM.                    " DEAL_DATA_CK
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

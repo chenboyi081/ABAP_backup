@@ -1,0 +1,98 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZHS050_PAI</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZHS050_PAI</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  Include ZHS050_PAI</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&  包括                ZHS050_PAI</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  USER_COMMAND_9000  INPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       9000屏幕按钮处理</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+
+<font color ="#0000FF">*&SPWIZARD: INPUT MODULE FOR TC 'TAB'. DO NOT CHANGE THIS LINE!</font>
+<font color ="#0000FF">*&SPWIZARD: MODIFY TABLE</font>
+MODULE tab_modify INPUT.
+  MODIFY gt_yclxj
+    FROM w_yclxj
+    INDEX tab-current_line.
+ENDMODULE.                    "TAB_MODIFY INPUT
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  MODULE user_command_9000 INPUT</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*    界面按钮设置</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE user_command_9000 INPUT.
+  PERFORM process_command_9000.
+ENDMODULE.                 " USER_COMMAND_9000 INPUT
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  MODULE click_list_lb INPUT</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*   根据料别带出牌号代码并填充代码下拉框</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE click_list_lb INPUT.
+  PERFORM get_phcd.
+  PERFORM set_showlist_for_phcd USING c_mtphcd.
+ENDMODULE.                    "click_list_lb INPUT
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  MODULE update_phnm INPUT</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  根据牌号代码带出牌号名称和调价单位</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE update_phnm INPUT.
+  PERFORM get_phnm_tjdw.
+ENDMODULE.                    "update_phnm INPUT
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  MODULE exit_process INPUT</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  工具条按钮设置</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE exit_process INPUT.
+  PERFORM exit_command.
+ENDMODULE.                    "exit_process INPUT
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Module  SET_CHANGE_FLAG  INPUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*        设置数据修改标识</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE set_change_flag INPUT.
+  g_change = 'X'.
+ENDMODULE.                 " SET_CHANGE_FLAG  INPUT
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  MODULE set_mode INPUT</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE set_mode INPUT.
+  PERFORM set_cell_read.
+ENDMODULE.                    "set_mode INPUT
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  MODULE get_list_ph INPUT</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+MODULE get_list_ph INPUT.
+  PERFORM get_data_list_ph.
+  PERFORM set_listbox_for_yclph USING c_phcd.
+ENDMODULE.                    "get_list_ph INPUT
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

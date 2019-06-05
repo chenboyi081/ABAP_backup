@@ -1,0 +1,1037 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZSD037</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZSD037</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  批量导入数据修改FD32信贷限额</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& 程序名称       : ZSD037</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 作者           : 汤浩然（人民）</font>
+<font color ="#0000FF">*& 开发日期       : 2016-08-26</font>
+<font color ="#0000FF">*& 请求号         :</font>
+<font color ="#0000FF">*& 描述           : 批量导入excel数据并根据数据修改FD32信贷限额</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 变更记录</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">** 修改日期 开发人员  请求号 描述</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  ZSD037 MESSAGE-ID ZPEOPLE.
+TABLES:ZZTZSD037,KNKK,ZSD037_RESULT,SSCRFIELDS,ZSD037_SUCCESS.
+TYPES:BEGIN OF TY_DATA,    "导入数据
+      KUNNR(10) TYPE C,     "客户编号
+      KKBER(4) TYPE C,     "贷方控制范围
+      KLIMK(20) TYPE C,    "信贷限额
+     END OF TY_DATA.
+
+TYPES:BEGIN OF TY_ERROR,
+      KUNNR(10) TYPE C,     "客户编号
+      KKBER(4) TYPE C,     "贷方控制范围
+      KLIMK(20) TYPE C,    "信贷限额
+      MSG(100) TYPE C,     "错误文本
+      END OF TY_ERROR.
+
+TYPES:BEGIN OF TY_CESJ,   "屏幕处理的主数据
+      SEL TYPE C.
+        include structure <a href ="zztzsd037/dictionary-zztzsd037.html">ZZTZSD037</a>.
+TYPES:END OF TY_CESJ.
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  内表&工作区定义</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+DATA:GT_DATA TYPE STANDARD TABLE OF TY_DATA,    "存放导入数据内表
+      W_DATA TYPE TY_DATA.
+
+DATA:GT_ERROR TYPE STANDARD TABLE OF TY_ERROR,  "保存错误信息内表
+      W_ERROR TYPE TY_ERROR.
+
+DATA:GT_ZZTZSD037 TYPE STANDARD TABLE OF ZZTZSD037, "保存导入数据表数据
+      W_ZZTZSD037 TYPE ZZTZSD037.
+
+DATA:GT_CHECK TYPE STANDARD TABLE OF ZZTZSD037,     "保存要删除数据
+      W_CHECK TYPE  ZZTZSD037.
+
+DATA:GT_CESJ TYPE STANDARD TABLE OF TY_CESJ,
+      W_CESJ TYPE TY_CESJ.
+
+DATA:GT_RESULT TYPE STANDARD TABLE OF ZSD037_RESULT,
+      W_RESULT TYPE ZSD037_RESULT.
+
+DATA:GT_SUCCESS TYPE STANDARD TABLE OF ZSD037_SUCCESS,
+      W_SUCCESS TYPE ZSD037_SUCCESS.
+
+DATA: IT_RAW TYPE TRUXS_T_TEXT_DATA.
+
+<font color ="#0000FF">***alv相关内表定义</font>
+DATA:GT_FCAT  TYPE LVC_T_FCAT,
+     W_FCAT   TYPE LVC_S_FCAT,
+     W_LAYOUT TYPE LVC_S_LAYO.
+
+DATA:P_MODE TYPE CTU_MODE VALUE 'A'.
+DATA:GT_MSGTAB TYPE STANDARD TABLE OF BDCMSGCOLL.
+DATA:W_MSGTAB   TYPE BDCMSGCOLL.
+<font color ="#0000FF">***BDC处理定义</font>
+DATA: GT_PLDR TYPE STANDARD TABLE OF BDCDATA,
+       W_PLDR  TYPE BDCDATA.
+DATA: L_MESSAGE TYPE STRING.
+DATA: E_FLAG TYPE CHAR1.
+DATA: ZD_FLAG TYPE CHAR1.
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* 全局变量</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+DATA:G_ERROR(255) TYPE C. "保存错误文本
+DATA:G_FLAG TYPE C.   "值为 ‘X’ 导入文本存在错误
+DATA:G_OK_CODE TYPE SY-UCOMM,
+     G_SAVE_OK TYPE SY-UCOMM,
+     G_NEW_OK  TYPE SY-UCOMM,
+     G_READ    TYPE C VALUE 'X',        "只读标识
+     G_CHANGE TYPE C.         "数据发生变化标识
+
+<font color ="#0000FF">*** OLE EXCLE定义</font>
+DATA: G_SHEET TYPE OLE2_OBJECT,
+      G_ACTIVESHEET TYPE OLE2_OBJECT,
+      G_NEWSHEET TYPE OLE2_OBJECT,
+      G_APPL TYPE OLE2_OBJECT,
+      G_WORK TYPE OLE2_OBJECT,
+      G_CELL TYPE OLE2_OBJECT.
+
+<font color ="#0000FF">***屏幕9000全局变量</font>
+DATA:G_GJAHR TYPE ZZTZSD037-KUNNR,  "客户编号
+     G_KKBER TYPE ZZTZSD037-KKBER,  "贷方控制范围
+     G_MONAT TYPE ZZTZSD037-KLIMK,  "信贷限额
+     G_DRRQ  TYPE SY-DATUM.         "更新日期
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* 字符对象</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FIELD-SYMBOLS:&lt;FS_DATA&gt; TYPE TY_DATA,
+               &lt;FS_DEL&gt; TYPE ZZTZFI017.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 常数声明</font>
+<font color ="#0000FF">************************************************************************</font>
+CONSTANTS: COS_FC01           TYPE CHAR4  VALUE 'FC01',
+           COS_SJOB           TYPE CHAR4  VALUE 'SJOB'.
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* 宏定义</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+DEFINE MARCO.
+  CLEAR W_FCAT.
+  &1 = &1 + 1.
+  W_FCAT-COL_POS = &1.
+  W_FCAT-FIELDNAME = &2.
+  W_FCAT-COLTEXT = &3.
+  W_FCAT-KEY = &4.
+
+  APPEND W_FCAT TO GT_FCAT.
+END-OF-DEFINITION.
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* 选择屏幕</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+SELECTION-SCREEN BEGIN OF BLOCK BLK1 WITH FRAME TITLE TEXT-000.
+SELECTION-SCREEN BEGIN OF LINE.
+"批量导入界面
+"模板下载与数据上传
+PARAMETERS:P_PD TYPE C RADIOBUTTON GROUP G1 USER-COMMAND SELE DEFAULT 'X'.
+SELECTION-SCREEN COMMENT 4(10) TEXT-001.
+"上传数据查询
+PARAMETERS:P_DRCX TYPE C RADIOBUTTON GROUP G1.
+SELECTION-SCREEN COMMENT 18(10) TEXT-007.
+"上传数据清空或手动批量修改
+PARAMETERS:P_PLDR TYPE C RADIOBUTTON GROUP G1.
+SELECTION-SCREEN COMMENT 32(10) TEXT-002.
+"自动修改后错误查询
+PARAMETERS:P_CWCX TYPE C RADIOBUTTON GROUP G1.
+SELECTION-SCREEN COMMENT 46(10) TEXT-005.
+
+SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN END OF BLOCK BLK1.
+
+"上传和下载模板界面
+SELECTION-SCREEN BEGIN OF BLOCK BLK2 WITH FRAME TITLE TEXT-003.
+PARAMETERS: P_UPLOAD TYPE C RADIOBUTTON GROUP G2  DEFAULT 'X' MODIF ID M1,
+            P_DOWN   TYPE C RADIOBUTTON GROUP G2 MODIF ID M1.
+PARAMETERS: P_FILE LIKE RLGRAP-FILENAME MODIF ID M1.
+SELECTION-SCREEN SKIP 1.
+SELECTION-SCREEN END OF BLOCK BLK2.
+
+
+"批量修改界面
+SELECTION-SCREEN BEGIN OF BLOCK BLK3 WITH FRAME TITLE TEXT-004.
+PARAMETERS:P_QK TYPE C RADIOBUTTON GROUP G3 DEFAULT 'X' MODIF ID M2,
+           P_XG   TYPE C RADIOBUTTON GROUP G3 MODIF ID M2.
+SELECTION-SCREEN END OF BLOCK BLK3.
+
+"查询错误界面
+SELECTION-SCREEN BEGIN OF BLOCK BLK4 WITH FRAME TITLE TEXT-006.
+SELECT-OPTIONS:S_KUNNR FOR KNKK-KUNNR MODIF ID M3.    "客户编号
+SELECT-OPTIONS:S_KKBER FOR KNKK-KKBER DEFAULT '1000' MODIF ID M3.    "贷方控制范围
+SELECT-OPTIONS:S_ERDAT FOR ZSD037_RESULT-ERDAT MODIF ID M3.    "修改日期
+SELECT-OPTIONS:S_ERZET FOR ZSD037_RESULT-ERZET MODIF ID M3.    "修改时间
+SELECTION-SCREEN END OF BLOCK BLK4.
+
+"上传数据查询界面
+SELECTION-SCREEN BEGIN OF BLOCK BLK5 WITH FRAME TITLE TEXT-008.
+SELECT-OPTIONS:SS_KUNNR FOR KNKK-KUNNR MODIF ID M4.    "客户编号
+SELECT-OPTIONS:SS_KKBER FOR KNKK-KKBER DEFAULT '1000' MODIF ID M4.    "贷方控制范围
+SELECT-OPTIONS:SS_ERDAT FOR ZSD037_RESULT-ERDAT MODIF ID M4.    "导入日期
+SELECT-OPTIONS:SS_ERZET FOR ZSD037_RESULT-ERZET MODIF ID M4.    "导入时间
+SELECTION-SCREEN END OF BLOCK BLK5.
+
+SELECTION-SCREEN: FUNCTION KEY 1.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* START-OF-SELECTION.</font>
+<font color ="#0000FF">************************************************************************</font>
+INITIALIZATION.
+  SSCRFIELDS-FUNCTXT_01 = '信贷限额自动修改设置'(011).
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 屏幕输出之前处理</font>
+<font color ="#0000FF">************************************************************************</font>
+AT  SELECTION-SCREEN  OUTPUT .
+  LOOP  AT  SCREEN .
+    CASE  SCREEN-GROUP1.                    "屏幕组
+      WHEN  'M1' .
+        IF  P_PD EQ  'X' .
+          SCREEN-ACTIVE = 1 .                "设置屏幕显示
+        ELSE .
+          SCREEN-ACTIVE = 0 .                "设置屏幕隐藏
+        ENDIF .
+      WHEN  'M2' .
+        IF  P_PLDR EQ  'X' .
+          SCREEN-ACTIVE = 1 .
+        ELSE .
+          SCREEN-ACTIVE = 0 .
+        ENDIF .
+      WHEN  'M3' .
+        IF  P_CWCX EQ  'X' .
+          SCREEN-ACTIVE = 1 .
+        ELSE .
+          SCREEN-ACTIVE = 0 .
+        ENDIF .
+      WHEN  'M4' .
+        IF  P_DRCX EQ  'X' .
+          SCREEN-ACTIVE = 1 .
+        ELSE .
+          SCREEN-ACTIVE = 0 .
+        ENDIF .
+    ENDCASE .
+    MODIFY  SCREEN .                        "修改选择屏幕属性
+  ENDLOOP .
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* AT SELECTION-SCREEN</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+AT SELECTION-SCREEN.
+  IF SSCRFIELDS-UCOMM = COS_FC01.
+    SSCRFIELDS-UCOMM = COS_SJOB.
+  ENDIF.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR P_FILE.
+  PERFORM F4_HELP_FOR_FILENAME.
+
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">* START-OF-SELECTION</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+START-OF-SELECTION.
+  IF SY-BATCH = 'X'.
+    ZD_FLAG = 'X'.
+    PERFORM LP_UPDATE_FOR_FD32 .
+  ELSE.
+    IF P_PD = 'X'.      "数据批量导入
+      "判断文件指定
+      IF P_FILE IS INITIAL.
+        MESSAGE S000(ZPEOPLE) DISPLAY LIKE 'E' WITH '请输入上传\下载文件路径'.
+        STOP.
+      ENDIF.
+
+      IF P_UPLOAD = 'X'.
+        PERFORM UPLOAD_FILE.  "上传文件
+
+        PERFORM CHECK_DATA.   "检查数据
+
+        IF G_FLAG = 'X'.
+          PERFORM DISPLAY_ALV.  "显示错误信息
+        ELSE.
+          PERFORM BATCH_INPUT_DATA. "数据导入
+
+          PERFORM DISPLAY_ALV.  "显示导入结果
+        ENDIF.
+      ELSE.
+        PERFORM DOWNLOAD_TEMPLATE. "下载模板
+      ENDIF.
+
+    ELSEIF P_PLDR = 'X'.  "数据批量修改
+      IF P_QK = 'X'.  "清空表数据
+        DELETE FROM ZZTZSD037.  "清空数据
+        MESSAGE S000(ZPEOPLE) WITH '已成功清空数据'.
+      ELSE.
+        PERFORM LP_UPDATE_FOR_FD32. "批量修改
+        PERFORM DISPLAY_ALV_UPDATE.  "显示错误信息
+        "MESSAGE S000(ZPEOPLE) WITH '批量修改发生错误！'.
+      ENDIF.
+
+    ELSEIF P_DRCX = 'X'.  "数据批量修改
+      PERFORM CHECK_UPLOAD_DATA.  "上传数据查询
+      PERFORM DISPLAY_ALV_CHECK.  "显示查询结果
+    ELSE.
+      PERFORM CHECK_ERROR_DATA.  "自动上传错误查询
+      PERFORM DISPLAY_ALV_UPDATE.  "显示错误查询结果
+    ENDIF.
+  ENDIF.
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  upload_file</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       读取上传文件数据到内表</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM UPLOAD_FILE.
+  CLEAR: GT_DATA.
+  CALL FUNCTION 'TEXT_CONVERT_XLS_TO_SAP'
+    EXPORTING
+      I_LINE_HEADER        = 'X'       " Not include file header
+      I_TAB_RAW_DATA       = IT_RAW    " Work Table
+      I_FILENAME           = P_FILE
+    TABLES
+      I_TAB_CONVERTED_DATA = GT_DATA
+    EXCEPTIONS
+      CONVERSION_FAILED    = 1
+      OTHERS               = 2.
+  IF SY-SUBRC &lt;&gt; 0.
+    MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+  IF GT_DATA IS INITIAL.
+    MESSAGE S000(ZPEOPLE) WITH '上传文件不包含任何有效数据' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+ENDFORM.                    "UPLOAD_FILE
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  CHECK_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CHECK_DATA.
+  DATA:L_GJAHR TYPE GJAHR.
+  DATA:L_MONAT TYPE MONAT.
+  CLEAR:GT_ERROR,
+        G_FLAG.
+
+
+  "检查数据
+  LOOP AT GT_DATA ASSIGNING &lt;FS_DATA&gt;.
+    CLEAR:G_ERROR.
+
+    CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+      EXPORTING
+        INPUT  = &lt;FS_DATA&gt;-KUNNR
+      IMPORTING
+        OUTPUT = &lt;FS_DATA&gt;-KUNNR.
+
+
+    "客户编号检查
+    IF &lt;FS_DATA&gt;-KUNNR IS INITIAL.
+      CONCATENATE  G_ERROR '客户编号不能为空.' INTO G_ERROR.
+    ELSEIF &lt;FS_DATA&gt;-KKBER IS INITIAL.
+      CONCATENATE  G_ERROR '信贷控制范围不能为空.' INTO G_ERROR.
+    ELSEIF &lt;FS_DATA&gt;-KLIMK IS INITIAL.
+      CONCATENATE  G_ERROR '信贷限额不能为空.' INTO G_ERROR.
+    ELSE.
+      PERFORM CHECK_KK USING &lt;FS_DATA&gt;-KUNNR &lt;FS_DATA&gt;-KKBER.
+    ENDIF.
+
+    "导入文本存在错误数据
+    IF G_ERROR IS NOT INITIAL.
+      CLEAR:W_ERROR.
+      "导入文本存在错误信息
+      G_FLAG = 'X'.
+
+      MOVE-CORRESPONDING &lt;FS_DATA&gt; TO W_ERROR.
+      W_ERROR-MSG = G_ERROR.
+      APPEND W_ERROR TO GT_ERROR.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.                   " CHECK_DATA
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  CHECK_KK   KUNNR KKBER</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;P_&lt;FS_DATA&gt;_KUNNR  text</font>
+<font color ="#0000FF">*      --&gt;P_&lt;FS_DATA&gt;_KKBER  text</font>
+<font color ="#0000FF">*      &lt;--P_L_ERROR  text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CHECK_KK  USING C_KUNNR C_KKBER.
+  CLEAR GT_CHECK.
+  "判断公司代码是否存在
+  SELECT
+    KUNNR
+    KKBER
+    INTO CORRESPONDING FIELDS OF TABLE GT_CHECK
+    FROM KNKK
+  WHERE KUNNR = C_KUNNR
+    AND KKBER = C_KKBER.
+  "如果不存在
+  IF GT_CHECK IS INITIAL.
+    CONCATENATE G_ERROR '客户编号：' C_KUNNR ' 或信贷控制范围：' C_KKBER ' 为空或不存在.' INTO G_ERROR.
+  ENDIF.
+ENDFORM.                    " CHECK_DATA
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DISPLAY_ALV</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_ALV .
+  PERFORM INIT_FIELDCAT.    "
+
+  PERFORM INIT_LAYOUT.
+
+  PERFORM SHOW_ALV.
+ENDFORM.                    " DISPLAY_ALV
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  INIT_FIELDCAT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_FIELDCAT .
+  DATA:L_COLPOS TYPE I.
+
+  CLEAR:GT_FCAT.
+  MARCO:
+  L_COLPOS 'KUNNR' '客户编码' 'X',
+  L_COLPOS 'KKBER' '信贷控制范围' 'X',
+  L_COLPOS 'KLIMK' '信贷限额' 'X'.
+  IF G_FLAG = 'X'.
+    MARCO:L_COLPOS 'MSG' '错误信息' ''.
+  ENDIF.
+ENDFORM.                    " INIT_FIELDCAT
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  INIT_LAYOUT</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_LAYOUT .
+  CLEAR:W_LAYOUT.
+
+  W_LAYOUT-ZEBRA = 'X'.
+  "W_LAYOUT-COL_OPT = 'X'.
+  W_LAYOUT-CWIDTH_OPT = 'X'.
+ENDFORM.                    " INIT_LAYOUT
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SHOW_ALV</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_ALV .
+  IF G_FLAG = 'X'.
+    CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'
+     EXPORTING
+       I_CALLBACK_PROGRAM                = SY-REPID
+       IS_LAYOUT_LVC                     = W_LAYOUT
+       IT_FIELDCAT_LVC                   = GT_FCAT
+       I_SAVE                            = 'A'
+      TABLES
+        T_OUTTAB                         = GT_ERROR
+<font color ="#0000FF">* EXCEPTIONS</font>
+<font color ="#0000FF">*   PROGRAM_ERROR                     = 1</font>
+<font color ="#0000FF">*   OTHERS                            = 2</font>
+              .
+    IF SY-SUBRC &lt;&gt; 0.
+      MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+                  WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    ENDIF.
+  ELSE.
+    CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'
+     EXPORTING
+       I_CALLBACK_PROGRAM                = SY-REPID
+       IS_LAYOUT_LVC                     = W_LAYOUT
+       IT_FIELDCAT_LVC                   = GT_FCAT
+       I_SAVE                            = 'A'
+      TABLES
+        T_OUTTAB                          = GT_DATA
+<font color ="#0000FF">* EXCEPTIONS</font>
+<font color ="#0000FF">*   PROGRAM_ERROR                     = 1</font>
+<font color ="#0000FF">*   OTHERS                            = 2</font>
+              .
+    IF SY-SUBRC &lt;&gt; 0.
+      MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+                  WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    ENDIF.
+
+  ENDIF.
+ENDFORM.                    " SHOW_ALV
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  BATCH_INPUT_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM BATCH_INPUT_DATA.
+  DATA:LT_TMP TYPE STANDARD TABLE OF ZZTZSD037,
+        LW_TMP TYPE ZZTZSD037.
+  CLEAR:GT_ZZTZSD037.
+
+
+  "获取导入数据库数据
+  LOOP AT GT_DATA ASSIGNING &lt;FS_DATA&gt;.
+    CLEAR:W_ZZTZSD037.
+    MOVE-CORRESPONDING &lt;FS_DATA&gt; TO W_ZZTZSD037.
+
+    "获取导入人员编号和日期
+    W_ZZTZSD037-DRRY = SY-UNAME.
+    W_ZZTZSD037-ERDAT = SY-DATUM.
+    W_ZZTZSD037-ERZET = SY-UZEIT.
+
+    APPEND W_ZZTZSD037 TO GT_ZZTZSD037.
+  ENDLOOP.
+
+
+
+  MODIFY ZZTZSD037 FROM TABLE GT_ZZTZSD037.
+  IF SY-SUBRC = 0.
+    MESSAGE S000(ZPEOPLE) WITH '数据导入成功'.
+    COMMIT WORK.
+  ELSE.
+    MESSAGE A002 WITH 'ZZTZSD037'.
+    ROLLBACK WORK .
+  ENDIF.
+ENDFORM.                    " BATCH_INPUT_DATA
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DOWNLOAD_TEMPLATE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       下载数据模板</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DOWNLOAD_TEMPLATE.
+
+  CREATE OBJECT G_APPL 'EXCEL.APPLICATION'.
+  SET PROPERTY OF G_APPL 'VISIBLE' = 0.
+
+  CALL METHOD OF
+      G_APPL
+      'WORKBOOKS' = G_WORK.
+  CALL METHOD OF
+      G_WORK
+      'Add'  = G_WORK.
+
+  GET PROPERTY OF G_APPL 'ActiveSheet' = G_ACTIVESHEET.
+
+  SET PROPERTY OF G_ACTIVESHEET 'Name' = '信贷限额批导模板'.
+
+  PERFORM FILL_CELL USING:
+        1 1 '客户编号' 26 1,
+        1 2 '贷方控制范围' 26 1,
+        1 3 '信贷限额' 26 1.
+  "EXCEL文件别存为
+  CALL METHOD OF
+      G_WORK
+      'SAVEAS'
+
+    EXPORTING
+      #1       = P_FILE.
+
+  "关闭文件
+  CALL METHOD OF
+      G_WORK
+      'CLOSE'.
+
+  "退出EXCEL
+  CALL METHOD OF
+      G_APPL
+      'QUIT'.
+  FREE OBJECT G_APPL.
+
+  MESSAGE S000(ZPEOPLE) WITH '文件：' P_FILE ' 下载成功'.
+
+ENDFORM.                    "DOWNLOAD_TEMPLATE
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  fill_cell</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       填充EXCEL单元格</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*      --&gt;FU_ROW     行</font>
+<font color ="#0000FF">*      --&gt;FU_COLUMN  列</font>
+<font color ="#0000FF">*      --&gt;FU_VALUE   单元格内容</font>
+<font color ="#0000FF">*      --&gt;FU_COLOR   单元格颜色</font>
+<font color ="#0000FF">*      --&gt;FU_BOLD    单元格加粗</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM FILL_CELL USING  FU_ROW
+                      FU_COLUMN
+                      FU_VALUE
+                      FU_COLOR
+                      FU_BOLD.
+
+  DATA: L_CELL  TYPE OLE2_OBJECT,
+        L_COLOR TYPE OLE2_OBJECT,
+        L_BOLD  TYPE OLE2_OBJECT.
+
+  "设置单元格内容
+  CALL METHOD OF
+      G_APPL
+      'Cells' = L_CELL
+    EXPORTING
+      #1      = FU_ROW
+      #2      = FU_COLUMN.
+
+  SET PROPERTY OF L_CELL 'Value'       =  FU_VALUE.
+
+  "设置单元格颜色
+  GET PROPERTY OF L_CELL 'Interior'    = L_COLOR.
+  SET PROPERTY OF L_COLOR 'ColorIndex' = FU_COLOR.
+
+  "设置单元格加粗
+  GET PROPERTY OF L_CELL 'Font' = L_BOLD.
+  SET PROPERTY OF L_BOLD 'Bold' = FU_BOLD.
+
+ENDFORM.                    "fill_cell
+
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  F4_HELP_FOR_FILENAME</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       弹出文件打开和保存窗口</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM F4_HELP_FOR_FILENAME.
+  DATA: L_FILE         TYPE STRING,
+        L_FILE_IMPORT  TYPE STRING,
+        L_PATH_INITIAL TYPE STRING,
+        LT_FILE_TABLE  TYPE FILETABLE,
+        LW_FILE        TYPE FILE_TABLE,
+        L_RC           TYPE I.
+
+  CLEAR: L_FILE,
+         L_FILE_IMPORT,
+         L_PATH_INITIAL,
+         LT_FILE_TABLE,
+         LW_FILE,
+         L_RC.
+
+  L_FILE = P_FILE.
+  IF P_UPLOAD = 'X'.
+<font color ="#0000FF">*    CALL FUNCTION 'F4_FILENAME'</font>
+<font color ="#0000FF">*      EXPORTING</font>
+<font color ="#0000FF">*        field_name = 'P_FILE'</font>
+<font color ="#0000FF">*      IMPORTING</font>
+<font color ="#0000FF">*        file_name  = p_file.</font>
+    CALL METHOD CL_GUI_FRONTEND_SERVICES=&gt;FILE_OPEN_DIALOG
+      EXPORTING
+<font color ="#0000FF">*       window_title            =</font>
+<font color ="#0000FF">*       default_extension       =</font>
+<font color ="#0000FF">*       default_filename        =</font>
+        FILE_FILTER             = 'Excel 文件 (*.xls;*xlsx)|*.xls;*.xlsx'
+<font color ="#0000FF">*       with_encoding           =</font>
+<font color ="#0000FF">*       initial_directory       =</font>
+<font color ="#0000FF">*       multiselection          =</font>
+      CHANGING
+        FILE_TABLE              = LT_FILE_TABLE
+        RC                      = L_RC
+<font color ="#0000FF">*       user_action             =</font>
+<font color ="#0000FF">*       file_encoding           =</font>
+      EXCEPTIONS
+        FILE_OPEN_DIALOG_FAILED = 1
+        CNTL_ERROR              = 2
+        ERROR_NO_GUI            = 3
+        NOT_SUPPORTED_BY_GUI    = 4
+        OTHERS                  = 5.
+    IF SY-SUBRC &lt;&gt; 0.
+      MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+                 WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    ENDIF.
+
+    READ TABLE LT_FILE_TABLE INTO LW_FILE INDEX 1.
+    IF SY-SUBRC EQ 0.
+      P_FILE = LW_FILE-FILENAME.
+    ENDIF.
+  ELSE.
+
+    CALL METHOD CL_GUI_FRONTEND_SERVICES=&gt;FILE_SAVE_DIALOG
+      EXPORTING
+        FILE_FILTER       = 'Excel 文件 (*.xls;*xlsx)|*.xls;*.xlsx'
+        DEFAULT_FILE_NAME = L_FILE
+        INITIAL_DIRECTORY = L_FILE
+      CHANGING
+        FILENAME          = L_FILE_IMPORT
+        PATH              = L_PATH_INITIAL
+        FULLPATH          = L_FILE
+      EXCEPTIONS
+        OTHERS            = 0.
+
+    P_FILE = L_FILE.
+  ENDIF.
+ENDFORM.                    "F4_HELP_FOR_FILENAME
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  LP_UPDATE_FOR_FD32</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       录屏修改fd32</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM LP_UPDATE_FOR_FD32.
+  DATA:TEST TYPE C.
+  DATA:P_MODE TYPE CTU_MODE VALUE 'N'.
+  CLEAR:GT_ZZTZSD037,E_FLAG.
+
+  SELECT
+    KUNNR  "客户编号
+    KKBER  "贷方控制范围
+    KLIMK  "信贷限额
+    INTO CORRESPONDING FIELDS OF TABLE GT_ZZTZSD037
+    FROM ZZTZSD037.
+
+  LOOP AT GT_ZZTZSD037 INTO W_ZZTZSD037.
+    CLEAR GT_PLDR.
+    CLEAR GT_MSGTAB.
+    CLEAR W_PLDR.
+    W_PLDR-PROGRAM  = 'SAPMF02C'.
+    W_PLDR-DYNPRO   = '0100'.
+    W_PLDR-DYNBEGIN = 'X'.
+    CONDENSE W_PLDR-FVAL.
+    APPEND W_PLDR TO GT_PLDR.
+
+    CLEAR W_PLDR.
+    W_PLDR-FNAM = 'BDC_CURSOR'.
+    W_PLDR-FVAL = 'RF02L-D0210'.
+    CONDENSE W_PLDR-FVAL.
+    APPEND W_PLDR TO GT_PLDR.
+
+    CLEAR W_PLDR.
+    W_PLDR-FNAM = 'BDC_OKCODE'.
+    W_PLDR-FVAL = '/00'.
+    CONDENSE W_PLDR-FVAL.
+    APPEND W_PLDR TO GT_PLDR.
+
+    CLEAR W_PLDR.
+    W_PLDR-FNAM = 'RF02L-KUNNR'.
+    W_PLDR-FVAL = W_ZZTZSD037-KUNNR.
+    CONDENSE W_PLDR-FVAL.
+    APPEND W_PLDR TO GT_PLDR.
+
+    CLEAR W_PLDR.
+    W_PLDR-FNAM = 'RF02L-KKBER'.
+    W_PLDR-FVAL = W_ZZTZSD037-KKBER.
+    CONDENSE W_PLDR-FVAL.
+    APPEND W_PLDR TO GT_PLDR.
+
+    CLEAR W_PLDR.
+    W_PLDR-FNAM = 'RF02L-D0210'.
+    W_PLDR-FVAL = 'X'.
+    CONDENSE W_PLDR-FVAL.
+    APPEND W_PLDR TO GT_PLDR.
+
+    CLEAR W_PLDR.
+    W_PLDR-PROGRAM  = 'SAPMF02C'.
+    W_PLDR-DYNPRO   = '0210'.
+    W_PLDR-DYNBEGIN = 'X'.
+    CONDENSE W_PLDR-FVAL.
+    APPEND W_PLDR TO GT_PLDR.
+
+    CLEAR W_PLDR.
+    W_PLDR-FNAM = 'BDC_CURSOR'.
+    W_PLDR-FVAL = 'KNKK-KLIMK'.
+    CONDENSE W_PLDR-FVAL.
+    APPEND W_PLDR TO GT_PLDR.
+
+    CLEAR W_PLDR.
+    W_PLDR-FNAM = 'BDC_OKCODE'.
+    W_PLDR-FVAL = '=UPDA'.
+    CONDENSE W_PLDR-FVAL.
+    APPEND W_PLDR TO GT_PLDR.
+
+    CLEAR W_PLDR.
+    W_PLDR-FNAM = 'KNKK-KLIMK'.
+    W_PLDR-FVAL = W_ZZTZSD037-KLIMK.
+    CONDENSE W_PLDR-FVAL.
+    APPEND W_PLDR TO GT_PLDR.
+
+
+    CALL TRANSACTION 'FD32' USING GT_PLDR
+                        MODE P_MODE
+                        MESSAGES INTO GT_MSGTAB
+                        UPDATE 'S'.
+    IF SY-SUBRC = 0."成功
+      W_SUCCESS-KUNNR = W_ZZTZSD037-KUNNR.
+      W_SUCCESS-KKBER = W_ZZTZSD037-KKBER.
+      W_SUCCESS-ERDAT = SY-DATUM.
+      W_SUCCESS-ERZET = SY-UZEIT.
+      W_SUCCESS-DRRY = SY-UNAME.
+      APPEND W_SUCCESS TO GT_SUCCESS.
+    ELSE. "失败
+      READ TABLE GT_MSGTAB INTO W_MSGTAB INDEX 1.
+      E_FLAG = 'X'.
+      CALL FUNCTION 'MESSAGE_TEXT_BUILD'
+        EXPORTING
+          MSGID               = W_MSGTAB-MSGID
+          MSGNR               = W_MSGTAB-MSGNR
+          MSGV1               = W_MSGTAB-MSGV1
+          MSGV2               = W_MSGTAB-MSGV2
+          MSGV3               = W_MSGTAB-MSGV3
+          MSGV4               = W_MSGTAB-MSGV4
+        IMPORTING
+          MESSAGE_TEXT_OUTPUT = L_MESSAGE.
+      W_RESULT-KUNNR = W_ZZTZSD037-KUNNR.
+      W_RESULT-KKBER = W_ZZTZSD037-KKBER.
+      W_RESULT-ERDAT = SY-DATUM.
+      W_RESULT-ERZET = SY-UZEIT.
+      W_RESULT-DRRY = SY-UNAME.
+      W_RESULT-ERROR = L_MESSAGE.
+      APPEND W_RESULT TO GT_RESULT.
+    ENDIF.
+  ENDLOOP.
+
+  MODIFY ZSD037_SUCCESS FROM TABLE GT_SUCCESS.
+  IF ZD_FLAG = 'X'.
+    MODIFY ZSD037_RESULT FROM TABLE GT_RESULT.
+  ENDIF.
+
+ENDFORM.                    "LP_UPDATE_FOR_FD32
+
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DISPLAY_ALV-批量修改</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_ALV_UPDATE .
+  PERFORM INIT_FIELDCAT_UPDATE.    "
+
+  PERFORM INIT_LAYOUT.
+
+  PERFORM SHOW_ALV_UPDATE.
+ENDFORM.                    "DISPLAY_ALV_update
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  DISPLAY_ALV-批量修改</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM DISPLAY_ALV_CHECK .
+  PERFORM INIT_FIELDCAT_CHECK.    "
+
+  PERFORM INIT_LAYOUT.
+
+  PERFORM SHOW_ALV_UPDATE.
+ENDFORM.                    "DISPLAY_ALV_update
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  INIT_FIELDCAT_UPDATE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_FIELDCAT_UPDATE .
+  DATA:L_COLPOS TYPE I.
+  CLEAR:GT_FCAT.
+  MARCO:
+  L_COLPOS 'KUNNR' '客户编码' 'X',
+  L_COLPOS 'KKBER' '信贷控制范围' 'X'.
+  IF E_FLAG = 'X'.
+    MARCO:L_COLPOS 'ERDAT' '导入日期' 'X'.
+    MARCO:L_COLPOS 'ERZET' '导入时间' 'X'.
+    MARCO:L_COLPOS 'ERROR' '错误信息' 'X'.
+  ELSE.
+    MARCO:L_COLPOS 'KLIMK' '信贷限额' 'X'.
+  ENDIF.
+ENDFORM.                    " INIT_FIELDCAT_UPDATE
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  INIT_FIELDCAT_UPDATE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM INIT_FIELDCAT_CHECK .
+  DATA:L_COLPOS TYPE I.
+  CLEAR:GT_FCAT.
+  MARCO:
+  L_COLPOS 'KUNNR' '客户编码' 'X',
+  L_COLPOS 'KKBER' '信贷控制范围' 'X',
+  L_COLPOS 'KLIMK' '信贷限额' 'X',
+  L_COLPOS 'ERDAT' '导入日期' 'X',
+  L_COLPOS 'ERZET' '导入时间' 'X',
+  L_COLPOS 'DRRY' '导入人员' 'X'.
+ENDFORM.                    " INIT_FIELDCAT_UPDATE
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  SHOW_ALV_UPDATE</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM SHOW_ALV_UPDATE .
+  IF E_FLAG = 'X'.
+    CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'
+     EXPORTING
+       I_CALLBACK_PROGRAM                = SY-REPID
+       IS_LAYOUT_LVC                     = W_LAYOUT
+       IT_FIELDCAT_LVC                   = GT_FCAT
+       I_SAVE                            = 'A'
+      TABLES
+        T_OUTTAB                         = GT_RESULT
+<font color ="#0000FF">* EXCEPTIONS</font>
+<font color ="#0000FF">*   PROGRAM_ERROR                     = 1</font>
+<font color ="#0000FF">*   OTHERS                            = 2</font>
+              .
+    IF SY-SUBRC &lt;&gt; 0.
+      MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+                  WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    ENDIF.
+  ELSE.
+    CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'
+     EXPORTING
+       I_CALLBACK_PROGRAM                = SY-REPID
+       IS_LAYOUT_LVC                     = W_LAYOUT
+       IT_FIELDCAT_LVC                   = GT_FCAT
+       I_SAVE                            = 'A'
+      TABLES
+        T_OUTTAB                          = GT_ZZTZSD037
+<font color ="#0000FF">* EXCEPTIONS</font>
+<font color ="#0000FF">*   PROGRAM_ERROR                     = 1</font>
+<font color ="#0000FF">*   OTHERS                            = 2</font>
+              .
+    IF SY-SUBRC &lt;&gt; 0.
+      MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+                  WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    ENDIF.
+
+  ENDIF.
+ENDFORM.                    " SHOW_ALV_UPDATE
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  CHECK_ERROR_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CHECK_ERROR_DATA .
+  CLEAR:GT_RESULT,W_RESULT.
+
+  SELECT
+    KUNNR
+    KKBER
+    ERDAT
+    ERZET
+    ERROR
+    INTO CORRESPONDING FIELDS OF TABLE GT_RESULT
+    FROM ZSD037_RESULT
+    WHERE KUNNR IN S_KUNNR
+    AND KKBER IN S_KKBER
+    AND ERDAT IN S_ERDAT
+    AND ERZET IN S_ERZET
+    .
+
+  E_FLAG = 'X'.
+
+ENDFORM.                    " CHECK_ERROR_DATA
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&      Form  CHECK_UPLOAD_DATA</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*       text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+<font color ="#0000FF">*  --&gt;  p1        text</font>
+<font color ="#0000FF">*  &lt;--  p2        text</font>
+<font color ="#0000FF">*----------------------------------------------------------------------*</font>
+FORM CHECK_UPLOAD_DATA .
+  CLEAR:GT_ZZTZSD037,W_ZZTZSD037.
+
+  SELECT
+    KUNNR
+    KKBER
+    KLIMK
+    ERDAT
+    ERZET
+    DRRY
+    INTO CORRESPONDING FIELDS OF TABLE GT_ZZTZSD037
+    FROM ZZTZSD037
+    WHERE KUNNR IN SS_KUNNR
+    AND KKBER IN SS_KKBER
+    AND ERDAT IN SS_ERDAT
+    AND ERZET IN SS_ERZET
+    .
+
+ENDFORM.                    " CHECK_UPLOAD_DATA
+
+<font color ="#0000FF">*Text elements</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* 000 选择处理类型</font>
+<font color ="#0000FF">* 001 批导</font>
+<font color ="#0000FF">* 002 数据处理</font>
+<font color ="#0000FF">* 003 批量导入</font>
+<font color ="#0000FF">* 004 批量修改</font>
+<font color ="#0000FF">* 005 错误查询</font>
+<font color ="#0000FF">* 006 错误结果查询</font>
+<font color ="#0000FF">* 007 数据查询</font>
+<font color ="#0000FF">* 008 导入数据查询</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* P_CWCX         错误查询</font>
+<font color ="#0000FF">* P_DOWN         下载模板</font>
+<font color ="#0000FF">* P_DRCX         导入数据查询</font>
+<font color ="#0000FF">* P_FILE         文件路径(上传\下载)</font>
+<font color ="#0000FF">* P_PD         批导</font>
+<font color ="#0000FF">* P_PLDR         批量导入</font>
+<font color ="#0000FF">* P_QK         清空数据</font>
+<font color ="#0000FF">* P_UPLOAD         上传</font>
+<font color ="#0000FF">* P_XG         批量修改</font>
+<font color ="#0000FF">* SS_ERDAT         导入日期</font>
+<font color ="#0000FF">* SS_ERZET         导入时间</font>
+<font color ="#0000FF">* SS_KKBER         贷方控制范围</font>
+<font color ="#0000FF">* SS_KUNNR         客户编号</font>
+<font color ="#0000FF">* S_ERDAT         修改日期</font>
+<font color ="#0000FF">* S_ERZET         修改时间</font>
+<font color ="#0000FF">* S_KKBER         贷方控制范围</font>
+<font color ="#0000FF">* S_KUNNR         客户编号</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPEOPLE</font>
+<font color ="#0000FF">*000   &1 &2 &3 &4</font>
+<font color ="#0000FF">*002   系统错误：在表 & 中修改时有错误</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>ZPP044</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: ZPP044</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  BOM批量删除</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& 程序名称       : ZPP044</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 作者           : 陈博益（人民）</font>
+<font color ="#0000FF">*& 开发日期       : 2018-12-20.</font>
+<font color ="#0000FF">*& 请求号         :</font>
+<font color ="#0000FF">*& 申请者         :</font>
+<font color ="#0000FF">*& 描述           : BOM批量删除</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*& 变更记录</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">** 修改日期 开发人员  请求号 描述</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  ZPP044 MESSAGE-ID ZPEOPLE.
+
+
+include <a href ="zpp044_define.html">ZPP044_DEFINE</a>.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 定义选择屏幕参数</font>
+<font color ="#0000FF">************************************************************************</font>
+SELECTION-SCREEN BEGIN OF BLOCK BLOCK1  WITH FRAME TITLE TEXT-001.
+PARAMETERS: P_DOWN   TYPE C RADIOBUTTON GROUP G1  USER-COMMAND SEL DEFAULT 'X',
+            P_UPLOAD TYPE C RADIOBUTTON GROUP G1.
+PARAMETERS: P_FILE  LIKE RLGRAP-FILENAME.
+
+SELECTION-SCREEN SKIP.
+
+"todo 添加删除按钮，不用屏幕中的F8执行按钮
+<font color ="#0000FF">*SELECTION-SCREEN BEGIN OF LINE.</font>
+<font color ="#0000FF">*SELECTION-SCREEN PUSHBUTTON 7(20) BUTDEL USER-COMMAND DELETE. " 定义搜索按钮</font>
+<font color ="#0000FF">*SELECTION-SCREEN END OF LINE.</font>
+SELECTION-SCREEN END OF BLOCK BLOCK1.
+
+
+SELECTION-SCREEN BEGIN OF BLOCK BK2 WITH FRAME TITLE TEXT-002.
+SELECTION-SCREEN  BEGIN  OF LINE.
+SELECTION-SCREEN: COMMENT 1(79) WARNING1.
+SELECTION-SCREEN  END  OF LINE.
+
+SELECTION-SCREEN  BEGIN  OF LINE.
+SELECTION-SCREEN: COMMENT 1(79) WARNING2.
+SELECTION-SCREEN  END  OF LINE.
+
+SELECTION-SCREEN  BEGIN  OF LINE.
+SELECTION-SCREEN: COMMENT 1(79) WARNING3.
+SELECTION-SCREEN  END  OF LINE.
+
+SELECTION-SCREEN END OF BLOCK BK2.
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* 屏幕输出之前处理</font>
+<font color ="#0000FF">************************************************************************</font>
+AT SELECTION-SCREEN OUTPUT.
+
+
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">* initialization 初始化事件</font>
+<font color ="#0000FF">************************************************************************</font>
+INITIALIZATION.
+  WARNING1 = '【1】模板中的共有四个字段：物料号、工厂、可选的 BOM'.
+  WARNING2 = '【2】上传之前请先下载模板，模板内容不可更改'.
+  WARNING3 = '【3】请在操作该报表前，备份需要删除的可选BOM的bom清单，避免误删而导致数据丢失等情况'.
+<font color ="#0000FF">************************************************************************</font>
+<font color ="#0000FF">*at selection screen                                                   *</font>
+<font color ="#0000FF">************************************************************************</font>
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR P_FILE.
+  PERFORM F4_HELP_FOR_FILENAME.
+
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">* START-OF-SELECTION.                                                 *</font>
+<font color ="#0000FF">*                                                                     *</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+START-OF-SELECTION.
+
+  IF P_FILE = ''.
+    MESSAGE S000(ZPEOPLE) WITH '请先选择路径！' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+  IF P_DOWN = 'X'.
+
+    PERFORM DOWNLOAD_TEMPLATE.               "下载模板
+
+  ELSE.
+    CALL FUNCTION 'POPUP_TO_CONFIRM'
+      EXPORTING
+        TEXT_QUESTION         = '确定要批量删除DOM吗?'       "TEXT_QUESTION  ：它的功能就是写入要显示给用户的信息。
+        ICON_BUTTON_1         = '是'                         "ICON_BUTTON_1 ：按钮上显示信息 返回值是1
+        ICON_BUTTON_2         = '否'                          "ICON_BUTTON_2 ：按钮上显示信息 返回值是2
+        DEFAULT_BUTTON        = '2'                           "DEFAULT_BUTTON ：调用函数后哪个按钮被默认选中
+        DISPLAY_CANCEL_BUTTON = 'X'                           "DISPLAY_CANCEL_BUTTON  ：显示取消的按钮并可用
+        START_COLUMN          = 25                            "START_COLUMN    ；TART_ROW   ：这两个是一对的控制对话框在画面上显示的位置
+        START_ROW             = 6
+      IMPORTING
+        ANSWER                = WL_ANSWER                    "ANSWER  ：这个很重要是存放你选择哪个BUTTON返回值的，定义为一位的CHAR型就可以了，可以根据返回值进行操作
+      EXCEPTIONS
+        TEXT_NOT_FOUND        = 1
+        OTHERS                = 2.
+
+    IF WL_ANSWER = '1'.     "确定删除
+      PERFORM CONVERT_XLS_TO_ITAB.    " 保存excel内容到内表
+
+      PERFORM CHECKDATA.              "验证内表中的数据
+
+      IF G_FLAG = 'X'.
+        PERFORM DISPLAY_ALV.  "显示错误信息
+      ELSE.
+        PERFORM OPRA_DELETE.
+        PERFORM DISPLAY_ALV.
+      ENDIF.
+
+    ENDIF.
+
+  ENDIF.
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+<font color ="#0000FF">* END-OF-SELECTION.                                                   *</font>
+<font color ="#0000FF">*                                                                     *</font>
+<font color ="#0000FF">*---------------------------------------------------------------------*</font>
+END-OF-SELECTION.
+
+
+  include <a href ="zpp044_frm.html">ZPP044_FRM</a>.
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* P_DOWN         下载模板</font>
+<font color ="#0000FF">* P_FILE         文件路径(上传\下载)</font>
+<font color ="#0000FF">* P_UPLOAD         上传</font>
+
+
+<font color ="#0000FF">*Messages</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* Message class: ZPEOPLE</font>
+<font color ="#0000FF">*000   &1 &2 &3 &4</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

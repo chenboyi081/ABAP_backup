@@ -1,0 +1,62 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>Y_CBOII_TEST004_02</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: Y_CBOII_TEST004_02</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  测试实现Report的格式分页输出</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  Y_CBOII_TEST004_02</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+<font color ="#0000FF">*下面创建一个ICON数据查询程序，将ICON的名称及相关图标从系统中抓出。控制报表每页显示数量最多不超过10行，具体如下：</font>
+
+REPORT  Y_CBOII_TEST004_02 NO STANDARD PAGE HEADING.
+    DATA:PAGE_LINE TYPE I VALUE 10, "每頁行數
+         ICONTAB LIKE STANDARD TABLE OF V_ICON WITH HEADER LINE,"參照VIEW建內表
+         Num TYPE I.
+
+<font color ="#0000FF">*每次分页时绘制表头</font>
+   TOP-OF-PAGE.
+     WRITE: /2 'Pages:',SYST-PAGNO RIGHT-JUSTIFIED.
+     ULINE AT /1(80).
+     WRITE: /1(1) SY-VLINE,'ID' COLOR 1,
+             7(1) SY-VLINE ,'ICON' COLOR 1,
+             15(1) SY-VLINE,'NAME' COLOR 1,
+             41(1) SY-VLINE, 'SHORTTEXT' COLOR 1,
+             80(1) SY-VLINE.
+     ULINE AT /1(80).
+
+
+     START-OF-SELECTION. "屏幕开始时查询数据...
+        SELECT * FROM ICON INNER JOIN ICONT ON ICON~ID = ICONT~ID INTO
+        CORRESPONDING FIELDS OF TABLE ICONTAB WHERE ICONT~LANGU = SY-LANGU.
+
+     LOOP AT ICONTAB.
+       WRITE: /1(1) SY-VLINE,SY-TABIX LEFT-JUSTIFIED,
+               7(1) SY-VLINE,ICONTAB-ID AS ICON LEFT-JUSTIFIED,
+               "LEFT-JUSTIFIED:左对齐,RIGHT_JUSTIFIED:右对象，CENTERED:居中对齐。
+               15(1) SY-VLINE,ICONTAB-NAME,
+               41(1) SY-VLINE,ICONTAB-SHORTTEXT,
+               80(1) SY-VLINE.
+       ULINE /1(80).
+
+       Num = SY-TABIX MOD PAGE_LINE.
+       IF Num = 0.
+         NEW-PAGE.  "新的一页
+       ENDIF.
+    ENDLOOP.
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>

@@ -1,0 +1,483 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head>
+<title>Y_CBOII_TEST004</title>
+</head>
+<body bgcolor="#FFFFE0">
+<font size="3" face = "Arial" color="#000000"><b>Code listing for: Y_CBOII_TEST004</b></font>
+<br>
+<font size="3" face = "Arial" color="#000000"><b>Description:  陈博益关于选择屏幕的练习</b></font>
+<hr>
+<pre width="100">
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*& Report  Y_CBOII_TEST004</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&</font>
+<font color ="#0000FF">*&---------------------------------------------------------------------*</font>
+
+REPORT  Y_CBOII_TEST004.
+
+ WRITE: 'GUI STATUS TEST'.
+   AT USER-COMMAND.   "当单击某个按钮时，触发该事件
+    CASE sy-ucomm.  "获取所操作按钮的功能代码(FUNCTION Code),针对不同按钮事件判断执行不同的操作
+      WHEN 'EXTRACT'.
+        WRITE 'YOU CLICK THE EXTRACT BUTTON'.
+      WHEN 'BACK'.
+        LEAVE SCREEN.
+      WHEN 'EXIT'.
+        EXIT.
+      WHEN 'SAVE'.
+        WRITE 'YOU CLICK THE SAVE BUTTON'.
+      WHEN OTHERS.
+      WRITE 'OTHERS'.
+    ENDCASE.
+
+
+START-OF-SELECTION.
+    SET PF-STATUS 'GUI_STATUS_TEST'. "在Report输出时调用该GUI STATUS。
+
+"$. Region 0.Include Screen 子屏幕
+
+
+<font color ="#0000FF">* 0.Include Screen</font>
+<font color ="#0000FF">* 0.1</font>
+   selection-screen begin of screen 1314 as window title text-w01. "text-w01为对话框的标题，在文本符号中可以设置
+      parameters:matnr like mara-matnr.
+      parameters:t as checkbox.
+     selection-screen end of screen 1314.     "1314为窗体名称
+
+     call selection-screen  1314 starting at 30 5 ending at 90 5.  "调用selection-screen
+
+
+<font color ="#0000FF">** 0.2</font>
+    SELECTION-SCREEN BEGIN OF SCREEN 1111.
+      SELECTION-SCREEN BEGIN OF BLOCK block1 WITH FRAME TITLE TEXT-W01.
+        SELECT-OPTIONS SELO FOR SY-REPID.
+        SELECTION-SCREEN ULINE. "换行线
+        PARAMETERS PARO.
+      SELECTION-SCREEN END OF BLOCK block1.
+    SELECTION-SCREEN END OF SCREEN 1111.
+
+    SELECTION-SCREEN BEGIN OF SCREEN 1234.
+      SELECTION-SCREEN INCLUDE BLOCKS block1.
+    SELECTION-SCREEN END OF SCREEN 1234.
+
+    CALL selection-screen 1234.
+
+
+
+"$. Endregion Include Screen
+
+"$. Region 0.3 -0.5 屏幕其他内容
+<font color ="#0000FF">**  0.3 SELECTION-SCREEN COMMONT fmt name.</font>
+<font color ="#0000FF">**      用于定义或者修改本地元素的注释，包括PARAMETER、CHECKBOX BUTTON等。</font>
+<font color ="#0000FF">**     通过SELECTION-SCREEN COMMENT语法可以按Text Symbols设置的值对其属性重新定义。</font>
+<font color ="#0000FF">*</font>
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT (12) TEXT-W03 FOR FIELD parm.
+    SELECTION-SCREEN POSITION 14.
+    PARAMETERS parm LIKE MARA-MATNR.
+   SELECTION-SCREEN END OF LINE.
+
+   SELECTION-SCREEN SKIP 1.
+   SELECTION-SCREEN BEGIN OF LINE.
+     PARAMETERS:type3 AS CHECKBOX.
+     SELECTION-SCREEN COMMENT (40) TEXT-W04 FOR FIELD type.
+   SELECTION-SCREEN END OF LINE.
+
+<font color ="#0000FF">**  0.4 SELECTION-SCREEN FUNCTION KEY n.</font>
+<font color ="#0000FF">**   该对象用于在工具栏上新增一个功能按钮。该按钮的定义保存在系统结构体SSCRFIELDS中，n为一个整数序数最大至5。</font>
+<font color ="#0000FF">**   不要试图让它小于1或者大于5，它不接受这个范围。也就是说工具栏按钮最多可以放5个（whereby a value between 1 and 5 must be entered for n）。</font>
+<font color ="#0000FF">**   当n等于1时，其按钮描述保存在字段SSCRFIELDS-FUNCTXT_01中，其按钮对象命名为‘FC01’,保存在字段SSCRFIELDS-UCOMM中，以下为示例代码：</font>
+    PARAMETERS para LIKE MARA-MATNR.
+    TABLES: SSCRFIELDS.
+    SELECTION-SCREEN FUNCTION KEY 1.
+    SELECTION-SCREEN FUNCTION KEY 2.
+    SELECTION-SCREEN FUNCTION KEY 5.
+
+    INITIALIZATION.  "初始公屏幕时，就给它们一些值吧,让它们看起来更像是个按钮，按钮也需要有尊严的活着。
+
+       MOVE 'Add BUTTON' TO SSCRFIELDS-FUNCTXT_01.
+       MOVE 'Minus BUTTON' TO SSCRFIELDS-FUNCTXT_02.
+       MOVE 'MODIFY BUTTON' TO SSCRFIELDS-FUNCTXT_05.
+
+    AT SELECTION-SCREEN.
+      IF SSCRFIELDS-UCOMM = 'FC05'. "触发 FC05工具栏按钮,将要执行什么操作
+        CALL SELECTION-SCREEN 1234."调用程序中的子屏幕
+      ENDIF.
+
+<font color ="#0000FF">*  0.5 SELECTION-SCREEN BEGIN OF TABBED BLOCK &lt;block&gt; FOR n LINES.</font>
+<font color ="#0000FF">**    定义选项卡或者其他类似于选择页切换的功能组件。具体语法如下：</font>
+<font color ="#0000FF">**   [Syntax]</font>
+<font color ="#0000FF">**   SELECTION-SCREEN: BEGIN OF TABBED BLOCK &lt;sub_area&gt; FOR n LINES,</font>
+<font color ="#0000FF">**                     [......]</font>
+<font color ="#0000FF">**                     END OF BLOCK &lt;sub_area&gt;.</font>
+<font color ="#0000FF">**   其中 n代表高度,此高度为选择控件的高度。</font>
+<font color ="#0000FF">**除下面例子外，还有一个例子，具体看：https://www.cnblogs.com/foxting/archive/2012/07/03/2574423.html</font>
+<font color ="#0000FF">*</font>
+TABLES:MARA.
+<font color ="#0000FF">*定义子屏幕100 SUBSCREEN</font>
+   SELECTION-SCREEN BEGIN OF SCREEN 100 AS SUBSCREEN.
+     SELECTION-SCREEN BEGIN OF BLOCK blockA WITH FRAME TITLE TEXT-W01.
+      SELECT-OPTIONS:mantra FOR MARA-MATNR NO INTERVALS.
+      SELECTION-SCREEN SKIP 1.
+      PARAMETERS: check01 AS CHECKBOX DEFAULT 'X'.
+     SELECTION-SCREEN END OF BLOCK blockA.
+   SELECTION-SCREEN END OF SCREEN 100.
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**定义子屏幕200 SUBSCREEN</font>
+   SELECTION-SCREEN BEGIN OF SCREEN 200 AS SUBSCREEN.
+    PARAMETERS: mantrb LIKE MARA-MATNR.
+   SELECTION-SCREEN END OF SCREEN 200.
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">**选择页TAB功能,定义两个TAB</font>
+   SELECTION-SCREEN:
+    BEGIN OF TABBED BLOCK MyTab FOR 5 LINES,
+     TAB (20) BUTTON1 USER-COMMAND PUSH1,  "（20）代表要显示在TAB内容的长度，最大长度为79，不相信?你可以试下.哈哈
+     TAB (20) BUTTON2 USER-COMMAND PUSH2,
+    END OF BLOCK MyTab.
+
+   INITIALIZATION.
+    BUTTON1 = 'FirstTab'.
+    BUTTON2 = 'SecondTab'.
+    MyTab-PROG = SY-REPID. "指定调用的程序名
+    MyTab-DYNNR = 100. "指定当前要显示的屏幕
+
+   AT SELECTION-SCREEN.
+    CASE SY-UCOMM.
+     WHEN 'PUSH1'.
+        MyTab-DYNNR = 100.
+        MyTab-ACTIVETAB = 'BUTTON1'.
+     WHEN 'PUSH2'.
+        MyTab-DYNNR = 200.
+        MyTab-ACTIVETAB = 'BUTTON2'.
+    ENDCASE.
+
+"$. Endregion 屏幕其他
+
+<font color ="#0000FF">** 1 - 6 文本框、文本域、时间选项、多选框、单选框</font>
+SELECT-OPTIONS:DATA FOR SY-DATUM.
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">** 2.年龄选框</font>
+DATA AGE TYPE I.
+PARAMETERS USER_AGE LIKE AGE.
+
+<font color ="#0000FF">** 3.名称选框</font>
+DATA NICKNAME TYPE C LENGTH 60.  "长度为60  表单域会相对于这个长度
+PARAMETERS NAMEA LIKE NICKNAME.
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">** 4.文本域</font>
+PARAMETERS:MATNRR LIKE MARA-MATNR.   "文本域
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">** 5.多选框</font>
+PARAMETERS:TYPE AS CHECKBOX,  TYPE2 AS CHECKBOX.       "多选框
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">** 6.单选框</font>
+PARAMETERS:P1 RADIOBUTTON GROUP GRP1,"单选域
+   P2 RADIOBUTTON GROUP GRP1 DEFAULT 'X',  "默认选中 ”X“
+   P3 RADIOBUTTON GROUP GRP1.
+
+"$. Region 7.下拉框对象
+
+<font color ="#0000FF">*     *  7.定义一个下拉框对象，其可视数据长度一般比输出数据长度大2用于放置下拉图标</font>
+      PARAMETERS:P_LANG(20) AS LISTBOX VISIBLE LENGTH 22.
+      DATA:INIT.
+
+      AT SELECTION-SCREEN OUTPUT.
+        PERFORM SETLIST.
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*      *子程序用于加载下拉框的数据</font>
+      FORM SETLIST.
+        TYPE-POOLS VRM.
+        DATA MYVALUE TYPE VRM_VALUES WITH HEADER LINE.
+
+<font color ="#0000FF">*对内表加载值</font>
+        MYVALUE-KEY = 'CHINESE'. MYVALUE-TEXT = '中国'. APPEND MYVALUE.
+
+        MYVALUE-KEY = 'AMERICAN'. MYVALUE-TEXT = '美国'. APPEND MYVALUE.
+
+        MYVALUE-KEY = 'ENGLISH'. MYVALUE-TEXT = '英国'. APPEND MYVALUE.
+
+        MYVALUE-KEY = 'FRENCH'. MYVALUE-TEXT = '法国'. APPEND MYVALUE.
+
+        IF INIT IS INITIAL.
+          CALL FUNCTION 'VRM_SET_VALUES' "调用函数对下拉框对象传递数据
+             EXPORTING
+               ID = 'P_LANG' "下拉框对象名
+               VALUES = MYVALUE[]  "下拉框中加载的数据
+             EXCEPTIONS
+               ID_ILLEGAL_NAME = 1
+               OTHERS = 2.
+        ENDIF.
+
+        INIT = 'X'. "记录初始化状态
+
+      ENDFORM.                    "SETLIST
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*      *引用字典对象 TYPE-POOLS VRM 用于保存列表对象，也可自定义一内表，如</font>
+<font color ="#0000FF">*      *DATA:BEGIN OF VALUES OCCURS 0,</font>
+<font color ="#0000FF">*      *         KEY(40) TYPE C,</font>
+<font color ="#0000FF">*      *         TEXT（40） TYPE C，</font>
+<font color ="#0000FF">*      *END OF VALUES.</font>
+
+"$. Endregion 下拉框对象
+
+"$. Region 8.PUSHBUTTON 按钮
+
+<font color ="#0000FF">**</font>
+<font color ="#0000FF">**在ABAP中在屏幕上创建按钮，你需要在SELECTION-SCREEN对象中加入PUSHBUTTON参数，语法如下：</font>
+<font color ="#0000FF">**     [Syntax]</font>
+<font color ="#0000FF">**     SELECTION-SCREEN PUSHBUTTON [/] &lt;pos(len)&gt; &lt;name&gt; USER-COMMAND &lt;ucom&gt; [MODIF ID &lt;key&gt;]</font>
+<font color ="#0000FF">**     &lt;pos(len)&gt;：PUSHBUTTON按钮在屏幕生成的位置与长度。</font>
+<font color ="#0000FF">**     &lt;name&gt;：PUSHBUTTON按钮的名称，给按钮赋值时要用到名字。</font>
+<font color ="#0000FF">**     &lt;ucom&gt;：必须指定的字符代码，当用户在选择屏幕上触发按钮时，&lt;ucom&gt;被输入到词典对象字段：SSCRFIELDS-UCOMM中，需要注意的是，必须显式使用语句TABLES引用SSCRFIELDS。否则将会报如下错误：</font>
+<font color ="#0000FF">*</font>
+   TABLES SSCRFIELDS."引用词典对象
+   INCLUDE:&lt;icon&gt;.  "按钮中加入图标必须调用该类型库,图标请参考T-CODE：ICON
+   SELECTION-SCREEN PUSHBUTTON /1(20) PUBU1 USER-COMMAND ABCD.
+     SELECTION-SCREEN SKIP."换行
+   SELECTION-SCREEN PUSHBUTTON /10(25) PUBU2 USER-COMMAND ABCE. "位置从10开始
+<font color ="#0000FF">*</font>
+   AT SELECTION-SCREEN OUTPUT.
+     MOVE 'CALL NEXT SCREEN' TO PUBU1. "给PUBU1按钮赋值描述
+
+
+INITIALIZATION. "屏幕初始化
+ PUBU1 = 'First PUSHBUTTON'.
+
+   WRITE ICON_OKAY AS ICON TO PUBU2. "给PUBU2按钮添加图标，并且在给按钮赋值之前，否则将会把文字替换。
+<font color ="#0000FF">*MOVE 'THE SECOND BUTTON' TO PUBU2.</font>
+   CONCATENATE PUBU2 'My Second Button' INTO PUBU2 SEPARATED BY SPACE. "给第二个按钮添加赋值描述
+
+   AT SELECTION-SCREEN.
+    IF SSCRFIELDS-UCOMM = 'ABCD'.
+      CALL SELECTION-SCREEN 1234.  "调用程序中的另一个窗体
+    ENDIF.
+"$. Endregion 8.PUSHBUTTON
+
+
+"$. Region 9.屏幕事件
+
+
+
+
+<font color ="#0000FF">** 9.1 initialization事件</font>
+<font color ="#0000FF">***       该事件在屏幕未显示之前执行，对程序设置值及屏幕元素进行初始化赋值。如下代码：</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">** 该事件在单击按钮后触发。</font>
+PARAMETERS QUAL_DAY TYPE D DEFAULT SY-DATUM.
+    SELECTION-SCREEN PUSHBUTTON /1(20) SAVE USER-COMMAND SAVE.
+
+    INITIALIZATION. "程序初始化事件，該事件在程序屏幕未顯示之前執行。對程序設置值及屏幕元素進行初始化設置.
+      QUAL_DAY+6(2) = '01'.
+      QUAL_DAY = QUAL_DAY - 1.
+      MOVE 'SAVE' TO SAVE. "给SAVE按钮赋值
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">** 9.2 START-OF-SELECTION事件在單擊按鈕后觸發該事件.</font>
+<font color ="#0000FF">*   START-OF-SELECTION.</font>
+<font color ="#0000FF">*     "STOP.  "EXIT.:從EXIT語句后的程序將不再執行包括END-OF-SELECTION模塊,REJECT.語名后的程序將不再執行，但不影響END-OF-SELECTION.模塊的執行.</font>
+<font color ="#0000FF">*     WRITE: 'DATE=',QUAL_DAY.</font>
+<font color ="#0000FF">*** 9.3END-OF-SELECTION事件</font>
+<font color ="#0000FF">***   该事件应用于所有数据处理完成，即START-OF-SELECTION相关执行事件执行完成，但输出屏幕还未显示之前，在实际的应用于一些执行结果的检验等。</font>
+
+ END-OF-SELECTION.
+    IF QUAL_DAY &lt;&gt; SY-DATUM. "&lt;&gt;符號與&gt;&lt;符號都是不等於
+      WRITE:'TODAY=',SY-DATUM.
+    ELSE.
+      WRITE:'QUAL_DAY=',QUAL_DAY.
+   ENDIF.
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">***  9.4 屏幕事件的中止</font>
+<font color ="#0000FF">***   EXIT,STOP,REJECT,CHECK.</font>
+"$. Endregion 屏幕事件
+
+
+"$. 10.Region report list 报表
+<font color ="#0000FF">*10.1.1 Report List 输入定义</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">*　　Report List主要应用于数据的格式化输出。Report List可以通过以下参数设置来控制报表标题显示、报表分页控制、参数数据库表及参考Message类等，具体扩展语法如下：</font>
+<font color ="#0000FF">*     ...NO STANDARD PAGE HEADING：输出的报表不包含表头(LIST HEADING)。</font>
+<font color ="#0000FF">*     ...LINE-SIZE col：设置页宽。</font>
+<font color ="#0000FF">*     ...LINE-COUNT m(n)：设置每页行数及每页间空行数，如LINE-COUNT 18(2)表示每页18行，每页之间空两行。</font>
+<font color ="#0000FF">*     ...Message-ID mid：在程序中应用标准的Message类。</font>
+<font color ="#0000FF">*     ...DEFINING DATABASE db：定义程序中所使用逻辑数据库。</font>
+<font color ="#0000FF">*  10.1.2 图标符号的输出</font>
+<font color ="#0000FF">*   　输出报表中通常会有一些特殊的符号，如ChexkBox,图标及符号等具体参数如下。</font>
+<font color ="#0000FF">*      1.WRITE...AS CHECKBOX：输出一个ChexkBox。</font>
+DATA:MARKFIELD(1) TYPE C VALUE 'X'.
+    WRITE MARKFIELD AS CHECKBOX. "输出符号CHECKBOX,默认选中
+    WRITE MARKFIELD AS CHECKBOX INPUT OFF. "输出符号CHECKBOX,默认无法选择.
+    MARKFIELD = SPACE.  "重置为空
+
+    WRITE MARKFIELD AS CHECKBOX. "输出符号CHECKBOX,默认未选中
+    WRITE MARKFIELD AS CHECKBOX INPUT OFF. "输出符号CHECKBOX,默认无法选择.
+
+<font color ="#0000FF">* 10.1.3.WRITE...AS SYMBOL：输出符号(T-CODE:SE38进入ABAP编辑器，输入：SHOWSYMB 即可查询SYMBOLS)</font>
+INCLUDE &lt;SYMBOL&gt;.
+    WRITE: / SYM_RIGHT_HAND AS SYMBOL,'TIP,NOTE',SYM_LEFT_HAND AS SYMBOL.
+
+<font color ="#0000FF">*10.1.4.WRITE...AS ICON：输出图标</font>
+<font color ="#0000FF">*     输出图标，需定义包含程序，具体图标可以通过T-CODE：ICON查看，但是程序中需定义INCLUDE &lt;ICON&gt;或INCLUDE &lt;LIST&gt;。</font>
+INCLUDE &lt;ICON&gt;.
+     WRITE:/ ICON_OKAY AS ICON,'OK'. "OUTPUT ICON
+
+
+<font color ="#0000FF">*10.2.1  表格的制作</font>
+ ULINE AT 5(10). "绘制横线
+<font color ="#0000FF">*SKIP.</font>
+   SET BLANK LINES ON.
+   WRITE AT 5(10) SY-ULINE. "绘制横线，两种效果一样
+
+<font color ="#0000FF">*WRITE AT /5(10) SY-ULINE</font>
+<font color ="#0000FF">*绘制一个表格</font>
+ DO 3 TIMES.
+    ULINE AT 1(50).
+    WRITE: /1 SY-VLINE,50 SY-VLINE.  "位置1和位置50绘制竖线
+    ULINE AT /1(50).
+   ENDDO.
+
+<font color ="#0000FF">*10.2.2 按钮输出格式</font>
+<font color ="#0000FF">*   10.2.2.1.SKIP：用于输出空行，其扩展语法如下：</font>
+WRITE /'LINE 1'.
+    SKIP 5.
+    WRITE 'LINE 5'.
+    SKIP TO LINE 8.
+
+<font color ="#0000FF">* 10.2.2.2.NEW-LINE：用于在Report List中产生换行，但不会产生空行。</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* 10.2.2.3....NO-SCROLLING:锁定其下一行所输出的值，不会随屏幕左右移动，该定义只对语法的下一行有效，主要就用于报表输出中一些关键位的冻结功能。</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* 10.2.2.4....SCROLLING：其下一行所输出的值会随屏幕左右移动。</font>
+  NEW-PAGE LINE-SIZE 255.
+    WRITE: / 'This line will be moved'.
+    NEW-LINE NO-SCROLLING.
+    WRITE: / 'This Line will not be moved'. "該行輸出值被鎖定，不會隨屏幕左右移動。
+    WRITE: / 'This line will be moved'.
+
+<font color ="#0000FF">* 10.2.2.5.NEW-PAGE：对输出报表进行分页，其扩展语法如下：</font>
+<font color ="#0000FF">* ...NO-TITLE:新的分页中不会有标题、日期、页码。</font>
+<font color ="#0000FF">* ...WITH-TITLE:新的分页中继承首页的标题、日期、页码。</font>
+<font color ="#0000FF">* ...NO-HEADING:在该报表的新分页中不会产生表头。</font>
+<font color ="#0000FF">* ...WITH-HEADING:输出的新页中继承首页的COLUMN HEADING。</font>
+<font color ="#0000FF">* ...LINE-COUNT lin:设置新页的行数。</font>
+<font color ="#0000FF">* ...LINE-SIZE col:设置新页的宽度。</font>
+<font color ="#0000FF">*</font>
+<font color ="#0000FF">* 10.2.2.6.TOP-OF-PAGE：该语法用于定义动态页眉，在所有的页面首行显示出来。</font>
+<font color ="#0000FF">* 10.2.2.7.END-OF-PAGE:该语法用于定义动态页脚，要触发该事件，需要在Report语句的LINE-COUNT附加项中为其预留输出行数。页脚事件块中的输出始终出现在页面下方。</font>
+REPORT  Y_CBOII_TEST004 LINE-SIZE 300 LINE-COUNT 12(6) NO STANDARD PAGE HEADING.
+
+    START-OF-SELECTION.
+      WRITE: / 'NAME:', 10 'TOM',
+             / 'AGE:',23,
+             / 'Sex','Male',
+             / 'ADDRESS:','BEIJING'.
+
+    NEW-PAGE NO-HEADING NO-TITLE.
+      WRITE: / 'NAME:', 10 'JERY',
+             / 'AGE:',25,
+             / 'Sex','FeMale',
+            / 'ADDRESS:','SHENZHEN'.
+<font color ="#0000FF">*SET BLANK LINES ON.</font>
+
+
+    TOP-OF-PAGE.
+      WRITE: / 'Current Page:',SYST-PAGNO.
+      ULINE.
+
+    END-OF-PAGE.
+     ULINE.
+     WRITE: /'THIS THE END'.
+
+<font color ="#0000FF">*10.3 AT LINE-SELECTION事件</font>
+<font color ="#0000FF">*　当双击Report List所输出的某行数据时，触发AT LINE-SELECTION事件。而HIDE定义使输出的内容和当前选择相关联，会自动获取该行内容，如下：</font>
+
+DATA mytext(20).
+
+   START-OF-SELECTION.
+    "WRITE:/ 'AT LINE-SELECTION'.
+     PERFORM write_and_hide.
+
+FORM write_and_hide.
+     mytext = 'line1'.
+     WRITE / mytext.
+    HIDE mytext.
+
+     mytext = 'line2'.
+     WRITE / mytext.
+     HIDE mytext.
+
+     mytext = 'line3'.
+     WRITE / mytext.
+     HIDE mytext.
+
+     WRITE / 'line4'.
+   ENDFORM.
+
+   AT LINE-SELECTION.
+    CASE mytext.
+     WHEN 'line1'.
+      WRITE: 'You Had Select The Line1'.
+     WHEN 'line2'.
+      WRITE: 'You Had Select The Line2'.
+     WHEN OTHERS.
+      WRITE: 'You Had Select Other Line'.
+    ENDCASE.
+   CLEAR mytext.
+
+<font color ="#0000FF">*  10.4 在列表输出过程中，系统将填充下列相关系统字段，可以程序中直接调用。</font>
+<font color ="#0000FF">*      SY-LINCT：REPORT语句中设定的LINE-COUNT。</font>
+<font color ="#0000FF">*      SY-LINSZ：REPORT语句中设定的LINE-SIZE。</font>
+<font color ="#0000FF">*      SY-SROWS：当前窗口中的列表行数。</font>
+<font color ="#0000FF">*      SY-SCOLS：当前窗口中的列表栏目数。</font>
+<font color ="#0000FF">*      SY-PAGNO：当前窗口的页码。</font>
+<font color ="#0000FF">*      SY-LINNO：当前输出页面的选定行序号。</font>
+<font color ="#0000FF">*      SY-COLNO：当前输出页面的选定列序号。</font>
+
+<font color ="#0000FF">*  10.5 使用FORMAT语句可以实现其它一些屏幕格式化功能，如调整输出颜色等。</font>
+<font color ="#0000FF">*      [Syntax]</font>
+<font color ="#0000FF">*      FORMAT &lt;option1&gt; [ON|OFF]  &lt;option2&gt; [ON|OFF]........</font>
+<font color ="#0000FF">*      一旦设定，FORMAT语句中设置的格式将适用于所有后续输出的语句，直到再次使用OFF选项关闭，其具体选项列表如下：</font>
+<font color ="#0000FF">*      COLOR n [ON|OFF]：设定列表行的背景颜色。</font>
+<font color ="#0000FF">*      INTENSIFIED [ON|OFF]：设定是否将字段强化输出。</font>
+<font color ="#0000FF">*　　INVERSE [ON|OFF]：设定是否将背景即文字颜色反转输出。</font>
+<font color ="#0000FF">*　　HOTSPOT [ON|OFF]：将光标以手型显示，单击触发行选择事件(热点)。</font>
+<font color ="#0000FF">*　　INPUT [ON|OFF]：设定输入字段，允许用户输入。</font>
+<font color ="#0000FF">*　　RESET：恢复上述的所有设定默认值。</font>
+
+  WRITE: / 'HELLO SAP' COLOR 6 INTENSIFIED ON.
+   WRITE: / 'HELLO SAP' COLOR COL_NEGATIVE INTENSIFIED ON.
+
+    FORMAT COLOR 1 INPUT INTENSIFIED ON.
+   WRITE  /'COLOR LINE 1'.
+   WRITE: / 'COLOR LINE 2'.
+   WRITE: / 'COLOR LINE 3'.
+<font color ="#0000FF">*FORMAT COLOR 1 OFF.</font>
+   FORMAT RESET.
+   WRITE: / 'COLOR LINE 4'.
+
+"$. Endregion report list
+
+
+<font color ="#0000FF">**Message 调用</font>
+<font color ="#0000FF">*MESSAGE W001(ZPEOPLE).</font>
+
+<font color ="#0000FF">*Text elements</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* W01 物料输入窗体</font>
+<font color ="#0000FF">* W02 @39@39</font>
+<font color ="#0000FF">* W03 请输入物料编号</font>
+<font color ="#0000FF">* W04 返回的数据包含创建日期</font>
+
+
+<font color ="#0000FF">*Selection texts</font>
+<font color ="#0000FF">*----------------------------------------------------------</font>
+<font color ="#0000FF">* NAMEA         名称A</font>
+<font color ="#0000FF">* USER_AGE         用户年龄</font>
+</pre>
+<hr>
+<font size="2" face = "Sans Serif">Extracted by Direct Download Enterprise version 1.3.1 - E.G.Mellodew. 1998-2005 UK. Sap Release 702
+</font>
+</body>
+</html>
